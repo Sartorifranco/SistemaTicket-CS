@@ -1,0 +1,240 @@
+/* frontend/src/pages/AdminTicketsPage.css */
+
+.admin-page-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.page-title {
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.2em;
+    font-weight: 700;
+}
+
+.loading-message, .error-message {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1em;
+    color: #d9534f; /* Rojo para errores */
+}
+
+.loading-message {
+    color: #5cb85c; /* Verde para carga */
+}
+
+.tickets-table-container {
+    overflow-x: auto; /* Permite scroll horizontal en pantallas pequeñas */
+    margin-top: 20px;
+}
+
+.tickets-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden; /* Para que los bordes redondeados se apliquen al contenido */
+}
+
+.tickets-table th, .tickets-table td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.tickets-table th {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.tickets-table tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+/* Estilo para las filas de ticket (sin el onClick directo) */
+.tickets-table tbody tr.ticket-row:hover {
+    background-color: #f8f9fa; /* Un hover más sutil para la fila */
+}
+
+/* Estilo para las celdas de ticket clickeables */
+.ticket-cell-clickable {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.ticket-cell-clickable:hover {
+    background-color: #e9ecef; /* Resaltar la celda al pasar el ratón */
+}
+
+
+/* Estilos para el modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Asegúrate de que este z-index sea muy alto */
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    max-height: 90vh; /* Limita la altura del modal */
+    overflow-y: auto; /* Permite scroll si el contenido es largo */
+}
+
+.close-button {
+    position: absolute;
+    top: 15px;
+    right: 25px;
+    font-size: 30px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: #333;
+}
+
+.modal-content h2 {
+    color: #007bff;
+    margin-top: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.modal-content p {
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.modal-content strong {
+    color: #333;
+}
+
+.modal-content h3 {
+    color: #007bff;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.comments-list {
+    max-height: 200px; /* Altura máxima para la lista de comentarios */
+    overflow-y: auto; /* Scroll para comentarios si son muchos */
+    border: 1px solid #eee;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #fdfdfd;
+}
+
+.comment-item {
+    background-color: #eef;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border-left: 3px solid #007bff;
+}
+
+.comment-item:last-child {
+    margin-bottom: 0;
+}
+
+.comment-item p {
+    margin: 0 0 5px 0;
+    font-size: 0.95em;
+}
+
+.comment-item small {
+    color: #666;
+    font-size: 0.8em;
+}
+
+/* Estilos para el select de asignar agente y el botón */
+.assign-select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-right: 10px;
+    font-size: 0.9em;
+    min-width: 120px;
+}
+
+.small-button {
+    padding: 8px 12px;
+    font-size: 0.85em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.primary-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+}
+
+.primary-button:hover {
+    background-color: #0056b3;
+}
+
+/* Media Queries para responsividad */
+@media (max-width: 768px) {
+    .admin-page-container {
+        padding: 15px;
+        margin: 10px auto;
+    }
+
+    .page-title {
+        font-size: 1.8em;
+    }
+
+    .tickets-table th, .tickets-table td {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+
+    .assign-select, .small-button {
+        display: block;
+        width: 100%;
+        margin-top: 5px;
+        margin-right: 0;
+    }
+
+    .modal-content {
+        padding: 20px;
+        width: 95%;
+    }
+}
+
+@media (max-width: 480px) {
+    .tickets-table th, .tickets-table td {
+        font-size: 0.8em;
+    }
+}
+

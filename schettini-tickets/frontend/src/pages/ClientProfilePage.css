@@ -1,0 +1,127 @@
+/* frontend/src/pages/ClientProfilePage.css */
+
+.profile-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Alinea al inicio verticalmente */
+    min-height: calc(100vh - var(--header-height) - var(--footer-height)); /* Ajusta según tu layout */
+    padding: 20px;
+    background-color: var(--background-color);
+}
+
+.profile-card {
+    background-color: var(--card-background);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-medium);
+    width: 100%;
+    max-width: 600px; /* Ancho máximo para el perfil */
+    text-align: left;
+    border: 1px solid var(--border-color);
+}
+
+.profile-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.profile-info p {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    color: var(--text-color);
+}
+
+.profile-info strong {
+    color: var(--text-light);
+}
+
+.profile-form .form-group {
+    margin-bottom: 20px;
+}
+
+.profile-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.profile-form .form-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.profile-form .form-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+    outline: none;
+}
+
+.profile-form .button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.profile-form .primary-button {
+    background-color: var(--primary-color);
+    color: var(--button-text-color);
+    border: none;
+}
+
+.profile-form .primary-button:hover:not(:disabled) {
+    background-color: var(--primary-dark-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-light);
+}
+
+.profile-form .primary-button:disabled {
+    background-color: var(--disabled-color);
+    cursor: not-allowed;
+}
+
+.profile-form .secondary-button {
+    background-color: var(--secondary-button-background);
+    color: var(--secondary-button-text-color);
+    border: 1px solid var(--secondary-button-border);
+}
+
+.profile-form .secondary-button:hover:not(:disabled) {
+    background-color: var(--secondary-button-hover-background);
+    transform: translateY(-1px);
+}
+
+.profile-form .error-message {
+    color: var(--error-color);
+    background-color: var(--error-background);
+    border: 1px solid var(--error-color);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .profile-card {
+        padding: 25px;
+        margin: 0 15px;
+    }
+
+    .profile-title {
+        font-size: 1.8rem;
+        margin-bottom: 20px;
+    }
+}

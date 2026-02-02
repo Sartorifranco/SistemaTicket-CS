@@ -1,0 +1,114 @@
+/* frontend/src/components/Layout/Layout.css */
+
+/* Estilos para el contenedor principal del layout */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--background-color); /* Usa la variable global */
+}
+
+/* Estilos para la cabecera (Navbar) */
+.app-header {
+  background-color: var(--secondary-color); /* Fondo negro muy oscuro */
+  color: var(--text-color); /* Texto blanco */
+  padding: 0px 0; /* padding se manejará en el .header-container */
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px var(--shadow-light);
+  z-index: 1000;
+  position: sticky; /* Fija la navbar en la parte superior */
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.app-header .header-container { /* Un contenedor dentro del header para el ancho y padding */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  max-width: 1200px; /* Usa el mismo max-width que tu .container global */
+  margin: 0 auto;
+  padding: 0 20px;
+  width: 100%;
+}
+
+.header-brand {
+  color: var(--text-color);
+  font-size: 1.8rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.header-brand:hover {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-item {
+  margin-left: 25px; /* Más espacio entre elementos */
+}
+
+.nav-link {
+  color: var(--light-text-color); /* Enlaces en gris claro */
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 5px 10px;
+  transition: color 0.3s ease, background-color 0.3s ease;
+  border-radius: 4px; /* Un poco de redondeo */
+}
+
+.nav-link:hover {
+  color: var(--text-color); /* Blanco al pasar el ratón */
+  background-color: rgba(255, 255, 255, 0.1); /* Un fondo sutil */
+  text-decoration: none;
+}
+
+.logout-button {
+  background: none;
+  border: 1px solid var(--primary-color); /* Borde rojo opaco */
+  color: var(--text-color); /* Texto blanco */
+  padding: 8px 15px;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: var(--primary-color); /* Fondo rojo opaco al pasar el ratón */
+  color: var(--text-color);
+  border-color: var(--primary-color);
+}
+
+.nav-user {
+  color: var(--light-text-color); /* Texto del nombre de usuario en gris claro */
+  font-size: 0.95rem;
+  margin-left: 25px;
+  padding: 5px 10px;
+  background-color: rgba(0, 0, 0, 0.2); /* Un fondo sutil para el nombre de usuario */
+  border-radius: 4px;
+}
+
+/* Estilos para el contenido principal (main) */
+.app-main-content {
+  flex: 1; /* Esto es crucial para que ocupe todo el espacio disponible */
+  padding: 20px;
+}
+
+/* Estilos para el footer */
+.app-footer {
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  text-align: center;
+  padding: 15px 0;
+  font-size: 0.9em;
+}

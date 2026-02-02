@@ -1,0 +1,115 @@
+/* frontend/src/components/Tickets/Tickets.css */
+
+.tickets-table {
+    width: 100%;
+    border-collapse: collapse; 
+    margin-top: 20px;
+    background-color: var(--card-background); 
+    color: var(--text-color); 
+    border-radius: 8px; 
+    overflow: hidden; 
+}
+
+.tickets-table thead tr {
+    background-color: var(--primary-color); 
+    color: var(--text-color-light); 
+}
+
+.tickets-table th,
+.tickets-table td {
+    border: 1px solid var(--border-color); 
+    padding: 12px 15px; 
+    text-align: left;
+}
+
+.tickets-table tbody tr:nth-child(odd) {
+    background-color: var(--background-color); 
+}
+
+.tickets-table tbody tr:hover {
+    background-color: var(--secondary-color); 
+}
+
+/* Estilos para el botón "Ver Detalle" dentro de la tabla */
+.tickets-table .button.secondary-button {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    padding: 6px 12px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+.tickets-table .button.secondary-button:hover {
+    background-color: var(--primary-color-dark); 
+}
+
+/* Estilos para formularios (aplicables a CreateTicketForm) */
+.form-card {
+    background-color: var(--card-background);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    color: var(--text-color);
+    width: 100%; /* Asegura que el formulario ocupe el ancho disponible */
+    max-width: 600px; /* Ancho máximo para formularios */
+    margin: 0 auto; /* Centra el formulario */
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+    width: calc(100% - 20px); /* Resta el padding para el ancho completo */
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    font-size: 1em;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Clases para mensajes de error/éxito */
+.error-message {
+    color: var(--danger-color);
+    background-color: var(--danger-color-light);
+    border: 1px solid var(--danger-color);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.success-message {
+    color: var(--accent-color);
+    background-color: var(--accent-color-light);
+    border: 1px solid var(--accent-color);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    text-align: center;
+}
