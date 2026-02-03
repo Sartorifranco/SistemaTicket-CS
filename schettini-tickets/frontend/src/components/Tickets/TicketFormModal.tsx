@@ -4,12 +4,12 @@ import api from '../../config/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
 import { Department, User, TicketData, UserRole } from '../../types';
 
-// --- INTERFACES LOCALES PARA GARANTIZAR COMPATIBILIDAD ---
+// --- INTERFACES LOCALES ---
 interface Location {
     id: number;
-    alias: string;        // Mapeado a 'alias' de la DB
+    alias: string;
     serial_number?: string;
-    name?: string;        // Fallback
+    name?: string;
     type?: string;
 }
 
@@ -23,6 +23,7 @@ interface PredefinedProblemLocal {
     id: number;
     title: string;
     description: string;
+    priority?: string;
     department_id?: number;
 }
 
@@ -55,7 +56,7 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         user_id: undefined,
         location_id: undefined,
         depositario_id: undefined, 
-        predefined_problem_id: undefined,
+        predefined_problem_id: '', // String vacío por defecto para el select
     };
 
     const [formData, setFormData] = useState<FormDataType>(initialFormData);
@@ -67,11 +68,10 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
     const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Estados de datos
-    const [categories, setCategories] = useState<TicketCategoryLocal[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
-    const [depositarios, setDepositarios] = useState<DepositarioOption[]>([]); 
+    const [depositarios, setDepositarios] = useState<DepositarioOption[]>([]);
+    const [predefinedProblems, setPredefinedProblems] = useState<PredefinedProblemLocal[]>([]); // <--- NUEVO ESTADO
     
-    // --- ESTILO NUCLEAR (A prueba de fallos visuales) ---
     const hardStyle = {
         backgroundColor: '#ffffff',
         color: '#000000',
@@ -85,24 +85,31 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         return loggedInUser?.company_id;
     }, [currentUserRole, formData.user_id, users, loggedInUser]);
 
-    // 1. CARGA INICIAL DE DATOS (Solo Ubicaciones y Depositarios realmente necesarios ahora)
+    // 1. CARGA INICIAL DE DATOS
     useEffect(() => {
-        if (isOpen && targetCompanyId) {
+        if (isOpen) {
             const fetchModalData = async () => {
                 try {
-                    let locationsUrl = currentUserRole === 'client' 
-                        ? '/api/locations' 
-                        : `/api/locations/${targetCompanyId}`;
+                    // Cargar Problemas Predefinidos (Siempre)
+                    const problemsRes = await api.get('/api/tickets/predefined-problems');
+                    setPredefinedProblems(problemsRes.data.data || []);
 
-                    const [locRes, depRes] = await Promise.all([
-                        api.get(locationsUrl),
-                        api.get(`/api/depositarios?companyId=${targetCompanyId}`)
-                    ]);
+                    // Cargar Ubicaciones/Depositarios solo si hay empresa
+                    if (targetCompanyId) {
+                        let locationsUrl = currentUserRole === 'client' 
+                            ? '/api/locations' 
+                            : `/api/locations/${targetCompanyId}`;
 
-                    setLocations(locRes.data.data || []);
-                    setDepositarios(depRes.data.data || []); 
+                        const [locRes, depRes] = await Promise.all([
+                            api.get(locationsUrl),
+                            api.get(`/api/depositarios?companyId=${targetCompanyId}`)
+                        ]);
+
+                        setLocations(locRes.data.data || []);
+                        setDepositarios(depRes.data.data || []); 
+                    }
                 } catch (error) {
-                    console.error("Error cargando datos iniciales:", error);
+                    console.error("Error cargando datos del modal:", error);
                 }
             };
             fetchModalData();
@@ -115,9 +122,36 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         }
     }, [isOpen, targetCompanyId, currentUserRole]);
     
-    // 2. IA PREDICTIVA (Simplificada solo para Prioridad y Título)
+    // --- LÓGICA DE AUTOCOMPLETADO POR PROBLEMA ---
+    const handleProblemSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const problemId = parseInt(e.target.value);
+        if (!problemId) {
+            setFormData(prev => ({ ...prev, predefined_problem_id: '' }));
+            return;
+        }
+
+        const problem = predefinedProblems.find(p => p.id === problemId);
+        if (problem) {
+            setFormData(prev => ({
+                ...prev,
+                predefined_problem_id: problemId,
+                title: problem.title,             // Autocompleta Título
+                description: problem.description, // Autocompleta Descripción
+                // Autocompleta Prioridad si existe, sino mantiene la actual
+                priority: (problem.priority as any) || prev.priority, 
+                // Autocompleta Departamento si existe
+                department_id: problem.department_id || prev.department_id 
+            }));
+            toast.info("Plantilla aplicada: Campos actualizados.");
+        }
+    };
+
+    // 2. IA PREDICTIVA (Se mantiene, pero no sobreescribe si ya elegiste un problema predefinido)
     useEffect(() => {
         if (!isOpen || !formData.description || formData.description.length < 10) return;
+        // Si ya seleccionó un problema predefinido, evitamos que la IA lo cambie
+        if (formData.predefined_problem_id) return; 
+
         if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current);
         
         analysisTimeoutRef.current = setTimeout(async () => {
@@ -131,7 +165,6 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                     setFormData(prev => ({ ...prev, priority: priorityMap[suggestedPriority] as any }));
                 }
                 
-                // Autocompletar título si está vacío
                 if (!formData.title) {
                      setFormData(prev => ({
                         ...prev,
@@ -142,7 +175,7 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
             } catch (error) { console.error("Error IA:", error); } finally { setIsAnalyzing(false); }
         }, 1200); 
         return () => { if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current); };
-    }, [formData.description, isOpen]);
+    }, [formData.description, isOpen, formData.predefined_problem_id]);
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -165,27 +198,18 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validación de usuario si es admin/agente
         if ((currentUserRole === 'admin' || currentUserRole === 'agent') && !formData.user_id) {
             toast.warn("Por favor, selecciona el cliente para quien es este ticket.");
             return;
         }
 
-        // VALIDACIÓN SIMPLIFICADA: Solo Título y Descripción son obligatorios ahora
         const requiredFields = [formData.title, formData.description];
-        
-        if (locations.length > 0) {
-            // location_id sigue siendo opcional a menos que quieras forzarlo
-            // requiredFields.push(formData.location_id); 
-        }
-
         if (requiredFields.some(field => !field)) {
             toast.warn("Por favor, complete el título y la descripción.");
             return;
         }
 
         setLoading(true);
-        // Enviamos category_id y department_id como null/undefined implícitamente
         await onSave(formData, attachments);
         setLoading(false);
     };
@@ -223,6 +247,30 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                             </select>
                         </div>
                     )}
+
+                    {/* --- NUEVO: SELECTOR DE PROBLEMAS PREDEFINIDOS --- */}
+                    {predefinedProblems.length > 0 && (
+                        <div className="bg-blue-50 p-3 rounded border border-blue-100">
+                            <label className="block text-blue-800 font-bold mb-1 flex items-center gap-2">
+                                ⚡ Selección Rápida de Problema:
+                                <span className="text-xs font-normal text-blue-600">(Autocompletar formulario)</span>
+                            </label>
+                            <select
+                                name="predefined_problem_id"
+                                value={formData.predefined_problem_id || ''}
+                                onChange={handleProblemSelect}
+                                className="w-full p-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                style={hardStyle}
+                            >
+                                <option value="">-- Seleccionar tipo de problema frecuente --</option>
+                                {predefinedProblems.map(prob => (
+                                    <option key={prob.id} value={prob.id}>
+                                        {prob.title}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     
                     {/* UBICACIONES Y DEPOSITARIOS */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -235,7 +283,6 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                                     onChange={handleChange} 
                                     className="w-full p-2 border rounded mt-1" 
                                     style={hardStyle}
-                                    // required // Puedes descomentar si quieres forzar la ubicación
                                 >
                                     <option value="" style={hardStyle}>-- Seleccione ubicación --</option>
                                     {locations.map(loc => (
@@ -298,7 +345,7 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                         required 
                     />
                     
-                    {/* PRIORIDAD (Ahora ocupando ancho completo o su propia fila) */}
+                    {/* PRIORIDAD */}
                     <div>
                         <label className="block text-gray-700 font-medium">Prioridad:</label>
                         <select 
@@ -314,6 +361,23 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                             <option value="high" style={hardStyle}>Alta</option>
                             <option value="urgent" style={{ ...hardStyle, color: 'red', fontWeight: 'bold' }}>Urgente</option>
                         </select>
+                    </div>
+                    
+                    {/* DEPARTAMENTO (Visible y autocompletable) */}
+                    <div>
+                         <label className="block text-gray-700 font-medium">Departamento:</label>
+                         <select 
+                            name="department_id" 
+                            value={formData.department_id || ''} 
+                            onChange={handleChange}
+                            className="w-full p-2 border rounded mt-1"
+                            style={hardStyle}
+                         >
+                             <option value="">-- Automático / General --</option>
+                             {departments.map(dept => (
+                                 <option key={dept.id} value={dept.id}>{dept.name}</option>
+                             ))}
+                         </select>
                     </div>
 
                     <div>

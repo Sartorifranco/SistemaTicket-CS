@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { getReports } = require('../controllers/reportController'); // Importa la función unificada
-const { authenticateToken, authorize } = require('../middleware/authMiddleware');
+const { getReports, getResolutionMetrics } = require('../controllers/reportController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
-// Protege todas las rutas de este archivo para que solo los admins puedan acceder
-router.use(authenticateToken);
-router.use(authorize('admin'));
+// Proteger todas las rutas
+router.use(protect);
+router.use(authorize('admin')); // Solo admins ven reportes
 
-// Define la ruta principal GET /api/reports para obtener todos los reportes
+// GET /api/reports (Reporte completo con gráficos)
 router.get('/', getReports);
+
+// GET /api/reports/metrics/resolution-time (Métrica rápida simple)
+router.get('/metrics/resolution-time', getResolutionMetrics);
 
 module.exports = router;

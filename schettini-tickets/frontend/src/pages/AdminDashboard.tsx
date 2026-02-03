@@ -7,8 +7,6 @@ import { ActivityLog, ApiResponseError, TicketData, User } from '../types';
 import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
 import { formatLocalDate } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
-// ✅ AJUSTAR RUTA DE IMPORTACIÓN SI ES NECESARIO (Widgets vs Dashboard)
-import DepositariosWidget from '../components/Dashboard/DepositariosWidget'; 
 
 const activityTypeTranslations: { [key: string]: string } = {
     user_registered: 'Usuario Registrado',
@@ -25,11 +23,6 @@ interface DashboardMetrics {
     activeTickets: number;
     totalUsers: number;
     recentActivity: ActivityLog[];
-    departmentCounts: {
-        'Soporte - IT'?: number;
-        'Implementaciones'?: number;
-        'Mantenimiento'?: number;
-    };
     agentWorkload: {
         agentId: number;
         agentName: string;
@@ -37,7 +30,7 @@ interface DashboardMetrics {
     }[];
 }
 
-// --- Componente genérico para el Modal de Detalles ---
+// --- Componente Modal de Detalles ---
 const DetailsModal: React.FC<{ title: string; items: any[]; onClose: () => void; renderItem: (item: any, index?: number) => React.ReactNode; loading: boolean }> = ({ title, items, onClose, renderItem, loading }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
@@ -60,7 +53,7 @@ const DetailsModal: React.FC<{ title: string; items: any[]; onClose: () => void;
     );
 };
 
-// --- Componente del Pop-up de Agentes ---
+// --- Modal de Tickets de Agente ---
 const AgentTicketsModal: React.FC<{ agent: { agentId: number, agentName: string } | null, onClose: () => void }> = ({ agent, onClose }) => {
     const [tickets, setTickets] = useState<Partial<TicketData>[]>([]);
     const [loading, setLoading] = useState(true);
@@ -106,7 +99,7 @@ const AgentTicketsModal: React.FC<{ agent: { agentId: number, agentName: string 
     );
 };
 
-// --- Componente Principal del Dashboard ---
+// --- Dashboard Principal ---
 const AdminDashboard: React.FC = () => {
     const { user } = useAuth();
     const { socket } = useNotification();
@@ -114,7 +107,7 @@ const AdminDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    // Estados para los modales
+    // Estados Modales
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<{ title: string; items: any[]; renderItem: (item: any, index?: number) => React.ReactNode } | null>(null);
@@ -130,7 +123,6 @@ const AdminDashboard: React.FC = () => {
         } catch (err: unknown) {
             const message = isAxiosErrorTypeGuard(err) ? (err.response?.data as ApiResponseError)?.message || 'Error al cargar datos.' : 'Error inesperado.';
             setError(message);
-            toast.error(message);
         } finally {
             if (isInitialLoad) setLoading(false);
         }
@@ -148,7 +140,7 @@ const AdminDashboard: React.FC = () => {
         }
     }, [socket, fetchMetrics]);
 
-    const handleCardClick = async (type: 'total' | 'active' | 'users' | 'department', departmentName?: string) => {
+    const handleCardClick = async (type: 'total' | 'active' | 'users') => {
         setModalLoading(true);
         setIsDetailsModalOpen(true);
     
@@ -170,11 +162,6 @@ const AdminDashboard: React.FC = () => {
                     title = 'Tickets Activos';
                     params.append('status', 'open');
                     params.append('status', 'in-progress');
-                } else if (type === 'department' && departmentName) {
-                    title = `Tickets Activos en ${departmentName}`;
-                    params.append('status', 'open');
-                    params.append('status', 'in-progress');
-                    params.append('departmentName', departmentName);
                 } else {
                     title = 'Todos los Tickets';
                 }
@@ -207,15 +194,15 @@ const AdminDashboard: React.FC = () => {
 
     if (loading) return <div className="p-8 text-center">Cargando dashboard...</div>;
     if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
-    if (!metrics) return <div className="p-8 text-center">No se encontraron datos para mostrar.</div>;
+    if (!metrics) return <div className="p-8 text-center">No se encontraron datos.</div>;
 
     return (
         <>
             <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard de Administrador</h1>
 
-                {/* ✅ GRILA DE MÉTRICAS + WIDGET DEPOSITARIOS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* FILA 1: Métricas Principales (Ahora 3 columnas) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <button onClick={() => handleCardClick('total')} className="text-left bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer">
                         <h3 className="text-lg font-semibold text-gray-600">Tickets Totales</h3>
                         <p className="text-4xl font-bold text-indigo-600 mt-2">{metrics.totalTickets}</p>
@@ -228,69 +215,55 @@ const AdminDashboard: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-600">Usuarios Totales</h3>
                         <p className="text-4xl font-bold text-blue-600 mt-2">{metrics.totalUsers}</p>
                     </button>
-                    
-                    {/* ✅ WIDGET DE DEPOSITARIOS AQUI */}
-                    <DepositariosWidget />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Estado por Área (Tickets Activos)</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                             <button onClick={() => handleCardClick('department', 'Soporte - IT')} className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                                <h4 className="font-bold text-gray-700">Soporte - IT</h4>
-                                <p className="text-4xl font-bold text-red-600 mt-2">{metrics.departmentCounts['Soporte - IT'] || 0}</p>
+                {/* FILA 2: Agentes Activos */}
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Agentes Atendiendo Tickets</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {metrics.agentWorkload.length > 0 ? metrics.agentWorkload.map(agent => (
+                            <button key={agent.agentId} onClick={() => handleAgentClick(agent)} className="flex justify-between items-center p-4 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-100 transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                        {agent.agentName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="font-medium text-gray-800">{agent.agentName}</span>
+                                </div>
+                                <span className="font-bold text-white bg-red-600 rounded-full h-8 w-8 flex items-center justify-center text-sm">
+                                    {agent.assignedTickets}
+                                </span>
                             </button>
-                            <button onClick={() => handleCardClick('department', 'Implementaciones')} className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                                <h4 className="font-bold text-gray-700">Implementaciones</h4>
-                                <p className="text-4xl font-bold text-red-600 mt-2">{metrics.departmentCounts['Implementaciones'] || 0}</p>
-                            </button>
-                            <button onClick={() => handleCardClick('department', 'Mantenimiento')} className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                                <h4 className="font-bold text-gray-700">Mantenimiento</h4>
-                                <p className="text-4xl font-bold text-red-600 mt-2">{metrics.departmentCounts['Mantenimiento'] || 0}</p>
-                            </button>
-                        </div>
-                    </div>
-                    <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Carga de Agentes (Tickets Activos)</h2>
-                        <ul className="space-y-3 max-h-60 overflow-y-auto">
-                            {metrics.agentWorkload.length > 0 ? metrics.agentWorkload.map(agent => (
-                                <li key={agent.agentId}>
-                                    <button onClick={() => handleAgentClick(agent)} className="w-full flex justify-between items-center p-2 rounded-md hover:bg-gray-100 text-left transition-colors">
-                                        <span className="font-medium text-gray-800">{agent.agentName}</span>
-                                        <span className="font-bold text-white bg-red-600 rounded-full h-6 w-6 flex items-center justify-center text-xs">{agent.assignedTickets}</span>
-                                    </button>
-                                </li>
-                            )) : (
-                                <p className="text-gray-500 text-center py-4">No hay agentes con tickets activos.</p>
-                            )}
-                        </ul>
+                        )) : (
+                            <p className="text-gray-500 py-4 col-span-3 text-center">No hay agentes con tickets activos en este momento.</p>
+                        )}
                     </div>
                 </div>
 
+                {/* FILA 3: Actividad Reciente */}
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">Actividad Reciente</h2>
                     <div className="overflow-x-auto">
                         <ul className="divide-y divide-gray-200">
                             {metrics.recentActivity.length > 0 ? (
                                 metrics.recentActivity.map(log => (
-                                    <li key={log.id} className="py-4 flex flex-col sm:flex-row justify-between items-start">
+                                    <li key={log.id} className="py-4 flex flex-col sm:flex-row justify-between items-start hover:bg-gray-50 px-2 rounded">
                                         <div className="flex-grow">
                                             <p className="text-sm font-semibold text-gray-900">
-                                                {log.username || 'Sistema'} - 
-                                                <span className="font-bold ml-1 capitalize">
-                                                    {activityTypeTranslations[log.action_type] || log.action_type.replace(/_/g, ' ')}
+                                                <span className="text-indigo-600">{log.username || 'Sistema'}</span>
+                                                <span className="text-gray-500 mx-2">•</span>
+                                                <span className="capitalize">
+                                                    {activityTypeTranslations[log.action_type] || log.action_type?.replace(/_/g, ' ')}
                                                 </span>
                                             </p>
                                             <p className="text-sm text-gray-600 mt-1">{log.description}</p>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-2 sm:mt-0 sm:ml-4 flex-shrink-0">
+                                        <p className="text-xs text-gray-400 mt-2 sm:mt-0 sm:ml-4 flex-shrink-0">
                                             {formatLocalDate(log.created_at)}
                                         </p>
                                     </li>
                                 ))
                             ) : (
-                                <p className="text-center text-gray-500 py-4">No hay actividad reciente.</p>
+                                <p className="text-center text-gray-500 py-4">No hay actividad reciente registrada.</p>
                             )}
                         </ul>
                     </div>

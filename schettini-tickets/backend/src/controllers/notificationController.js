@@ -1,18 +1,22 @@
 const asyncHandler = require('express-async-handler');
 const pool = require('../config/db');
-// --- ¡CORRECCIÓN CLAVE AQUÍ! ---
-// La ruta correcta para los servicios es '../services/activityLogService'
-const { logActivity } = require('../services/activityLogService');
 
-// @desc    Obtener todas las notificaciones para el usuario autenticado
-// @route   GET /api/notifications
-// @access  Private
-const getNotifications = asyncHandler(async (req, res) => {
-    if (!req.user) {
-        res.status(401);
-        throw new Error('No autorizado');
+// Función auxiliar segura para loguear actividad
+const safeLogActivity = async (userId, username, role, action, description, entityType, entityId) => {
+    try {
+        // Intenta insertar solo si la tabla existe
+        await pool.query(
+            `INSERT INTO activity_logs (user_id, action, description, entity_type, entity_id) VALUES (?, ?, ?, ?, ?)`,
+            [userId, action, description, entityType, entityId]
+        );
+    } catch (error) {
+        // Si falla (ej: tabla no existe), solo lo ignoramos para no romper el flujo
+        console.warn("No se pudo guardar el log de actividad:", error.message);
     }
+};
 
+// @desc Obtener notificaciones
+const getNotifications = asyncHandler(async (req, res) => {
     const [notifications] = await pool.execute(
         `SELECT id, user_id, type, message, related_id, related_type, is_read, created_at
          FROM notifications
@@ -20,189 +24,59 @@ const getNotifications = asyncHandler(async (req, res) => {
          ORDER BY created_at DESC`,
         [req.user.id]
     );
-    // Se estandariza la respuesta para que siempre devuelva un objeto con una propiedad 'data'
     res.status(200).json({ success: true, data: notifications });
 });
 
-// @desc    Obtener el conteo de notificaciones no leídas
-// @route   GET /api/notifications/unread-count
-// @access  Private
+// @desc Conteo de no leídas
 const getUnreadNotificationCount = asyncHandler(async (req, res) => {
-    if (!req.user) {
-        res.status(401);
-        throw new Error('No autorizado');
-    }
-
     const [result] = await pool.execute(
         `SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = FALSE`,
         [req.user.id]
     );
-    res.status(200).json({ count: result[0].count });
+    res.status(200).json({ success: true, count: result[0].count });
 });
 
-// @desc    Marcar notificación como leída
-// @route   PUT /api/notifications/:id/read
-// @access  Private
+// @desc Marcar como leída
 const markNotificationAsRead = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Verificar propiedad
+    const [rows] = await pool.query('SELECT user_id FROM notifications WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Notificación no encontrada' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: 'No autorizado' });
 
-    if (!req.user) {
-        res.status(401);
-        throw new Error('No autorizado');
-    }
-
-    const [notificationRows] = await pool.execute(
-        `SELECT * FROM notifications WHERE id = ?`,
-        [id]
-    );
-    const notification = notificationRows[0];
-
-    if (!notification) {
-        res.status(404);
-        throw new Error('Notificación no encontrada.');
-    }
-
-    if (notification.user_id !== req.user.id) {
-        res.status(403);
-        throw new Error('No autorizado para marcar esta notificación.');
-    }
-
-    await pool.execute(
-        `UPDATE notifications SET is_read = TRUE WHERE id = ?`,
-        [id]
-    );
-
-    await logActivity(
-        req.user.id,
-        req.user.username,
-        req.user.role,
-        'notification_read',
-        `marcó la notificación #${id} como leída`,
-        'notification',
-        parseInt(id),
-        { is_read: false },
-        { is_read: true }
-    );
-
-    res.status(200).json({ success: true, message: 'Notificación marcada como leída exitosamente.' });
+    await pool.execute('UPDATE notifications SET is_read = TRUE WHERE id = ?', [id]);
+    
+    res.status(200).json({ success: true, message: 'Marcada como leída' });
 });
 
-// @desc    Marcar todas las notificaciones del usuario como leídas
-// @route   PUT /api/notifications/mark-all-read
-// @access  Private
+// @desc Marcar todas como leídas
 const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
-    if (!req.user) {
-        res.status(401);
-        throw new Error('No autorizado');
-    }
-
-    const [result] = await pool.execute(
-        `UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE`,
+    await pool.execute(
+        'UPDATE notifications SET is_read = TRUE WHERE user_id = ?',
         [req.user.id]
     );
-
-    if (result.affectedRows > 0) {
-        await logActivity(
-            req.user.id,
-            req.user.username,
-            req.user.role,
-            'notification_read_all',
-            `marcó ${result.affectedRows} notificaciones como leídas`,
-            'user',
-            req.user.id,
-            null,
-            null
-        );
-        res.status(200).json({ success: true, message: `${result.affectedRows} notificaciones marcadas como leídas.` });
-    } else {
-        res.status(200).json({ success: true, message: 'No hay notificaciones no leídas para marcar.' });
-    }
+    res.status(200).json({ success: true, message: 'Todas marcadas como leídas' });
 });
 
-// @desc    Eliminar notificación
-// @route   DELETE /api/notifications/:id
-// @access  Private
+// @desc Eliminar notificación
 const deleteNotification = asyncHandler(async (req, res) => {
     const { id } = req.params;
-
-    if (!req.user) {
-        res.status(401);
-        throw new Error('No autorizado');
-    }
-
-    const [notificationRows] = await pool.execute(
-        `SELECT * FROM notifications WHERE id = ?`,
-        [id]
-    );
-    const notification = notificationRows[0];
-
-    if (!notification) {
-        res.status(404);
-        throw new Error('Notificación no encontrada.');
-    }
-
-    if (notification.user_id !== req.user.id && req.user.role !== 'admin') {
-        res.status(403);
-        throw new Error('No autorizado para eliminar esta notificación.');
-    }
-
-    await pool.execute(
-        `DELETE FROM notifications WHERE id = ?`,
-        [id]
-    );
-
-    await logActivity(
-        req.user.id,
-        req.user.username,
-        req.user.role,
-        'notification_deleted',
-        `eliminó la notificación #${id}`,
-        'notification',
-        parseInt(id),
-        notification,
-        null
-    );
-
-    res.status(200).json({ success: true, message: 'Notificación eliminada exitosamente.' });
+    await pool.execute('DELETE FROM notifications WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    res.status(200).json({ success: true, message: 'Eliminada' });
 });
 
-// @desc    Eliminar todas las notificaciones del usuario
-// @route   DELETE /api/notifications/delete-all
-// @access  Private
+// @desc Eliminar todas
 const deleteAllNotifications = asyncHandler(async (req, res) => {
-    if (!req.user) {
-        res.status(401);
-        throw new Error('No autorizado');
-    }
-
-    const [result] = await pool.execute(
-        `DELETE FROM notifications WHERE user_id = ?`,
-        [req.user.id]
-    );
-
-    if (result.affectedRows > 0) {
-        await logActivity(
-            req.user.id,
-            req.user.username,
-            req.user.role,
-            'notification_deleted_all',
-            `eliminó todas sus notificaciones (${result.affectedRows} en total)`,
-            'user',
-            req.user.id,
-            null,
-            null
-        );
-        res.status(200).json({ success: true, message: `Se eliminaron ${result.affectedRows} notificaciones.` });
-    } else {
-        res.status(200).json({ success: true, message: 'No hay notificaciones para eliminar.' });
-    }
+    await pool.execute('DELETE FROM notifications WHERE user_id = ?', [req.user.id]);
+    res.status(200).json({ success: true, message: 'Todas eliminadas' });
 });
 
 module.exports = {
     getNotifications,
     getUnreadNotificationCount,
     markNotificationAsRead,
-    deleteNotification,
     markAllNotificationsAsRead,
+    deleteNotification,
     deleteAllNotifications
 };

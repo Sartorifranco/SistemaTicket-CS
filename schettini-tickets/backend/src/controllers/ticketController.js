@@ -12,17 +12,16 @@ const createTicket = async (req, res) => {
             finalUserId = clientUserId;
         }
 
-        if (!title || !description || !priority) {
-            return res.status(400).json({ message: 'Título, descripción y prioridad son obligatorios.' });
+        if (!title || !description) {
+            return res.status(400).json({ success: false, message: 'Título y descripción son obligatorios.' });
         }
 
         // Insertar Ticket
-        // Nota: Si no tienes las columnas location_id o depositario_id en la BD, elimínalas de esta query
         const [result] = await pool.query(
             `INSERT INTO Tickets 
             (user_id, title, description, priority, category_id, department_id, status, location_id, depositario_id) 
             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
-            [finalUserId, title, description, priority, category_id || null, department_id || null, location_id || null, depositario_id || null]
+            [finalUserId, title, description, priority || 'medium', category_id || null, department_id || null, location_id || null, depositario_id || null]
         );
         
         const newTicketId = result.insertId;
@@ -36,7 +35,7 @@ const createTicket = async (req, res) => {
 
     } catch (error) {
         console.error("Error en createTicket:", error);
-        res.status(500).json({ message: 'Error al crear el ticket.' });
+        res.status(500).json({ success: false, message: 'Error al crear el ticket.' });
     }
 };
 
@@ -60,17 +59,18 @@ const getTickets = async (req, res) => {
         query += ' ORDER BY t.created_at DESC';
 
         const [tickets] = await pool.query(query, params);
-        res.json(tickets);
+        
+        res.json({ success: true, data: tickets });
+        
     } catch (error) {
         console.error("Error en getTickets:", error);
-        res.status(500).json({ message: 'Error al obtener tickets' });
+        res.status(500).json({ success: false, message: 'Error al obtener tickets' });
     }
 };
 
 // --- Obtener Ticket por ID ---
 const getTicketById = async (req, res) => {
     try {
-        // CORRECCIÓN: Usamos 'username' porque first_name no existe
         const query = `
             SELECT t.*, t.closure_reason,
                 u.username AS client_name,
@@ -87,13 +87,13 @@ const getTicketById = async (req, res) => {
         
         const [tickets] = await pool.query(query, [req.params.id]);
 
-        if (tickets.length === 0) return res.status(404).json({ message: 'Ticket no encontrado' });
+        if (tickets.length === 0) return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
 
         const ticket = tickets[0];
 
         // Seguridad
         if (req.user.role === 'client' && ticket.user_id !== req.user.id) {
-            return res.status(403).json({ message: 'No tienes permiso para ver este ticket.' });
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver este ticket.' });
         }
 
         // Obtener Comentarios
@@ -119,7 +119,7 @@ const getTicketById = async (req, res) => {
 
     } catch (error) {
         console.error("Error en getTicketById:", error);
-        res.status(500).json({ message: 'Error al obtener detalles del ticket' });
+        res.status(500).json({ success: false, message: 'Error al obtener detalles del ticket' });
     }
 };
 
@@ -138,7 +138,6 @@ const updateTicket = async (req, res) => {
         if (priority) { updates.push('priority = ?'); params.push(priority); }
         if (category_id) { updates.push('category_id = ?'); params.push(category_id); }
         
-        // Manejo especial para status y fecha de cierre
         if (status) { 
             updates.push('status = ?'); params.push(status);
             if (status === 'closed' || status === 'resolved') {
@@ -148,7 +147,7 @@ const updateTicket = async (req, res) => {
         if (closure_reason) { updates.push('closure_reason = ?'); params.push(closure_reason); }
         if (assigned_to_user_id) { updates.push('assigned_to_user_id = ?'); params.push(assigned_to_user_id); }
 
-        if (updates.length === 0) return res.status(400).json({ message: 'Nada que actualizar' });
+        if (updates.length === 0) return res.status(400).json({ success: false, message: 'Nada que actualizar' });
 
         query += updates.join(', ') + ' WHERE id = ?';
         params.push(ticketId);
@@ -158,11 +157,11 @@ const updateTicket = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error al actualizar ticket' });
+        res.status(500).json({ success: false, message: 'Error al actualizar ticket' });
     }
 };
 
-// --- Actualizar Solo Estado (Ruta específica) ---
+// --- Actualizar Solo Estado ---
 const updateTicketStatus = async (req, res) => {
     try {
         const { status: newStatus } = req.body;
@@ -183,7 +182,7 @@ const updateTicketStatus = async (req, res) => {
         res.json({ success: true, message: `Estado actualizado a ${newStatus}` });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error al cambiar estado' });
+        res.status(500).json({ success: false, message: 'Error al cambiar estado' });
     }
 };
 
@@ -205,7 +204,7 @@ const assignTicketToSelf = async (req, res) => {
         res.json({ success: true, message: 'Ticket asignado a tu usuario.' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error al asignar ticket' });
+        res.status(500).json({ success: false, message: 'Error al asignar ticket' });
     }
 };
 
@@ -216,7 +215,7 @@ const reassignTicket = async (req, res) => {
         await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, req.params.id]);
         res.json({ success: true, message: 'Ticket reasignado.' });
     } catch (error) {
-        res.status(500).json({ message: 'Error al reasignar' });
+        res.status(500).json({ success: false, message: 'Error al reasignar' });
     }
 };
 
@@ -226,7 +225,6 @@ const addCommentToTicket = async (req, res) => {
         const { comment_text, is_internal } = req.body;
         const ticketId = req.params.id;
         
-        // Validar si es interno
         const finalIsInternal = req.user.role !== 'client' && (is_internal === true || is_internal === 'true');
 
         await pool.query(
@@ -241,7 +239,7 @@ const addCommentToTicket = async (req, res) => {
         res.status(201).json({ success: true, message: 'Comentario añadido.' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error al agregar comentario' });
+        res.status(500).json({ success: false, message: 'Error al agregar comentario' });
     }
 };
 
@@ -252,17 +250,17 @@ const deleteTicket = async (req, res) => {
         await pool.query('DELETE FROM Tickets WHERE id = ?', [req.params.id]);
         res.json({ success: true, message: 'Ticket eliminado.' });
     } catch (error) {
-        res.status(500).json({ message: 'Error al eliminar' });
+        res.status(500).json({ success: false, message: 'Error al eliminar' });
     }
 };
 
-// --- Obtener Categorías (Necesario para Reportes) ---
+// --- Obtener Categorías ---
 const getTicketCategories = async (req, res) => {
     try {
         const [categories] = await pool.query('SELECT * FROM ticket_categories');
-        res.json(categories); // Devolver array directo o {data: categories} según prefiera tu front
+        res.json({ success: true, data: categories });
     } catch (error) {
-        res.status(500).json({ message: 'Error al obtener categorías' });
+        res.status(500).json({ success: false, message: 'Error al obtener categorías' });
     }
 };
 
@@ -270,13 +268,13 @@ const getTicketCategories = async (req, res) => {
 const getDepartments = async (req, res) => {
     try {
         const [departments] = await pool.query('SELECT * FROM Departments');
-        res.json(departments);
+        res.json({ success: true, data: departments });
     } catch (error) {
-        res.status(500).json({ message: 'Error al obtener departamentos' });
+        res.status(500).json({ success: false, message: 'Error al obtener departamentos' });
     }
 };
 
-// --- Obtener Comentarios (Ruta separada) ---
+// --- Obtener Comentarios ---
 const getTicketComments = async (req, res) => {
     try {
         const [comments] = await pool.query(`
@@ -288,7 +286,22 @@ const getTicketComments = async (req, res) => {
         `, [req.params.id]);
         res.json({ success: true, data: comments });
     } catch (error) {
-        res.status(500).json({ message: 'Error al obtener comentarios' });
+        res.status(500).json({ success: false, message: 'Error al obtener comentarios' });
+    }
+};
+
+// --- NUEVO: Obtener Problemas Predefinidos (Público) ---
+const getPredefinedProblemsPublic = async (req, res) => {
+    try {
+        const [problems] = await pool.query(`
+            SELECT id, title, description, priority, department_id 
+            FROM predefined_problems 
+            ORDER BY title ASC
+        `);
+        res.json({ success: true, data: problems });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error al obtener tipos de problemas' });
     }
 };
 
@@ -304,5 +317,6 @@ module.exports = {
     deleteTicket,
     getTicketCategories,
     getDepartments,
-    getTicketComments
+    getTicketComments,
+    getPredefinedProblemsPublic // <--- Exportado
 };

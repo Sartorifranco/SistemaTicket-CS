@@ -1,45 +1,43 @@
 const express = require('express');
 const router = express.Router();
-
-// 1. IMPORTAR MIDDLEWARES DE SEGURIDAD
-const { authenticateToken, authorize } = require('../middleware/authMiddleware');
-
-// 2. IMPORTAR CONTROLADORES (Nombres deben coincidir con problemAdminController.js)
-const {
-    getAllProblemsAdmin,
+const { 
+    getPredefinedProblems, 
+    createPredefinedProblem, 
+    updatePredefinedProblem, 
+    deletePredefinedProblem,
+    
+    // Control total de Categorías
+    getAllCategories,
     createCategory,
-    updateCategory,
     deleteCategory,
-    createProblem,
-    updateProblem,
-    deleteProblem,
-    getAllLocationsAdmin,
-    createLocation,
-    updateLocation,
-    deleteLocation
+
+    // Control total de Departamentos
+    getAllDepartments,
+    createDepartment,
+    deleteDepartment
 } = require('../controllers/problemAdminController');
 
-// 3. APLICAR SEGURIDAD
-router.use(authenticateToken);
+const { protect, authorize } = require('../middleware/authMiddleware');
+
+// Middleware de seguridad: Solo Admin entra aquí
+router.use(protect);
 router.use(authorize('admin'));
 
-// --- RUTAS DE CATEGORÍAS Y PROBLEMAS ---
-router.get('/problems-all', getAllProblemsAdmin);
+// --- GESTIÓN DE PROBLEMAS PREDEFINIDOS ---
+// Arreglo del Error 404: El frontend llama a 'problems-all'
+router.get('/problems-all', getPredefinedProblems); 
+router.post('/problems', createPredefinedProblem);
+router.put('/problems/:id', updatePredefinedProblem);
+router.delete('/problems/:id', deletePredefinedProblem);
 
-// Categorías
+// --- GESTIÓN DE CATEGORÍAS (Hacer y Deshacer) ---
+router.get('/categories', getAllCategories);
 router.post('/categories', createCategory);
-router.put('/categories/:id', updateCategory);
 router.delete('/categories/:id', deleteCategory);
 
-// Problemas
-router.post('/problems', createProblem);
-router.put('/problems/:id', updateProblem);
-router.delete('/problems/:id', deleteProblem);
-
-// --- RUTAS DE UBICACIONES ---
-router.get('/locations', getAllLocationsAdmin);
-router.post('/locations', createLocation);
-router.put('/locations/:id', updateLocation);
-router.delete('/locations/:id', deleteLocation);
+// --- GESTIÓN DE DEPARTAMENTOS (Hacer y Deshacer) ---
+router.get('/departments', getAllDepartments);
+router.post('/departments', createDepartment);
+router.delete('/departments/:id', deleteDepartment);
 
 module.exports = router;

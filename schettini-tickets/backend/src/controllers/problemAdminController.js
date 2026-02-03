@@ -1,120 +1,144 @@
-const asyncHandler = require('express-async-handler');
 const pool = require('../config/db');
 
 // ==========================================
-// 1. GESTIÓN DE PROBLEMÁTICAS
+// 1. GESTIÓN DE PROBLEMAS PREDEFINIDOS
 // ==========================================
 
-// @desc    Obtener todas las categorías y problemas (Admin)
-// @route   GET /api/admin/problems-all
-const getAllProblemsAdmin = asyncHandler(async (req, res) => {
+const getPredefinedProblems = async (req, res) => {
     try {
-        const [categories] = await pool.execute('SELECT * FROM ticket_categories ORDER BY id DESC');
-        
-        const [problems] = await pool.execute(`
-            SELECT p.*, c.name as category_name 
+        const [problems] = await pool.query(`
+            SELECT p.*, c.name as category_name, d.name as department_name 
             FROM predefined_problems p 
             LEFT JOIN ticket_categories c ON p.category_id = c.id 
+            LEFT JOIN Departments d ON p.department_id = d.id
             ORDER BY p.id DESC
         `);
-
-        res.json({ 
-            success: true, 
-            data: { categories, problems } 
-        });
+        res.json({ success: true, data: problems });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error obteniendo datos' });
+        res.status(500).json({ success: false, message: 'Error al obtener problemas' });
     }
-});
+};
 
-// --- CRUD CATEGORÍAS ---
-const createCategory = asyncHandler(async (req, res) => {
-    const { name, company_id } = req.body;
-    await pool.execute('INSERT INTO ticket_categories (name, company_id) VALUES (?, ?)', [name, company_id || null]);
-    res.json({ success: true, message: 'Categoría creada' });
-});
-
-const updateCategory = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { name, company_id } = req.body;
-    await pool.execute('UPDATE ticket_categories SET name=?, company_id=? WHERE id=?', [name, company_id || null, id]);
-    res.json({ success: true, message: 'Categoría actualizada' });
-});
-
-const deleteCategory = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await pool.execute('DELETE FROM predefined_problems WHERE category_id = ?', [id]);
-    await pool.execute('DELETE FROM ticket_categories WHERE id = ?', [id]);
-    res.json({ success: true, message: 'Categoría eliminada' });
-});
-
-// --- CRUD PROBLEMAS ---
-const createProblem = asyncHandler(async (req, res) => {
-    const { title, description, category_id, department_id } = req.body;
-    await pool.execute('INSERT INTO predefined_problems (title, description, category_id, department_id) VALUES (?, ?, ?, ?)', [title, description, category_id, department_id || 2]);
-    res.json({ success: true, message: 'Problema creado' });
-});
-
-const updateProblem = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { title, description, category_id, department_id } = req.body;
-    await pool.execute('UPDATE predefined_problems SET title=?, description=?, category_id=?, department_id=? WHERE id=?', [title, description, category_id, department_id, id]);
-    res.json({ success: true, message: 'Problema actualizado' });
-});
-
-const deleteProblem = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await pool.execute('DELETE FROM predefined_problems WHERE id=?', [id]);
-    res.json({ success: true, message: 'Problema eliminado' });
-});
-
-
-// ==========================================
-// 2. GESTIÓN DE UBICACIONES
-// ==========================================
-
-// @desc    Obtener todas las ubicaciones (Admin)
-// @route   GET /api/admin/locations
-const getAllLocationsAdmin = asyncHandler(async (req, res) => {
+const createPredefinedProblem = async (req, res) => {
     try {
-        const [rows] = await pool.execute('SELECT * FROM locations ORDER BY name ASC');
-        res.json({ success: true, data: rows });
+        const { title, description, priority, category_id, department_id } = req.body;
+        if (!title) return res.status(400).json({ message: 'El título es obligatorio' });
+
+        const [result] = await pool.query(
+            'INSERT INTO predefined_problems (title, description, priority, category_id, department_id) VALUES (?, ?, ?, ?, ?)',
+            [title, description || '', priority || 'medium', category_id || null, department_id || null]
+        );
+        res.status(201).json({ success: true, message: 'Problema creado', data: { id: result.insertId } });
     } catch (error) {
-        console.error("Error leyendo locations (probablemente tabla no existe):", error.message);
-        res.json({ success: true, data: [] });
+        res.status(500).json({ success: false, message: 'Error al crear problema' });
     }
-});
+};
 
-const createLocation = asyncHandler(async (req, res) => {
-    const { name, address } = req.body;
-    await pool.execute('INSERT INTO locations (name, address) VALUES (?, ?)', [name, address]);
-    res.json({ success: true, message: 'Ubicación creada' });
-});
+const updatePredefinedProblem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, priority, category_id, department_id } = req.body;
 
-const updateLocation = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { name, address } = req.body;
-    await pool.execute('UPDATE locations SET name=?, address=? WHERE id=?', [name, address, id]);
-    res.json({ success: true, message: 'Ubicación actualizada' });
-});
+        await pool.query(
+            'UPDATE predefined_problems SET title = ?, description = ?, priority = ?, category_id = ?, department_id = ? WHERE id = ?',
+            [title, description || '', priority || 'medium', category_id || null, department_id || null, id]
+        );
+        res.json({ success: true, message: 'Problema actualizado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al actualizar problema' });
+    }
+};
 
-const deleteLocation = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await pool.execute('DELETE FROM locations WHERE id=?', [id]);
-    res.json({ success: true, message: 'Ubicación eliminada' });
-});
+const deletePredefinedProblem = async (req, res) => {
+    try {
+        await pool.query('DELETE FROM predefined_problems WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Problema eliminado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al eliminar problema' });
+    }
+};
+
+// ==========================================
+// 2. GESTIÓN DE CATEGORÍAS (Hacer y Deshacer)
+// ==========================================
+
+const getAllCategories = async (req, res) => {
+    try {
+        const [categories] = await pool.query('SELECT * FROM ticket_categories ORDER BY id DESC');
+        res.json({ success: true, data: categories });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener categorías' });
+    }
+};
+
+const createCategory = async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ message: 'El nombre es obligatorio' });
+        
+        await pool.query('INSERT INTO ticket_categories (name) VALUES (?)', [name]);
+        res.status(201).json({ success: true, message: 'Categoría creada' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al crear categoría' });
+    }
+};
+
+const deleteCategory = async (req, res) => {
+    try {
+        // Opcional: Verificar si está en uso antes de borrar, o dejar que la FK falle
+        await pool.query('DELETE FROM ticket_categories WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Categoría eliminada' });
+    } catch (error) {
+        res.status(500).json({ message: 'No se puede eliminar: Está en uso por tickets activos.' });
+    }
+};
+
+// ==========================================
+// 3. GESTIÓN DE DEPARTAMENTOS (Hacer y Deshacer)
+// ==========================================
+
+const getAllDepartments = async (req, res) => {
+    try {
+        const [departments] = await pool.query('SELECT * FROM Departments ORDER BY id DESC');
+        res.json({ success: true, data: departments });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener departamentos' });
+    }
+};
+
+const createDepartment = async (req, res) => {
+    try {
+        const { name, description } = req.body;
+        if (!name) return res.status(400).json({ message: 'El nombre es obligatorio' });
+
+        await pool.query('INSERT INTO Departments (name, description) VALUES (?, ?)', [name, description || '']);
+        res.status(201).json({ success: true, message: 'Departamento creado' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al crear departamento' });
+    }
+};
+
+const deleteDepartment = async (req, res) => {
+    try {
+        await pool.query('DELETE FROM Departments WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Departamento eliminado' });
+    } catch (error) {
+        res.status(500).json({ message: 'No se puede eliminar: Hay usuarios o tickets asignados.' });
+    }
+};
 
 module.exports = {
-    getAllProblemsAdmin,
+    getPredefinedProblems,
+    createPredefinedProblem,
+    updatePredefinedProblem,
+    deletePredefinedProblem,
+    
+    getAllCategories,
     createCategory,
-    updateCategory,
     deleteCategory,
-    createProblem,
-    updateProblem,
-    deleteProblem,
-    getAllLocationsAdmin,
-    createLocation,
-    updateLocation,
-    deleteLocation
+
+    getAllDepartments,
+    createDepartment,
+    deleteDepartment
 };

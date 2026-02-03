@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer'); // Importamos multer
+const multer = require('multer');
 const path = require('path');
 
-// Configuración básica de subida de archivos
+// Configuración de subida de archivos
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/') // Asegúrate de que esta carpeta exista o usa /tmp
+        cb(null, 'uploads/')
     },
     filename: function (req, file, cb) {
         cb(null, Date.now() + path.extname(file.originalname))
@@ -20,21 +20,38 @@ const {
     createTicket, 
     getTicketById, 
     updateTicket, 
+    updateTicketStatus, 
     deleteTicket,
-    getTicketCategories 
+    getTicketCategories,
+    addCommentToTicket,
+    getTicketComments,
+    getPredefinedProblemsPublic // <--- Importado
 } = require('../controllers/ticketController');
+
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-// 1. Ruta de Categorías (SIEMPRE ANTES DE /:id)
+// --- RUTAS DE TICKETS ---
+
+// 1. Categorías y Configuración
 router.get('/categories', protect, getTicketCategories);
+
+// NUEVO: Ruta para obtener los problemas en el formulario (Antes de /:id)
+router.get('/predefined-problems', protect, authorize('admin', 'agent', 'client'), getPredefinedProblemsPublic);
 
 // 2. Rutas Generales
 router.route('/')
     .get(protect, authorize('admin', 'agent', 'client'), getTickets) 
-    // AQUI ESTA LA MAGIA: Agregamos 'upload.array' para procesar el formulario
     .post(protect, authorize('client', 'agent', 'admin'), upload.array('attachments'), createTicket);
 
-// 3. Rutas por ID
+// 3. Ruta Específica para CAMBIAR ESTADO
+router.put('/:id/status', protect, authorize('admin', 'agent', 'client'), updateTicketStatus);
+
+// 4. Rutas de Comentarios
+router.route('/:id/comments')
+    .post(protect, addCommentToTicket)
+    .get(protect, getTicketComments);
+
+// 5. Rutas por ID (Siempre al final)
 router.route('/:id')
     .get(protect, authorize('admin', 'agent', 'client'), getTicketById)
     .put(protect, authorize('admin', 'agent'), updateTicket)
