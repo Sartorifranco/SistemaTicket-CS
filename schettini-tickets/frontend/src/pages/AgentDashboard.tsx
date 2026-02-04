@@ -3,14 +3,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { TicketData, ActivityLog, ApiResponseError, AgentMetrics, AgentNote, TicketStatus, TicketPriority } from '../types';
+import { TicketData, ActivityLog, ApiResponseError, AgentMetrics, AgentNote } from '../types';
 import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
-// ✅ IMPORTAR WIDGET
 import DepositariosWidget from '../components/Dashboard/DepositariosWidget';
+// ✅ IMPORTAR WIDGET GLOBAL
+import InfoWidget from '../components/Common/InfoWidget';
 
-// --- Componente genérico para el Modal de Detalles (DISEÑO MEJORADO) ---
+// --- Componente genérico para el Modal de Detalles ---
 const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onClose: () => void; loading: boolean; role: 'agent' | 'admin' | 'client' }> = ({ title, items, onClose, loading, role }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
@@ -233,9 +234,13 @@ const AgentDashboard: React.FC = () => {
     return (
         <>
             <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+                
+                {/* ✅ WIDGET GLOBAL AQUÍ */}
+                <InfoWidget />
+
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Dashboard de Agente</h1>
 
-                {/* ✅ GRILA DE MÉTRICAS + WIDGET */}
+                {/* ✅ GRILA DE MÉTRICAS + WIDGET DE DEPOSITARIOS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <button onClick={() => handleCardClick('assigned')} className="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-xl transition-shadow text-left cursor-pointer">
                         <h3 className="text-lg font-semibold text-gray-600">Tickets Asignados</h3>
@@ -250,7 +255,7 @@ const AgentDashboard: React.FC = () => {
                         <p className="text-3xl sm:text-4xl font-bold text-green-600 mt-2">{agentMetrics?.resolvedByMe ?? 0}</p>
                     </button>
 
-                    {/* ✅ WIDGET AQUI */}
+                    {/* ✅ WIDGET DE DEPOSITARIOS */}
                     <DepositariosWidget />
                 </div>
 

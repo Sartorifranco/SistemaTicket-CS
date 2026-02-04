@@ -5,14 +5,14 @@ export interface Attachment {
     id: number;
     file_name: string;
     file_path: string;
-    file_type: string | null; // ✅ MODIFICACIÓN: Cambiado de 'any' a 'string | null'
+    file_type: string | null;
 }
 
 export interface Comment {
     user_username: ReactNode;
     id: number;
     ticket_id: number;
-    user_id: number | null; // User ID puede ser null para comentarios del sistema
+    user_id: number | null;
     username: string;
     comment_text: string;
     created_at: string;
@@ -34,8 +34,6 @@ export interface Company {
 export type UserRole = 'admin' | 'agent' | 'client';
 
 export interface User {
-    last_name: any;
-    first_name: any;
     id: number;
     username: string;
     email: string;
@@ -43,8 +41,18 @@ export interface User {
     department_id: number | null;
     company_id: number | null;
     company_name?: string;
-    created_at: string;
-    updated_at: string;
+    
+    status?: 'active' | 'inactive'; 
+    created_at?: string; 
+    updated_at?: string;
+    
+    // ✅ NUEVOS CAMPOS DE PLAN
+    plan_id?: number;
+    plan_name?: string;
+    plan_color?: string;
+
+    first_name?: string | null;
+    last_name?: string | null;
 }
 
 // ====================================================================
@@ -69,7 +77,7 @@ export interface PredefinedProblem {
     id: number;
     title: string;
     description: string;
-    department_id?: number | null; // Hecho opcional por si acaso
+    department_id?: number | null;
 }
 
 // ====================================================================
@@ -79,36 +87,41 @@ export type TicketStatus = 'open' | 'in-progress' | 'resolved' | 'closed' | 'reo
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface TicketData {
-    ticket_department_name?: number | null; // Debería ser string?
-    category_name?: ReactNode; // Debería ser string?
-    closure_reason?: string; 
-    
-    user_username?: ReactNode; // Este parece ser un tipo antiguo
     id: number;
     title: string;
     description: string;
     status: TicketStatus;
     priority: TicketPriority;
+    
+    // IDs
     user_id: number | null;
     category_id: number | null;
     department_id: number | null;
     assigned_to_user_id: number | null;
+    location_id?: number | null;
+    depositario_id?: number | null;
+
+    // Fechas
     created_at: string;
     updated_at: string;
-    location_id?: number | null;
-    
-    // Nombres que vienen de los JOINs en el backend
-    client_name: string; 
-    agent_name: string | null;
-    ticket_category_name?: string; // Añadido en AdminTicketDetailPage
-    
-    // Propiedades opcionales
-    comments?: Comment[];
-    attachments?: Attachment[]; // ✅ Esta línea ya estaba, lo cual es bueno
-    
-    // Otros campos que puedas tener
     closed_at?: string | null;
     resolved_at?: string | null;
+
+    // Nombres expandidos (Joins)
+    client_name: string; 
+    agent_name: string | null;
+    
+    // 👇 AGREGA ESTO AQUÍ 👇
+    user_username?: string; // Alias para compatibilidad con componentes viejos
+    creator_name?: string;  // Otro alias común
+    
+    ticket_department_name?: string | null;
+    category_name?: string; 
+    ticket_category_name?: string;
+    closure_reason?: string; 
+    
+    comments?: Comment[];
+    attachments?: Attachment[];
     feedback?: Feedback | null;
 }
 
@@ -151,20 +164,20 @@ export type BacarKeyFormData = Omit<BacarKey, 'id' | 'created_at' | 'updated_at'
 // REPORT & DASHBOARD TYPES
 // ====================================================================
 export interface ReportMetrics {
-    totalDepartments: ReactNode;
-    totalUsers: ReactNode;
-    totalTickets: ReactNode;
+    totalDepartments: number;
+    totalUsers: number;
+    totalTickets: number;
     ticketsByStatus: { status: TicketStatus; count: number }[];
     ticketsByPriority: { priority: TicketPriority; count: number }[];
     ticketsByDepartment: { departmentName: string; count: number }[];
 }
 
 export interface AgentMetrics {
-    closedTickets: any;
-    resolvedTickets: any;
-    inProgressTickets: ReactNode;
-    openTickets: ReactNode;
-    totalTicketsAssigned: ReactNode;
+    closedTickets: number;
+    resolvedTickets: number;
+    inProgressTickets: number;
+    openTickets: number;
+    totalTicketsAssigned: number;
     assignedTickets: number;
     unassignedTickets: number;
     resolvedByMe: number;
@@ -182,14 +195,6 @@ export interface Notification {
     related_id: number | null;
     related_type: string | null;
     created_at: string;
-}
-
-export type ToastNotificationType = 'success' | 'error' | 'info' | 'warning';
-
-export interface Toast {
-    id: number | string;
-    message: string;
-    type: ToastNotificationType;
 }
 
 // ====================================================================
@@ -217,11 +222,10 @@ export interface AgentNote {
 }
 
 // ====================================================================
-// TIPOS DE USUARIO
+// TIPOS DE USUARIO (Formularios)
 // ====================================================================
 export interface NewUser {
-    firstName: string;
-    lastName: string;
+    username: string;
     email: string;
     password?: string;
     role: UserRole;
@@ -236,7 +240,9 @@ export interface UpdateUser {
     role?: UserRole;
     department_id?: number | null;
     company_id?: number | null;
+    status?: 'active' | 'inactive';
 }
+
 // ====================================================================
 // DEPOSITARIOS & MANTENIMIENTO
 // ====================================================================
@@ -250,14 +256,14 @@ export interface Depositario {
     address: string;
     km_from_base: string;
     duration_trip: string;
-    last_maintenance?: string; // Fecha
+    last_maintenance?: string; 
     lat?: number | string | null;
     lng?: number | string | null;
     maintenance_freq?: number | string;
 }
 
 export interface MaintenanceTask {
-    name: string; // "Limpieza", "Clear RAM", etc.
+    name: string;
     done: boolean;
     comment: string;
 }
@@ -266,12 +272,40 @@ export interface MaintenanceRecord {
     id: number;
     depositario_id: number;
     user_id: number;
-    username: string; // Del técnico
+    username: string; 
     first_name?: string;
     last_name?: string;
     companion_name?: string;
     maintenance_date: string;
-    tasks_log: MaintenanceTask[]; // JSON parseado
+    tasks_log: MaintenanceTask[]; 
     observations: string;
     created_at: string;
+}
+
+export type ToastNotificationType = 'success' | 'error' | 'info' | 'warning';
+
+export interface Toast {
+    id: number | string;
+    message: string;
+    type: ToastNotificationType;
+}
+
+export interface Plan {
+    id: number;
+    name: string;
+    color: string;
+    price?: number;     // Nuevo
+    features?: string;  // Nuevo (texto separado por enters o comas)
+}
+
+export interface SystemSettings {
+    tech_hour_cost: string;
+    payment_alias: string;
+}
+
+export interface Module {
+    id: number;
+    name: string;
+    description: string;
+    price: number;
 }

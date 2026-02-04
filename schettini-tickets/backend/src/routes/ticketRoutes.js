@@ -25,7 +25,9 @@ const {
     getTicketCategories,
     addCommentToTicket,
     getTicketComments,
-    getPredefinedProblemsPublic // <--- Importado
+    getPredefinedProblemsPublic,
+    reassignTicket, // ✅ IMPORTANTE: Se agregó esta función que faltaba
+    assignTicketToSelf
 } = require('../controllers/ticketController');
 
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -34,8 +36,6 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // 1. Categorías y Configuración
 router.get('/categories', protect, getTicketCategories);
-
-// NUEVO: Ruta para obtener los problemas en el formulario (Antes de /:id)
 router.get('/predefined-problems', protect, authorize('admin', 'agent', 'client'), getPredefinedProblemsPublic);
 
 // 2. Rutas Generales
@@ -43,15 +43,21 @@ router.route('/')
     .get(protect, authorize('admin', 'agent', 'client'), getTickets) 
     .post(protect, authorize('client', 'agent', 'admin'), upload.array('attachments'), createTicket);
 
-// 3. Ruta Específica para CAMBIAR ESTADO
+// 3. Rutas de Acciones Específicas
 router.put('/:id/status', protect, authorize('admin', 'agent', 'client'), updateTicketStatus);
+
+// ✅ RUTA CORREGIDA: Reasignar Ticket (Soluciona el error 404)
+router.put('/:id/reassign', protect, authorize('admin', 'agent'), reassignTicket);
+
+// Asignar a mí mismo
+router.put('/:id/assign-self', protect, authorize('admin', 'agent'), assignTicketToSelf);
 
 // 4. Rutas de Comentarios
 router.route('/:id/comments')
     .post(protect, addCommentToTicket)
     .get(protect, getTicketComments);
 
-// 5. Rutas por ID (Siempre al final)
+// 5. Rutas por ID (Siempre al final para evitar que express confunda "reassign" con un ID)
 router.route('/:id')
     .get(protect, authorize('admin', 'agent', 'client'), getTicketById)
     .put(protect, authorize('admin', 'agent'), updateTicket)

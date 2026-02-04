@@ -26,7 +26,6 @@ const createTicket = async (req, res) => {
         
         const newTicketId = result.insertId;
 
-        // Notificación por Socket
         if (req.io) {
             req.io.to('admin').to('agent').emit('dashboard_update', { message: `Nuevo ticket creado #${newTicketId}` });
         }
@@ -50,7 +49,6 @@ const getTickets = async (req, res) => {
         `;
         const params = [];
 
-        // Si es cliente, solo ve los suyos
         if (req.user.role === 'client') {
             query += ' WHERE t.user_id = ?'; 
             params.push(req.user.id);
@@ -59,7 +57,6 @@ const getTickets = async (req, res) => {
         query += ' ORDER BY t.created_at DESC';
 
         const [tickets] = await pool.query(query, params);
-        
         res.json({ success: true, data: tickets });
         
     } catch (error) {
@@ -91,7 +88,6 @@ const getTicketById = async (req, res) => {
 
         const ticket = tickets[0];
 
-        // Seguridad
         if (req.user.role === 'client' && ticket.user_id !== req.user.id) {
             return res.status(403).json({ success: false, message: 'No tienes permiso para ver este ticket.' });
         }
@@ -106,14 +102,11 @@ const getTicketById = async (req, res) => {
             ORDER BY c.created_at ASC
         `, [req.params.id]);
 
-        // Obtener Adjuntos (Si existe la tabla)
         let attachments = [];
         try {
             const [att] = await pool.query('SELECT * FROM ticket_attachments WHERE ticket_id = ?', [req.params.id]);
             attachments = att;
-        } catch (e) {
-            // Ignorar si la tabla no existe aún
-        }
+        } catch (e) {}
 
         res.json({ success: true, data: { ...ticket, comments, attachments } });
 
@@ -208,13 +201,25 @@ const assignTicketToSelf = async (req, res) => {
     }
 };
 
-// --- Reasignar Ticket ---
+// --- Reasignar Ticket (CORREGIDO) ---
 const reassignTicket = async (req, res) => {
     try {
-        const { newAgentId } = req.body;
-        await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, req.params.id]);
-        res.json({ success: true, message: 'Ticket reasignado.' });
+        // Aceptamos ambas nomenclaturas por seguridad
+        const { assigned_to_user_id, newAgentId } = req.body;
+        const agentId = assigned_to_user_id || newAgentId;
+
+        if (!agentId) return res.status(400).json({ message: 'Se requiere el ID del agente' });
+
+        await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [agentId, req.params.id]);
+        
+        // Notificar cambio
+        if (req.io) {
+            req.io.to('admin').to('agent').emit('dashboard_update', { message: `Ticket #${req.params.id} reasignado` });
+        }
+
+        res.json({ success: true, message: 'Ticket reasignado correctamente.' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: 'Error al reasignar' });
     }
 };
@@ -290,7 +295,7 @@ const getTicketComments = async (req, res) => {
     }
 };
 
-// --- NUEVO: Obtener Problemas Predefinidos (Público) ---
+// --- Obtener Problemas Predefinidos ---
 const getPredefinedProblemsPublic = async (req, res) => {
     try {
         const [problems] = await pool.query(`
@@ -318,5 +323,5 @@ module.exports = {
     getTicketCategories,
     getDepartments,
     getTicketComments,
-    getPredefinedProblemsPublic // <--- Exportado
+    getPredefinedProblemsPublic
 };

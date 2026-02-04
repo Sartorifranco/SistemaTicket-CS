@@ -4,8 +4,9 @@ import api from '../config/axiosConfig';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { TicketData } from '../types';
+// ✅ IMPORTAR WIDGET GLOBAL
+import InfoWidget from '../components/Common/InfoWidget';
 
-// Interfaz para la estructura de las métricas que esperamos del backend
 interface ClientMetrics {
     open: number;
     inProgress: number;
@@ -13,7 +14,6 @@ interface ClientMetrics {
     closed: number;
 }
 
-// --- Componente genérico para el Modal de Detalles ---
 const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onClose: () => void; loading: boolean }> = ({ title, items, onClose, loading }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
@@ -41,14 +41,12 @@ const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onCl
     );
 };
 
-
 const ClientDashboard: React.FC = () => {
     const { user } = useAuth();
     const [metrics, setMetrics] = useState<ClientMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // ✅ Estados para manejar el modal
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<{ title: string; items: TicketData[] }>({ title: '', items: [] });
     const [modalLoading, setModalLoading] = useState(false);
@@ -61,60 +59,46 @@ const ClientDashboard: React.FC = () => {
             setMetrics(response.data.data);
         } catch (err) {
             setError('No se pudieron cargar las estadísticas.');
-            console.error("Error fetching client dashboard:", err);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        if (user?.role === 'client') {
-            fetchMetrics();
-        }
+        if (user?.role === 'client') fetchMetrics();
     }, [user, fetchMetrics]);
 
-    // ✅ Nueva función para manejar el click en las tarjetas
     const handleCardClick = async (status: 'open' | 'in-progress' | 'resolved' | 'closed') => {
         setModalLoading(true);
         setIsModalOpen(true);
-        
-        const titleMap = {
-            open: 'Tickets Abiertos',
-            'in-progress': 'Tickets En Progreso',
-            resolved: 'Tickets Resueltos',
-            closed: 'Tickets Cerrados'
-        };
-
+        const titleMap = { open: 'Tickets Abiertos', 'in-progress': 'En Progreso', resolved: 'Resueltos', closed: 'Cerrados' };
         try {
-            // Llama a la API de tickets con el filtro de estado correspondiente
             const response = await api.get(`/api/tickets?status=${status}`);
             setModalContent({ title: titleMap[status], items: response.data.data || [] });
         } catch (error) {
-            toast.error('No se pudo cargar la lista de tickets.');
+            toast.error('Error al cargar tickets.');
             setIsModalOpen(false);
         } finally {
             setModalLoading(false);
         }
     };
 
-    if (loading) {
-        return <div className="p-8 text-center">Cargando dashboard...</div>;
-    }
-
-    if (error) {
-        return <div className="p-8 text-center text-red-500">{error}</div>;
-    }
+    if (loading) return <div className="p-8 text-center">Cargando dashboard...</div>;
+    if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     return (
         <>
             <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+                
+                {/* ✅ WIDGET GLOBAL AQUÍ */}
+                <InfoWidget />
+
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Tu Dashboard</h1>
                 <p className="text-md sm:text-lg text-gray-500 mb-8">
-                    Bienvenido, {user?.username}. Aquí tienes un resumen de tus tickets.
+                    Bienvenido, {user?.username}.
                 </p>
 
                 {metrics && (
-                    // ✅ Las tarjetas ahora son botones clicables
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <button onClick={() => handleCardClick('open')} className="bg-blue-100 p-6 rounded-lg shadow text-center transition-transform hover:scale-105">
                             <p className="text-3xl sm:text-4xl font-bold text-blue-600">{metrics.open}</p>
@@ -141,11 +125,9 @@ const ClientDashboard: React.FC = () => {
                     </Link>
                 </div>
             </div>
-            {/* ✅ Renderizado condicional del modal */}
             {isModalOpen && <DetailsModal title={modalContent.title} items={modalContent.items} onClose={() => setIsModalOpen(false)} loading={modalLoading} />}
         </>
     );
 };
 
 export default ClientDashboard;
-

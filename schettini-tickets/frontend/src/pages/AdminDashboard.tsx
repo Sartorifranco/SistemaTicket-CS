@@ -7,6 +7,8 @@ import { ActivityLog, ApiResponseError, TicketData, User } from '../types';
 import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
 import { formatLocalDate } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
+// ✅ IMPORTAR WIDGET
+import InfoWidget from '../components/Common/InfoWidget';
 
 const activityTypeTranslations: { [key: string]: string } = {
     user_registered: 'Usuario Registrado',
@@ -199,9 +201,13 @@ const AdminDashboard: React.FC = () => {
     return (
         <>
             <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+                
+                {/* ✅ AQUÍ ESTÁ EL WIDGET (Reloj) */}
+                <InfoWidget />
+
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard de Administrador</h1>
 
-                {/* FILA 1: Métricas Principales (Ahora 3 columnas) */}
+                {/* FILA 1: Métricas Principales */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <button onClick={() => handleCardClick('total')} className="text-left bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer">
                         <h3 className="text-lg font-semibold text-gray-600">Tickets Totales</h3>

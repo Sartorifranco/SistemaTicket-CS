@@ -3,9 +3,7 @@ import api from '../../config/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Notification } from '../../types';
-import { isAxiosErrorTypeGuard, ApiResponseError } from '../../utils/typeGuards';
-import { format } from 'date-fns';
-import { formatLocalDate } from '../../utils/dateFormatter'; // Using the centralized date formatter
+import { formatLocalDate } from '../../utils/dateFormatter';
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -14,41 +12,46 @@ interface NotificationDropdownProps {
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
     const { token } = useAuth();
-    const { addNotification, markNotificationAsRead, fetchNotifications: fetchUnreadNotificationsCount } = useNotification();
+    const { markNotificationAsRead, fetchNotifications: fetchUnreadCount } = useNotification();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchNotificationsData = useCallback(async () => {
-        if (!token) {
-            setNotifications([]);
-            return;
-        }
+        if (!token) return;
         setLoading(true);
         try {
             const response = await api.get('/api/notifications');
             setNotifications(response.data.data || []);
-        } catch (err: unknown) {
-            const message = isAxiosErrorTypeGuard(err) 
-                ? (err.response?.data as ApiResponseError)?.message || 'Error desconocido' 
-                : 'Error inesperado.';
-            addNotification(`Error al cargar notificaciones: ${message}`, 'error');
-            setNotifications([]);
+        } catch (err) {
+            console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [token, addNotification]);
+    }, [token]);
 
     useEffect(() => {
-        if (isOpen) {
-            fetchNotificationsData();
-        }
+        if (isOpen) fetchNotificationsData();
     }, [isOpen, fetchNotificationsData]);
 
-    const handleMarkAsRead = useCallback(async (notificationId: number) => {
-        await markNotificationAsRead(notificationId);
+    const handleMarkAsRead = async (id: number) => {
+        await markNotificationAsRead(id);
         fetchNotificationsData();
-        fetchUnreadNotificationsCount();
-    }, [markNotificationAsRead, fetchNotificationsData, fetchUnreadNotificationsCount]);
+        fetchUnreadCount();
+    };
+
+    // ✅ FUNCIÓN DE LIMPIEZA: Quita el separador ||| para la vista de lista
+    const formatMessage = (msg: string) => {
+        if (msg.includes('|||')) {
+            const [title, body] = msg.split('|||');
+            return (
+                <span>
+                    <strong className="block text-gray-900 dark:text-gray-100">{title}</strong>
+                    {body}
+                </span>
+            );
+        }
+        return msg;
+    };
 
     if (!isOpen) return null;
 
@@ -64,25 +67,17 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             ) : (
                 <div className="max-h-80 overflow-y-auto">
                     {notifications.map((notification) => (
-                        <div
-                            key={notification.id}
-                            className={`flex items-center justify-between px-4 py-3 border-b border-gray-100 last:border-b-0
-                                ${!notification.is_read ? 'bg-red-50 font-medium' : 'text-gray-600'}
-                                hover:bg-gray-100 transition-colors duration-150
-                            `}
-                        >
+                        <div key={notification.id} className={`flex items-start justify-between px-4 py-3 border-b border-gray-100 ${!notification.is_read ? 'bg-red-50' : ''}`}>
                             <div className="flex-1 pr-2">
-                                <p className="text-sm leading-snug">{notification.message}</p>
+                                <div className="text-sm text-gray-700 leading-snug">
+                                    {formatMessage(notification.message)}
+                                </div>
                                 <p className="text-xs text-gray-500 mt-1">
                                     {formatLocalDate(notification.created_at)}
                                 </p>
                             </div>
                             {!notification.is_read && (
-                                <button
-                                    onClick={() => handleMarkAsRead(notification.id)}
-                                    className="ml-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-full"
-                                    title="Marcar como leída"
-                                >
+                                <button onClick={() => handleMarkAsRead(notification.id)} className="ml-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
                                     Leída
                                 </button>
                             )}
@@ -91,10 +86,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 </div>
             )}
             <div className="px-4 py-2 border-t border-gray-200">
-                <button
-                    onClick={onClose}
-                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-md"
-                >
+                <button onClick={onClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-md">
                     Cerrar
                 </button>
             </div>

@@ -8,7 +8,6 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import Layout from './components/Layout/Layout';
 
-// Importaciones de páginas (Limpio de referencias muertas)
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import ActivateAccountPage from './pages/ActivateAccountPage';
@@ -24,7 +23,11 @@ import AdminTicketsPage from './pages/AdminTicketsPage';
 import AdminTicketDetailPage from './pages/AdminTicketDetailPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminProblemsPage from './pages/AdminProblemsPage'; 
-import AdminLocationsPage from './pages/AdminLocationPage';
+import AdminPlansPage from './pages/AdminPlansPage';
+import AdminConfigPage from './pages/AdminConfigPage'; 
+import AdminModulesPage from './pages/AdminModulesPage'; 
+// ✅ NUEVO: Página de Anuncios
+import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage'; 
 
 // Agent
 import AgentDashboard from './pages/AgentDashboard';
@@ -36,7 +39,6 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientTicketsPage from './pages/ClientMyTicketsPage';
 import ClientTicketDetailPage from './pages/ClientTicketDetailPage';
 
-// Shared
 import PrivateRoute from './components/Common/PrivateRoute';
 import ReportsPage from './pages/ReportsPage';
 
@@ -48,13 +50,10 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
 
     useEffect(() => {
         if (isAuthenticated && token) {
-            // DETECCIÓN DINÁMICA DEL HOST (Host actual + Puerto 5050)
             const currentHost = window.location.hostname;
-            const BACKEND_PORT = 5050; // Aseguramos que apunte al puerto correcto
+            const BACKEND_PORT = 5050; 
             const socketUrl = `http://${currentHost}:${BACKEND_PORT}`;
             
-            console.log(`[Socket] Intentando conectar a: ${socketUrl}`);
-
             const newSocket = io(socketUrl, {
                 auth: { token },
                 transports: ['websocket', 'polling'] 
@@ -81,17 +80,15 @@ const App: React.FC = () => {
             <AuthProvider>
                 <SocketConnectionManager>
                     <Routes>
-                        {/* Rutas públicas sin Layout */}
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/activate-account" element={<ActivateAccountPage />} />
 
-                        {/* Rutas privadas que usan el Layout */}
                         <Route element={<Layout />}>
                             <Route path="/" element={<Navigate to="/profile" replace />} />
                             <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
 
-                            {/* Rutas de Admin */}
+                            {/* Admin */}
                             <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminDashboard /></PrivateRoute>} />
                             <Route path="/admin/users" element={<PrivateRoute roles={['admin']}><AdminUsersPage /></PrivateRoute>} />
                             <Route path="/admin/companies" element={<PrivateRoute roles={['admin']}><AdminCompaniesPage /></PrivateRoute>} />
@@ -100,17 +97,21 @@ const App: React.FC = () => {
                             <Route path="/admin/tickets/:id" element={<PrivateRoute roles={['admin']}><AdminTicketDetailPage /></PrivateRoute>} />
                             <Route path="/admin/reports" element={<PrivateRoute roles={['admin']}><AdminReportsPage /></PrivateRoute>} />
                             
-                            {/* Configuraciones del sistema */}
+                            <Route path="/admin/plans" element={<PrivateRoute roles={['admin']}><AdminPlansPage /></PrivateRoute>} />
+                            <Route path="/admin/modules" element={<PrivateRoute roles={['admin']}><AdminModulesPage /></PrivateRoute>} />
+                            <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfigPage /></PrivateRoute>} />
                             <Route path="/admin/problemas" element={<PrivateRoute roles={['admin']}><AdminProblemsPage /></PrivateRoute>} />
-                            <Route path="/admin/ubicaciones" element={<PrivateRoute roles={['admin']}><AdminLocationsPage /></PrivateRoute>} />
+                            
+                            {/* ✅ NUEVO: Ruta de Anuncios */}
+                            <Route path="/admin/announcements" element={<PrivateRoute roles={['admin']}><AdminAnnouncementsPage /></PrivateRoute>} />
 
-                            {/* Rutas de Agente */}
+                            {/* Agente */}
                             <Route path="/agent" element={<PrivateRoute roles={['agent']}><AgentDashboard /></PrivateRoute>} />
-                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketsPage /></PrivateRoute>} />
+                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
                             <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
                             <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent']}><ReportsPage /></PrivateRoute>} />
                             
-                            {/* Rutas de Cliente */}
+                            {/* Cliente */}
                             <Route path="/client" element={<PrivateRoute roles={['client']}><ClientDashboard /></PrivateRoute>} />
                             <Route path="/client/tickets" element={<PrivateRoute roles={['client']}><ClientTicketsPage /></PrivateRoute>} />
                             <Route path="/client/tickets/:id" element={<PrivateRoute roles={['client']}><ClientTicketDetailPage /></PrivateRoute>} />

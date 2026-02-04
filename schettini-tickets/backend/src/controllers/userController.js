@@ -1,89 +1,119 @@
 const pool = require('../config/db');
+const bcrypt = require('bcryptjs');
 
-// --- Obtener todos los usuarios (Solo Admin) ---
+// --- Obtener todos los usuarios (Con info del Plan) ---
 const getUsers = async (req, res) => {
     try {
-        const { role } = req.query; // Para filtrar por ?role=client
-        
-        // CORRECCIÓN: Quitamos first_name y last_name de la consulta
-        let query = 'SELECT id, username, email, role, status, created_at FROM Users';
-        const params = [];
-
-        if (role) {
-            query += ' WHERE role = ?';
-            params.push(role);
-        }
-
-        query += ' ORDER BY created_at DESC';
-
-        const [users] = await pool.query(query, params);
-        
+        const [users] = await pool.query(`
+            SELECT u.id, u.username, u.email, u.role, u.department_id, u.company_id, u.status, u.created_at, u.plan_id,
+                   p.name as plan_name, p.color as plan_color
+            FROM Users u
+            LEFT JOIN plans p ON u.plan_id = p.id
+            ORDER BY u.id DESC
+        `);
         res.json({ success: true, data: users });
-
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: 'Error al obtener usuarios' });
+        res.status(500).json({ message: 'Error al obtener usuarios' });
     }
 };
 
-// --- Obtener lista de agentes (Para asignar tickets) ---
-const getAgents = async (req, res) => {
+// --- Obtener usuario por ID ---
+const getUserById = async (req, res) => {
     try {
-        // CORRECCIÓN: Solo pedimos username e email
-        const [agents] = await pool.query(
-            "SELECT id, username, email FROM Users WHERE role = 'agent' AND status = 'active'"
+        const [users] = await pool.query(`
+            SELECT u.*, p.name as plan_name, p.color as plan_color
+            FROM Users u
+            LEFT JOIN plans p ON u.plan_id = p.id
+            WHERE u.id = ?
+        `, [req.params.id]);
+        
+        if (users.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        res.json({ success: true, user: users[0] });
+    } catch (error) {
+        res.status(500).json({ message: 'Error del servidor' });
+    }
+};
+
+// --- Crear usuario ---
+const createUser = async (req, res) => {
+    try {
+        const { username, email, password, role, department_id, company_id, plan_id } = req.body; // Agregado plan_id
+
+        const [existing] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
+        if (existing.length > 0) return res.status(400).json({ message: 'El usuario ya existe' });
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const [result] = await pool.query(
+            'INSERT INTO Users (username, email, password, role, department_id, company_id, plan_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [username, email, hashedPassword, role, department_id || null, company_id || null, plan_id || 1] // 1 es FREE por defecto
         );
-        res.json({ success: true, data: agents });
+
+        res.status(201).json({ success: true, message: 'Usuario creado', userId: result.insertId });
     } catch (error) {
         console.error(error);
+        res.status(500).json({ message: 'Error al crear usuario' });
+    }
+};
+
+// --- Actualizar usuario (Ahora actualiza plan_id) ---
+const updateUser = async (req, res) => {
+    try {
+        const { username, email, role, status, department_id, company_id, plan_id } = req.body;
+        
+        await pool.query(
+            'UPDATE Users SET username = ?, email = ?, role = ?, status = ?, department_id = ?, company_id = ?, plan_id = ? WHERE id = ?',
+            [username, email, role, status || 'active', department_id || null, company_id || null, plan_id || 1, req.params.id]
+        );
+        res.json({ success: true, message: 'Usuario actualizado' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al actualizar' });
+    }
+};
+
+// --- Eliminar usuario ---
+const deleteUser = async (req, res) => {
+    try {
+        await pool.query('DELETE FROM Users WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Usuario eliminado' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al eliminar usuario' });
+    }
+};
+
+// --- Tickets Activos ---
+const getUserActiveTickets = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const [tickets] = await pool.query(`
+            SELECT id, title, status, priority, created_at 
+            FROM Tickets 
+            WHERE assigned_to_user_id = ? AND status IN ('open', 'in_progress', 'in-progress')
+            ORDER BY created_at DESC
+        `, [userId]);
+        res.json({ success: true, data: tickets });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al obtener tickets activos' });
+    }
+};
+
+// --- Agentes ---
+const getAgents = async (req, res) => {
+    try {
+        const [agents] = await pool.query(`
+            SELECT id, username, email, role 
+            FROM Users 
+            WHERE role IN ('agent', 'admin') AND status = 'active'
+            ORDER BY username ASC
+        `);
+        res.json({ success: true, data: agents });
+    } catch (error) {
         res.status(500).json({ success: false, message: 'Error al obtener agentes' });
     }
 };
 
-// --- Actualizar Usuario (Admin) ---
-const updateUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { role, status } = req.body;
-        
-        let query = 'UPDATE Users SET ';
-        const updates = [];
-        const params = [];
-
-        if (role) { updates.push('role = ?'); params.push(role); }
-        if (status) { updates.push('status = ?'); params.push(status); }
-
-        if (updates.length === 0) {
-            return res.status(400).json({ success: false, message: 'Nada que actualizar' });
-        }
-
-        query += updates.join(', ') + ' WHERE id = ?';
-        params.push(id);
-
-        await pool.query(query, params);
-
-        res.json({ success: true, message: 'Usuario actualizado correctamente' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Error al actualizar usuario' });
-    }
-};
-
-// --- Eliminar Usuario ---
-const deleteUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        await pool.query('DELETE FROM Users WHERE id = ?', [id]);
-        res.json({ success: true, message: 'Usuario eliminado correctamente' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Error al eliminar usuario' });
-    }
-};
-
 module.exports = {
-    getUsers,
-    getAgents,
-    updateUser,
-    deleteUser
+    getUsers, getUserById, createUser, updateUser, deleteUser, getUserActiveTickets, getAgents
 };

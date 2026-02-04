@@ -1,27 +1,13 @@
 const asyncHandler = require('express-async-handler');
 const pool = require('../config/db');
 
-// Función auxiliar segura para loguear actividad
-const safeLogActivity = async (userId, username, role, action, description, entityType, entityId) => {
-    try {
-        // Intenta insertar solo si la tabla existe
-        await pool.query(
-            `INSERT INTO activity_logs (user_id, action, description, entity_type, entity_id) VALUES (?, ?, ?, ?, ?)`,
-            [userId, action, description, entityType, entityId]
-        );
-    } catch (error) {
-        // Si falla (ej: tabla no existe), solo lo ignoramos para no romper el flujo
-        console.warn("No se pudo guardar el log de actividad:", error.message);
-    }
-};
-
 // @desc Obtener notificaciones
 const getNotifications = asyncHandler(async (req, res) => {
     const [notifications] = await pool.execute(
         `SELECT id, user_id, type, message, related_id, related_type, is_read, created_at
          FROM notifications
          WHERE user_id = ?
-         ORDER BY created_at DESC`,
+         ORDER BY created_at DESC LIMIT 50`,
         [req.user.id]
     );
     res.status(200).json({ success: true, data: notifications });
@@ -72,11 +58,70 @@ const deleteAllNotifications = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: 'Todas eliminadas' });
 });
 
+// --- NUEVO: Crear Anuncio Masivo (Ofertas/Novedades) ---
+const createAnnouncement = asyncHandler(async (req, res) => {
+    const { title, message, targetRole, type } = req.body; 
+    
+    let query = 'SELECT id FROM Users';
+    let params = [];
+
+    // Filtrar usuarios
+    if (targetRole && targetRole !== 'all') {
+        query += ' WHERE role = ?';
+        params.push(targetRole);
+    }
+
+    const [users] = await pool.execute(query, params);
+
+    if (users.length === 0) {
+        return res.status(404).json({ message: 'No hay usuarios destinatarios.' });
+    }
+
+    // ✅ CAMBIO IMPORTANTE: Combinamos Título y Mensaje para guardarlos juntos
+    const formattedMessage = title ? `${title}|||${message}` : message;
+
+    // Insertar notificaciones y emitir eventos
+    for (const user of users) {
+        // Guardar en BD (Campanita)
+        const [result] = await pool.execute(
+            `INSERT INTO notifications (user_id, type, message, related_type, is_read) 
+             VALUES (?, ?, ?, 'system', FALSE)`,
+            [user.id, type || 'info', formattedMessage]
+        );
+
+        // Emitir Socket
+        if (req.io) {
+            // 1. Evento para la campanita (usa el mensaje combinado)
+            req.io.to(`user-${user.id}`).emit('notification', {
+                id: result.insertId,
+                user_id: user.id,
+                type: type || 'info',
+                message: formattedMessage,
+                related_type: 'system',
+                is_read: false,
+                created_at: new Date()
+            });
+            
+            // 2. Evento especial para el POP-UP (envía título y mensaje por separado)
+            if (type === 'promotion' || type === 'alert') {
+                req.io.to(`user-${user.id}`).emit('promotion_alert', {
+                    title: title || 'Novedad',
+                    message: message,
+                    type: type
+                });
+            }
+        }
+    }
+
+    res.status(201).json({ success: true, message: `Anuncio enviado a ${users.length} usuarios.` });
+});
+
 module.exports = {
     getNotifications,
     getUnreadNotificationCount,
     markNotificationAsRead,
     markAllNotificationsAsRead,
     deleteNotification,
-    deleteAllNotifications
+    deleteAllNotifications,
+    createAnnouncement
 };

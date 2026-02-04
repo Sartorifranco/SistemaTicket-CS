@@ -1,31 +1,37 @@
 const express = require('express');
 const router = express.Router();
 const { 
-    registerUser, 
-    loginUser, 
-    getMe 
-} = require('../controllers/authController');
-const { 
     getUsers, 
-    getAgents 
-} = require('../controllers/userController'); // Asegúrate de tener este controlador (ver paso 3)
+    createUser, 
+    getUserById, 
+    updateUser, 
+    deleteUser, 
+    getUserActiveTickets,
+    getAgents // <--- Importado
+} = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-// --- RUTAS DE USUARIOS ---
+// Todas las rutas requieren autenticación
+router.use(protect);
 
-// Rutas públicas de Auth
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+// --- RUTAS ESPECÍFICAS (Importante: Deben ir ANTES de /:id) ---
 
-// Rutas protegidas generales
-router.get('/me', protect, getMe);
+// 1. Obtener lista de agentes (Evita que "agents" se tome como ID)
+router.get('/agents', authorize('admin', 'agent'), getAgents);
 
-// --- GESTIÓN DE USUARIOS (ADMIN) ---
+// 2. Ruta para obtener tickets activos de un usuario (Dashboard)
+router.get('/:id/active-tickets', authorize('admin', 'agent', 'client'), getUserActiveTickets);
 
-// Obtener todos los usuarios (Permitir a 'admin')
-router.get('/', protect, authorize('admin'), getUsers);
 
-// Obtener solo agentes (Permitir a 'admin' y 'agent')
-router.get('/agents', protect, authorize('admin', 'agent'), getAgents);
+// --- RUTAS GENERALES ---
+router.route('/')
+    .get(authorize('admin', 'agent'), getUsers)
+    .post(authorize('admin'), createUser);
+
+// --- RUTAS POR ID ---
+router.route('/:id')
+    .get(authorize('admin', 'agent', 'client'), getUserById)
+    .put(authorize('admin'), updateUser)
+    .delete(authorize('admin'), deleteUser);
 
 module.exports = router;
