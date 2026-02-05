@@ -4,17 +4,21 @@ import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
 import { ApiResponseError } from '../../types';
 import { isAxiosErrorTypeGuard } from '../../utils/typeGuards';
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaBuilding, FaIdCard, FaStore } from 'react-icons/fa';
 
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     
-    // Simplificamos el estado: Solo lo necesario para Schettini
     const [formData, setFormData] = useState({
-        username: '',
+        username: '', // Nombre y Apellido
         email: '',
+        phone: '', // Con whatsapp
         password: '',
         confirmPassword: '',
+        cuit: '',
+        business_name: '', // Razón Social
+        fantasy_name: '' // Nombre Fantasía
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,9 +28,9 @@ const RegisterPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // 1. Validaciones Locales
-        if (!formData.username || !formData.email || !formData.password) {
-            toast.warning('Por favor, completa todos los campos.');
+        // 1. Validaciones
+        if (Object.values(formData).some(val => val.trim() === '')) {
+            toast.warning('Todos los campos son obligatorios.');
             return;
         }
         if (formData.password !== formData.confirmPassword) {
@@ -41,22 +45,18 @@ const RegisterPage: React.FC = () => {
         setLoading(true);
 
         try {
-            // 2. Construcción del Payload
-            const payload = {
+            // 2. Envío al Backend
+            await api.post('/api/auth/register', {
                 username: formData.username,
                 email: formData.email,
+                phone: formData.phone,
                 password: formData.password,
-                role: 'client',
-                company_id: 1,
-                department_id: 1
-            };
+                cuit: formData.cuit,
+                business_name: formData.business_name,
+                fantasy_name: formData.fantasy_name
+            });
 
-            // 3. Envío al Backend (CORREGIDO: Agregado "/api")
-            // Antes fallaba porque faltaba el prefijo "/api"
-            await api.post('/api/auth/register', payload);
-
-            // 4. Éxito
-            toast.success('¡Registro exitoso! Redirigiendo...');
+            toast.success('¡Registro exitoso! Ya puedes iniciar sesión.');
             setTimeout(() => navigate('/login'), 1500);
 
         } catch (err: unknown) {
@@ -64,112 +64,115 @@ const RegisterPage: React.FC = () => {
             const message = isAxiosErrorTypeGuard(err) 
                 ? (err.response?.data as ApiResponseError)?.message || 'Error al registrarse.' 
                 : 'No se pudo conectar con el servidor.';
-            
-            // Si el error es por columnas faltantes (ej: company_id no existe en DB), avísame.
-            toast.error(`Error: ${message}`);
+            toast.error(message);
         } finally {
             setLoading(false);
         }
     };
 
-    const inputStyle = "w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-200";
+    const inputStyle = "w-full pl-10 p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm";
+    const labelStyle = "block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide";
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 border-t-4 border-red-600">
+            <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
                 
-                {/* Cabecera */}
-                <div className="text-center">
-                    <h2 className="text-3xl font-extrabold text-gray-900">Crear Cuenta</h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Bienvenido al sistema de tickets de <span className="font-bold text-red-600">Schettini</span>
-                    </p>
+                {/* Panel Izquierdo (Visual) */}
+                <div className="bg-red-700 p-8 flex flex-col justify-center items-center text-white md:w-1/3">
+                    <h2 className="text-3xl font-extrabold mb-2">Schettini</h2>
+                    <p className="text-red-100 text-center text-sm">Sistema de Gestión de Clientes</p>
+                    <div className="mt-8 text-center text-xs opacity-80">
+                        <p>¿Ya tienes cuenta?</p>
+                        <Link to="/login" className="mt-2 inline-block bg-white text-red-700 px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition">
+                            Iniciar Sesión
+                        </Link>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Panel Derecho (Formulario) */}
+                <div className="p-8 md:w-2/3">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Registro de Nuevo Cliente</h2>
                     
-                    {/* Campo: Usuario */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario</label>
-                        <input 
-                            name="username" 
-                            type="text" 
-                            placeholder="Ej: juanperez" 
-                            value={formData.username} 
-                            onChange={handleChange} 
-                            required 
-                            autoComplete="username"
-                            className={inputStyle} 
-                        />
-                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        
+                        {/* SECCIÓN DATOS PERSONALES */}
+                        <div>
+                            <h3 className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2"><FaUser/> Datos de Contacto</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelStyle}>Nombre y Apellido</label>
+                                    <div className="relative">
+                                        <FaUser className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="username" type="text" placeholder="Juan Perez" value={formData.username} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={labelStyle}>Email</label>
+                                    <div className="relative">
+                                        <FaEnvelope className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="email" type="email" placeholder="juan@mail.com" value={formData.email} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className={labelStyle}>Teléfono / WhatsApp</label>
+                                    <div className="relative">
+                                        <FaPhone className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="phone" type="text" placeholder="+54 9 351..." value={formData.phone} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Campo: Email */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                        <input 
-                            name="email" 
-                            type="email" 
-                            placeholder="juan@ejemplo.com" 
-                            value={formData.email} 
-                            onChange={handleChange} 
-                            required 
-                            autoComplete="email"
-                            className={inputStyle} 
-                        />
-                    </div>
+                        {/* SECCIÓN DATOS EMPRESA */}
+                        <div>
+                            <h3 className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2"><FaBuilding/> En Representación de</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelStyle}>Razón Social</label>
+                                    <div className="relative">
+                                        <FaBuilding className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="business_name" type="text" placeholder="Empresa S.A." value={formData.business_name} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={labelStyle}>CUIT</label>
+                                    <div className="relative">
+                                        <FaIdCard className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="cuit" type="text" placeholder="20-12345678-9" value={formData.cuit} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className={labelStyle}>Nombre de Fantasía</label>
+                                    <div className="relative">
+                                        <FaStore className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="fantasy_name" type="text" placeholder="Mi Negocio" value={formData.fantasy_name} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Campo: Contraseña */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                        <input 
-                            name="password" 
-                            type="password" 
-                            placeholder="******" 
-                            value={formData.password} 
-                            onChange={handleChange} 
-                            required 
-                            autoComplete="new-password"
-                            className={inputStyle} 
-                        />
-                    </div>
+                        {/* SECCIÓN SEGURIDAD */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                            <div>
+                                <label className={labelStyle}>Contraseña</label>
+                                <div className="relative">
+                                    <FaLock className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                    <input name="password" type="password" placeholder="******" value={formData.password} onChange={handleChange} className={inputStyle} required />
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelStyle}>Confirmar</label>
+                                <div className="relative">
+                                    <FaLock className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                    <input name="confirmPassword" type="password" placeholder="******" value={formData.confirmPassword} onChange={handleChange} className={inputStyle} required />
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Campo: Confirmar Contraseña */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Contraseña</label>
-                        <input 
-                            name="confirmPassword" 
-                            type="password" 
-                            placeholder="******" 
-                            value={formData.confirmPassword} 
-                            onChange={handleChange} 
-                            required 
-                            autoComplete="new-password"
-                            className={inputStyle} 
-                        />
-                    </div>
-
-                    {/* Botón de Acción */}
-                    <button 
-                        type="submit" 
-                        disabled={loading}
-                        className={`w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white uppercase tracking-wider
-                        ${loading 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                        }`}
-                    >
-                        {loading ? 'Procesando...' : 'Registrarse'}
-                    </button>
-                </form>
-
-                {/* Footer */}
-                <div className="text-center pt-2">
-                    <p className="text-sm text-gray-600">
-                        ¿Ya tienes una cuenta?{' '}
-                        <Link to="/login" className="font-medium text-red-600 hover:text-red-500 hover:underline">
-                            Inicia Sesión aquí
-                        </Link>
-                    </p>
+                        <button type="submit" disabled={loading} className={`w-full py-3 rounded-lg font-bold text-white shadow-md transition ${loading ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'}`}>
+                            {loading ? 'Registrando...' : 'CREAR CUENTA'}
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

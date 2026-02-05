@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,7 +14,7 @@ import ActivateAccountPage from './pages/ActivateAccountPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ProfilePage from './pages/ProfilePage';
 
-// Admin
+// --- ADMIN PAGES ---
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsersPage from './pages/AdminUserPage';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
@@ -26,18 +26,28 @@ import AdminProblemsPage from './pages/AdminProblemsPage';
 import AdminPlansPage from './pages/AdminPlansPage';
 import AdminConfigPage from './pages/AdminConfigPage'; 
 import AdminModulesPage from './pages/AdminModulesPage'; 
-// ✅ NUEVO: Página de Anuncios
-import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage'; 
+import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage';
+import AdminChatPage from './pages/AdminChatPage';
+import AdminResourcesPage from './pages/AdminResourcesPage';
+import AdminUserPaymentsPage from './pages/AdminUserPaymentsPage';
 
-// Agent
+// ✅ IMPORTACIÓN NUEVA: PÁGINA DE MARKETING (ADMIN)
+import AdminPromotionsPage from './pages/AdminPromotionsPage';
+
+// --- AGENT PAGES ---
 import AgentDashboard from './pages/AgentDashboard';
 import AgentTicketsPage from './pages/AgentTicketPage';
 import AgentTicketDetailPage from './pages/AgentTicketDetailPage';
 
-// Client
+// --- CLIENT PAGES ---
 import ClientDashboard from './pages/ClientDashboard';
 import ClientTicketsPage from './pages/ClientMyTicketsPage';
 import ClientTicketDetailPage from './pages/ClientTicketDetailPage';
+import ClientResourcesPage from './pages/ClientResourcesPage';
+import ClientPaymentsPage from './pages/ClientPaymentsPage'; 
+
+// ✅ IMPORTACIÓN NUEVA: PÁGINA DE OFERTAS (CLIENTE)
+import OffersPage from './pages/OffersPage';
 
 import PrivateRoute from './components/Common/PrivateRoute';
 import ReportsPage from './pages/ReportsPage';
@@ -47,23 +57,41 @@ export type SocketInstance = ReturnType<typeof io>;
 const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, token } = useContext(AuthContext)!;
     const [socket, setSocket] = useState<SocketInstance | null>(null);
+    const socketRef = useRef<SocketInstance | null>(null);
 
     useEffect(() => {
-        if (isAuthenticated && token) {
-            const currentHost = window.location.hostname;
-            const BACKEND_PORT = 5050; 
-            const socketUrl = `http://${currentHost}:${BACKEND_PORT}`;
-            
-            const newSocket = io(socketUrl, {
-                auth: { token },
-                transports: ['websocket', 'polling'] 
-            });
-            setSocket(newSocket);
-
-            return () => {
-                newSocket.disconnect();
-            };
+        if (!isAuthenticated || !token) {
+            if (socketRef.current) {
+                console.log('[Socket] Cerrando conexión (Logout)...');
+                socketRef.current.disconnect();
+                socketRef.current = null;
+                setSocket(null);
+            }
+            return;
         }
+
+        if (socketRef.current && socketRef.current.connected) return;
+
+        const currentHost = window.location.hostname;
+        const socketUrl = `http://${currentHost}:5050`;
+        
+        console.log(`[Socket] Iniciando conexión única a: ${socketUrl}`);
+
+        const newSocket = io(socketUrl, {
+            auth: { token },
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000,
+        });
+
+        socketRef.current = newSocket;
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => console.log('[Socket] ✅ Conectado:', newSocket.id));
+        newSocket.on('connect_error', (err: any) => console.error('[Socket] ❌ Error:', err.message));
+
+        return () => {};
     }, [isAuthenticated, token]);
 
     return (
@@ -88,33 +116,43 @@ const App: React.FC = () => {
                             <Route path="/" element={<Navigate to="/profile" replace />} />
                             <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
 
-                            {/* Admin */}
+                            {/* --- RUTAS ADMIN --- */}
                             <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminDashboard /></PrivateRoute>} />
                             <Route path="/admin/users" element={<PrivateRoute roles={['admin']}><AdminUsersPage /></PrivateRoute>} />
+                            <Route path="/admin/users/:userId/payments" element={<PrivateRoute roles={['admin']}><AdminUserPaymentsPage /></PrivateRoute>} />
+                            
                             <Route path="/admin/companies" element={<PrivateRoute roles={['admin']}><AdminCompaniesPage /></PrivateRoute>} />
                             <Route path="/admin/companies/:companyId/departments" element={<PrivateRoute roles={['admin']}><AdminCompanyDepartmentsPage /></PrivateRoute>} />
                             <Route path="/admin/tickets" element={<PrivateRoute roles={['admin']}><AdminTicketsPage /></PrivateRoute>} />
                             <Route path="/admin/tickets/:id" element={<PrivateRoute roles={['admin']}><AdminTicketDetailPage /></PrivateRoute>} />
                             <Route path="/admin/reports" element={<PrivateRoute roles={['admin']}><AdminReportsPage /></PrivateRoute>} />
+                            <Route path="/admin/announcements" element={<PrivateRoute roles={['admin']}><AdminAnnouncementsPage /></PrivateRoute>} />
                             
+                            {/* ✅ RUTA NUEVA: MARKETING Y PROMOCIONES */}
+                            <Route path="/admin/promotions" element={<PrivateRoute roles={['admin']}><AdminPromotionsPage /></PrivateRoute>} />
+
                             <Route path="/admin/plans" element={<PrivateRoute roles={['admin']}><AdminPlansPage /></PrivateRoute>} />
                             <Route path="/admin/modules" element={<PrivateRoute roles={['admin']}><AdminModulesPage /></PrivateRoute>} />
                             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfigPage /></PrivateRoute>} />
                             <Route path="/admin/problemas" element={<PrivateRoute roles={['admin']}><AdminProblemsPage /></PrivateRoute>} />
-                            
-                            {/* ✅ NUEVO: Ruta de Anuncios */}
-                            <Route path="/admin/announcements" element={<PrivateRoute roles={['admin']}><AdminAnnouncementsPage /></PrivateRoute>} />
+                            <Route path="/admin/chat" element={<PrivateRoute roles={['admin', 'agent']}><AdminChatPage /></PrivateRoute>} />
+                            <Route path="/admin/knowledge-base" element={<PrivateRoute roles={['admin']}><AdminResourcesPage /></PrivateRoute>} />
 
-                            {/* Agente */}
+                            {/* --- RUTAS AGENTE --- */}
                             <Route path="/agent" element={<PrivateRoute roles={['agent']}><AgentDashboard /></PrivateRoute>} />
                             <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
                             <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
                             <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent']}><ReportsPage /></PrivateRoute>} />
                             
-                            {/* Cliente */}
+                            {/* --- RUTAS CLIENTE --- */}
                             <Route path="/client" element={<PrivateRoute roles={['client']}><ClientDashboard /></PrivateRoute>} />
                             <Route path="/client/tickets" element={<PrivateRoute roles={['client']}><ClientTicketsPage /></PrivateRoute>} />
                             <Route path="/client/tickets/:id" element={<PrivateRoute roles={['client']}><ClientTicketDetailPage /></PrivateRoute>} />
+                            <Route path="/client/help" element={<PrivateRoute roles={['client']}><ClientResourcesPage /></PrivateRoute>} />
+                            <Route path="/client/payments" element={<PrivateRoute roles={['client']}><ClientPaymentsPage /></PrivateRoute>} />
+                            
+                            {/* ✅ RUTA NUEVA: OFERTAS PARA CLIENTES */}
+                            <Route path="/client/offers" element={<PrivateRoute roles={['client']}><OffersPage /></PrivateRoute>} />
                         </Route>
 
                         <Route path="*" element={<NotFoundPage />} />

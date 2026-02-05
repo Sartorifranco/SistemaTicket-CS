@@ -40,6 +40,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // --- 3. CONFIGURACIÓN SOCKET.IO ---
@@ -48,6 +49,7 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
+// Middleware para inyectar io en req
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -64,8 +66,14 @@ const reportRoutes = require('./routes/reportRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const aiRoutes = require('./routes/aiRoutes'); 
 const planRoutes = require('./routes/planRoutes');
-// ✅ RESTAURADO: Importar rutas de configuración
 const configRoutes = require('./routes/configRoutes'); 
+const moduleRoutes = require('./routes/moduleRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
+const paymentRoutes = require('./routes/paymentRoutes'); 
+// ✅ IMPORTAR RUTAS DE CONFIGURACIÓN DE TICKETS (Faltaba esto)
+const ticketConfigRoutes = require('./routes/ticketConfigRoutes'); 
+const promotionRoutes = require('./routes/promotionRoutes'); // 👈 Agregar
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -80,12 +88,16 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/plans', planRoutes);
-// ✅ RESTAURADO: Usar rutas de configuración
 app.use('/api/config', configRoutes);
-app.use('/api/modules', require('./routes/moduleRoutes'));
-app.use('/api/chat', require('./routes/chatRoutes'));
-app.use('/api/resources', require('./routes/resourceRoutes')); // <--- AGREGAR
-// RUTAS ADMIN EXTRA
+app.use('/api/modules', moduleRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/promotions', promotionRoutes); // 👈 Agregar
+// ✅ CONECTAR LA RUTA DE CONFIGURACIÓN DE TICKETS (Soluciona el 404)
+app.use('/api/ticket-config', ticketConfigRoutes); 
+
+// RUTAS ADMIN EXTRA (Manejo de errores si no existen)
 try {
     app.use('/api/admin', require('./routes/problemAdminRoutes'));
 } catch (error) {
@@ -97,16 +109,39 @@ try {
     app.use('/api', require('./routes/dataRoutes'));
 } catch (error) {}
 
-// --- 6. SOCKET.IO ---
+// --- 6. SOCKET.IO (Lógica Mejorada para Salas) ---
 io.on('connection', (socket) => {
+  console.log('🔌 Nuevo cliente conectado:', socket.id);
+
   const token = socket.handshake.auth.token;
+
   if (token) {
       try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          
+          console.log(`✅ Usuario autenticado en Socket: ${decoded.username} (${decoded.role})`);
+
+          // 1. Unirse a sala personal (user-ID)
           socket.join(`user-${decoded.id}`);
-          if (decoded.role) socket.join(decoded.role);
-      } catch (error) {}
+          console.log(`👤 Unido a sala: user-${decoded.id}`);
+
+          // 2. Unirse a sala de ROL (admin, agent, client)
+          if (decoded.role) {
+              socket.join(decoded.role);
+              console.log(`🛡️ Unido a sala de rol: ${decoded.role}`);
+          }
+
+      } catch (error) {
+          console.log('❌ Token de socket inválido:', error.message);
+          socket.disconnect(); 
+      }
+  } else {
+      console.log('⚠️ Cliente conectado sin token (Socket)');
   }
+
+  socket.on('disconnect', () => {
+      // console.log('🔌 Cliente desconectado:', socket.id);
+  });
 });
 
 // --- 7. SERVIR FRONTEND ---

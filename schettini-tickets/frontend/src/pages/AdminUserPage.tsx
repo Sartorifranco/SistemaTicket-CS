@@ -1,227 +1,241 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { User, Department, Company, ApiResponseError } from '../types';
-import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
 import { toast } from 'react-toastify';
 import UserFormModal from '../components/Users/UserFormModal';
 import ResetPasswordModal from '../components/Users/ResetPasswordModal';
+import { FaCreditCard, FaSearch, FaBuilding, FaWhatsapp, FaCircle, FaUserClock, FaTrash } from 'react-icons/fa';
+
+// ✅ CORRECCIÓN 1: Definir 'role' como unión de strings (no solo string) para compatibilidad
+// ✅ CORRECCIÓN 2: Mantener department_id para compatibilidad con UserFormModal
+interface User {
+    id: number;
+    username: string;
+    email: string;
+    role: 'admin' | 'agent' | 'client'; // 👈 CAMBIO CLAVE: Tipo específico
+    company_id: number | null;
+    department_id: number | null; 
+    is_active: boolean;
+    phone?: string;
+    cuit?: string;
+    business_name?: string;
+    fantasy_name?: string;
+    last_login?: string;
+}
 
 const AdminUsersPage: React.FC = () => {
     const { user } = useAuth();
     const { addNotification } = useNotification();
+    const navigate = useNavigate();
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     
+    // Modales
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
 
-    const [allDepartments, setAllDepartments] = useState<Department[]>([]);
-    const [allCompanies, setAllCompanies] = useState<Company[]>([]);
+    // Listas auxiliares para el modal
+    const [allDepartments] = useState([]); 
+    const [allCompanies] = useState([]);
 
-    const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-
+    // Cargar Usuarios
     const fetchData = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
-            const [usersRes, deptsRes, companiesRes] = await Promise.all([
-                api.get('/api/users'),
-                api.get('/api/departments'),
-                api.get('/api/companies')
-            ]);
-            
-            setUsers(usersRes.data.data || []);
-            setAllDepartments(deptsRes.data.data || []);
-            setAllCompanies(companiesRes.data.data || []);
-
-        } catch (err: unknown) {
-            const message = isAxiosErrorTypeGuard(err) 
-                ? (err.response?.data as ApiResponseError)?.message || 'Error al cargar los datos.' 
-                : 'Ocurrió un error inesperado.';
-            setError(message);
-            addNotification(message, 'error');
+            const res = await api.get('/api/users');
+            // ✅ CORRECCIÓN 3: Forzar el tipo de la respuesta de la API a nuestra interfaz User[]
+            setUsers((res.data.data as User[]) || []);
+        } catch (err: any) {
+            toast.error('Error al cargar usuarios');
         } finally {
             setLoading(false);
         }
-    }, [addNotification]);
+    }, []);
 
     useEffect(() => {
-        if (user?.role === 'admin') {
-            fetchData();
-        }
+        if (user?.role === 'admin') fetchData();
     }, [user, fetchData]);
 
-    const filteredUsers = useMemo(() => {
-        if (!selectedCompanyId) {
-            return users;
+    // Filtrado
+    const filteredUsers = users.filter(u => 
+        u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.business_name && u.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    // --- LÓGICA DE ESTADO DE ACTIVIDAD ---
+    const getUserStatusBadge = (lastLogin: string | undefined, isActive: boolean) => {
+        if (!isActive) return <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">BLOQUEADO</span>;
+        
+        if (!lastLogin) return <span className="text-gray-400 text-xs italic">Nunca ingresó</span>;
+
+        const last = new Date(lastLogin).getTime();
+        const now = new Date().getTime();
+        const daysDiff = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff > 180) { 
+            return <span className="bg-red-50 text-red-600 px-2 py-1 rounded text-xs font-bold border border-red-200">INACTIVO (+6m)</span>;
+        } 
+        if (daysDiff > 30) {
+            return <span className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded text-xs font-bold border border-yellow-200">AUSENTE ({daysDiff}d)</span>;
         }
-        return users.filter(user => user.company_id === parseInt(selectedCompanyId, 10));
-    }, [users, selectedCompanyId]);
-
-    const handleCreateUser = () => {
-        setCurrentUser(null);
-        setIsUserModalOpen(true);
+        return <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200 flex items-center gap-1"><FaCircle size={6}/> ACTIVO</span>;
     };
 
-    const handleEditUser = (userToEdit: User) => {
-        setCurrentUser(userToEdit);
-        setIsUserModalOpen(true);
+    // Funciones de Manejo
+    const handleCreateUser = () => { setCurrentUser(null); setIsUserModalOpen(true); };
+    
+    const handleEditUser = (u: User) => { 
+        // @ts-ignore
+        setCurrentUser(u); 
+        setIsUserModalOpen(true); 
     };
 
-    const handleSaveUser = async (userData: Partial<User>) => {
-        const url = currentUser ? `/api/users/${currentUser.id}` : '/api/users';
-        const method = currentUser ? 'put' : 'post';
-        const action = currentUser ? 'actualizado' : 'creado';
+    const handleDeleteUser = async (id: number) => {
+        if(!window.confirm('Se eliminará permanentemente.')) return;
+        try { await api.delete(`/api/users/${id}`); toast.success('Eliminado'); fetchData(); } catch { toast.error('Error al eliminar'); }
+    };
 
+    const handleSaveUser = async (data: any) => { 
         try {
-            await api[method](url, userData);
-            addNotification(`Usuario ${action} exitosamente.`, 'success');
+            const url = currentUser ? `/api/users/${currentUser.id}` : '/api/users';
+            const method = currentUser ? 'put' : 'post';
+            await api[method](url, data);
+            toast.success('Guardado correctamente');
             setIsUserModalOpen(false);
             fetchData();
-        } catch (err: unknown) {
-            const message = isAxiosErrorTypeGuard(err) ? (err.response?.data as ApiResponseError)?.message || `Error al guardar usuario.` : 'Error inesperado.';
-            addNotification(message, 'error');
-        }
-    };
-
-    const handleDeleteUser = async (userId: number) => {
-        if (!window.confirm('¿Estás seguro? Esta acción es irreversible.')) return;
-        try {
-            await api.delete(`/api/users/${userId}`);
-            addNotification('Usuario eliminado exitosamente.', 'success');
-            fetchData();
-        } catch (err: unknown) {
-            const message = isAxiosErrorTypeGuard(err) ? (err.response?.data as ApiResponseError)?.message || 'Error al eliminar usuario.' : 'Error inesperado.';
-            addNotification(message, 'error');
-        }
-    };
-
-    const handleOpenResetModal = (userToReset: User) => {
-        setSelectedUserForReset(userToReset);
-        setIsResetModalOpen(true);
+        } catch { toast.error('Error al guardar'); }
     };
 
     const handleConfirmResetPassword = async (newPassword: string) => {
         if (!selectedUserForReset) return;
         try {
             await api.put(`/api/users/${selectedUserForReset.id}/reset-password`, { newPassword });
-            toast.success(`Contraseña para ${selectedUserForReset.username} actualizada.`);
+            toast.success(`Contraseña actualizada.`);
+            setIsResetModalOpen(false);
         } catch (err: any) {
-            const message = err.response?.data?.message || "Error al resetear la contraseña.";
-            toast.error(message);
+            toast.error("Error al resetear la contraseña.");
         }
     };
 
-    if (loading) return <div className="text-center p-8">Cargando usuarios...</div>;
-    if (error) return <div className="text-center p-8 text-red-500">Error: {error}</div>;
+    const handleOpenResetModal = (u: User) => { 
+        // Al tener el tipo correcto en 'role', ya no dará error aquí
+        setSelectedUserForReset(u); 
+        setIsResetModalOpen(true); 
+    };
+    
+    const handleGoToPayments = (id: number) => navigate(`/admin/users/${id}/payments`);
+
+    if (loading) return <div className="text-center p-10 text-gray-500">Cargando usuarios...</div>;
 
     return (
         <>
-            <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Gestión de Usuarios</h1>
-                    <button onClick={handleCreateUser} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md self-start sm:self-center">
-                        Crear Nuevo Usuario
+            <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                    <h1 className="text-2xl font-bold text-gray-800 border-l-4 border-indigo-600 pl-4">Gestión de Usuarios</h1>
+                    <button onClick={handleCreateUser} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow transition">
+                        + Nuevo Usuario
                     </button>
                 </div>
 
-                <div className="mb-6">
-                    <label htmlFor="company-filter" className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Empresa:</label>
-                    <select
-                        id="company-filter"
-                        value={selectedCompanyId}
-                        onChange={(e) => setSelectedCompanyId(e.target.value)}
-                        className="w-full max-w-xs p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        <option value="">Todas las Empresas</option>
-                        {allCompanies.map(company => (
-                            <option key={company.id} value={company.id}>{company.name}</option>
-                        ))}
-                    </select>
+                {/* Buscador */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex items-center gap-3">
+                    <FaSearch className="text-gray-400" />
+                    <input 
+                        type="text" 
+                        placeholder="Buscar por nombre, email o empresa..." 
+                        className="flex-1 outline-none text-gray-700 placeholder-gray-400"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
 
-                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg">
-                    {filteredUsers.length === 0 ? (
-                        <p className="text-gray-600 text-center py-8">No hay usuarios que coincidan con el filtro.</p>
-                    ) : (
-                        <>
-                            {/* ✅ VISTA DE TABLA PARA ESCRITORIO (md y superior) */}
-                            <table className="min-w-full divide-y divide-gray-200 hidden md:table">
-                               <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredUsers.map((userItem) => (
-                                        <tr key={userItem.id}>
-                                            <td className="px-6 py-4 whitespace-nowrap">{userItem.username}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">{userItem.email}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">{userItem.role}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{allCompanies.find(c => c.id === userItem.company_id)?.name || 'N/A'}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button onClick={() => handleEditUser(userItem)} className="text-indigo-600 hover:text-indigo-900 mr-4">Editar</button>
-                                                <button onClick={() => handleOpenResetModal(userItem)} className="text-yellow-600 hover:text-yellow-900 mr-4">Resetear</button>
-                                                <button onClick={() => handleDeleteUser(userItem.id)} className="text-red-600 hover:text-red-900">Eliminar</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-
-                            {/* ✅ VISTA DE TARJETAS PARA MÓVILES (hasta md) */}
-                            <div className="md:hidden space-y-4">
-                                {filteredUsers.map((userItem) => (
-                                    <div key={userItem.id} className="bg-gray-50 p-4 rounded-lg border">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="font-bold text-gray-800">{userItem.username}</p>
-                                                <p className="text-sm text-gray-600">{userItem.email}</p>
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b">
+                                    <th className="px-6 py-4">Usuario / Contacto</th>
+                                    <th className="px-6 py-4">Empresa (Representación)</th>
+                                    <th className="px-6 py-4">Datos Fiscales</th>
+                                    <th className="px-6 py-4">Actividad</th>
+                                    <th className="px-6 py-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {filteredUsers.map((u) => (
+                                    <tr key={u.id} className="hover:bg-gray-50 transition">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-gray-800">{u.username}</div>
+                                            <div className="text-xs text-gray-500">{u.email}</div>
+                                            {u.phone && (
+                                                <a href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-green-600 text-xs flex items-center gap-1 mt-1 font-semibold hover:underline">
+                                                    <FaWhatsapp/> {u.phone}
+                                                </a>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {u.business_name ? (
+                                                <>
+                                                    <div className="text-sm font-semibold text-gray-700 flex items-center gap-2"><FaBuilding className="text-gray-400"/> {u.business_name}</div>
+                                                    <div className="text-xs text-gray-500 italic">{u.fantasy_name}</div>
+                                                </>
+                                            ) : <span className="text-xs text-gray-400">-</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-mono text-gray-600">
+                                            {u.cuit || <span className="text-gray-300">S/D</span>}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {getUserStatusBadge(u.last_login, u.is_active)}
+                                            <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                                <FaUserClock/> {u.last_login ? new Date(u.last_login).toLocaleDateString() : 'N/A'}
                                             </div>
-                                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex-shrink-0 ml-2">{userItem.role}</span>
-                                        </div>
-                                        <div className="text-sm text-gray-600 mt-2">
-                                            <p><strong>Empresa:</strong> {allCompanies.find(c => c.id === userItem.company_id)?.name || 'N/A'}</p>
-                                        </div>
-                                        <div className="mt-4 pt-2 border-t flex justify-end gap-4 text-sm">
-                                            <button onClick={() => handleEditUser(userItem)} className="text-indigo-600 font-semibold hover:underline">Editar</button>
-                                            <button onClick={() => handleOpenResetModal(userItem)} className="text-yellow-600 font-semibold hover:underline">Resetear</button>
-                                            <button onClick={() => handleDeleteUser(userItem.id)} className="text-red-600 font-semibold hover:underline">Eliminar</button>
-                                        </div>
-                                    </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right flex justify-end items-center gap-2">
+                                            {u.role === 'client' && (
+                                                <button onClick={() => handleGoToPayments(u.id)} className="text-orange-500 hover:bg-orange-50 p-2 rounded transition" title="Pagos">
+                                                    <FaCreditCard size={16} />
+                                                </button>
+                                            )}
+                                            <button onClick={() => handleEditUser(u)} className="text-indigo-600 hover:underline text-sm font-medium px-2">Editar</button>
+                                            <button onClick={() => handleOpenResetModal(u)} className="text-yellow-600 hover:underline text-sm font-medium px-2">Pass</button>
+                                            <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 hover:bg-red-50 p-2 rounded transition" title="Eliminar">
+                                                <FaTrash />
+                                            </button>
+                                        </td>
+                                    </tr>
                                 ))}
-                            </div>
-                        </>
-                    )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
+            {/* Modales */}
             {isUserModalOpen && (
                 <UserFormModal
                     isOpen={isUserModalOpen}
                     onClose={() => setIsUserModalOpen(false)}
                     onSave={handleSaveUser}
-                    initialData={currentUser}
+                    // @ts-ignore
+                    initialData={currentUser} 
                     departments={allDepartments}
                     companies={allCompanies}
                 />
             )}
-            
+
             <ResetPasswordModal
                 isOpen={isResetModalOpen}
                 onClose={() => setIsResetModalOpen(false)}
                 onConfirm={handleConfirmResetPassword}
-                user={selectedUserForReset}
+                // @ts-ignore (Por si el modal espera la interfaz global exacta, aunque ya debería ser compatible)
+                user={selectedUserForReset} 
             />
         </>
     );

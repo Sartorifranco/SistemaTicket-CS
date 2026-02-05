@@ -40,19 +40,28 @@ export interface User {
     role: UserRole;
     department_id: number | null;
     company_id: number | null;
-    company_name?: string;
     
+    // Campos existentes (Mantenidos)
+    company_name?: string;
     status?: 'active' | 'inactive'; 
     created_at?: string; 
     updated_at?: string;
     
-    // ✅ NUEVOS CAMPOS DE PLAN
+    // Campos de Plan (Mantenidos)
     plan_id?: number;
     plan_name?: string;
     plan_color?: string;
 
     first_name?: string | null;
     last_name?: string | null;
+
+    // ✅ NUEVOS CAMPOS (Agregados para el Registro y Admin Panel)
+    is_active?: boolean;      // Para el estado Bloqueado/Activo
+    business_name?: string;   // Razón Social
+    fantasy_name?: string;    // Nombre Fantasía
+    phone?: string;           // Teléfono / WhatsApp
+    cuit?: string;            // CUIT / RUT
+    last_login?: string;      // Para calcular inactividad
 }
 
 // ====================================================================

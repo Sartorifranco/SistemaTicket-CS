@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { toast } from 'react-toastify';
 
+// ❌ BORRADO: No necesitas importar imágenes si están en la carpeta public
+// import logoSch from '/'; 
+
 const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -36,16 +39,14 @@ const LoginPage: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-            {/* ✅ Se ajusta el padding para que sea menor en pantallas pequeñas */}
             <div className="max-w-md w-full space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-2xl">
                 <div>
-                    {/* ✅ El logo ahora es más pequeño en móviles y se agranda en pantallas más grandes */}
+                    {/* 👇 AQUÍ ESTÁ EL CAMBIO: Usamos la ruta directa */}
                     <img
-                        className="mx-auto h-24 sm:h-28 w-auto"
-                        src="/images/logo-grupo-bacar-horizontal.png"
-                        alt="Grupo BACAR"
+                        className="mx-auto h-24 sm:h-28 w-auto object-contain"
+                        src="/images/logosch.png"
+                        alt="Schettini"
                     />
-                    {/* ✅ El título también tiene un tamaño de fuente responsivo */}
                     <h2 className="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
                         Bienvenido
                     </h2>
@@ -60,7 +61,6 @@ const LoginPage: React.FC = () => {
                                 type="email"
                                 autoComplete="email"
                                 required
-                                // ✅ Se ajusta el padding vertical para pantallas pequeñas
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
                                 placeholder="Correo Electrónico"
                                 value={email}
@@ -88,7 +88,6 @@ const LoginPage: React.FC = () => {
                     <div>
                         <button
                             type="submit"
-                            // ✅ Se ajusta el padding vertical del botón
                             className="group relative w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-gray-400"
                             disabled={loading}
                         >

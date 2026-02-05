@@ -1,212 +1,117 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
 import { Department, User, TicketData, UserRole } from '../../types';
+import { FaSave, FaTimes, FaImage, FaExclamationTriangle } from 'react-icons/fa';
 
-// --- INTERFACES LOCALES ---
-interface Location {
-    id: number;
-    alias: string;
-    serial_number?: string;
-    name?: string;
-    type?: string;
-}
-
-interface DepositarioOption {
-    id: number;
-    alias: string;
-    serial_number: string;
-}
-
-interface PredefinedProblemLocal {
-    id: number;
-    title: string;
-    description: string;
-    priority?: string;
-    department_id?: number;
-}
-
-interface TicketCategoryLocal {
+interface ConfigOption {
     id: number;
     name: string;
+    category_id?: number; 
 }
-
-type FormDataType = Partial<TicketData> & { predefined_problem_id?: number | string, depositario_id?: number | string };
 
 interface TicketFormModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: Partial<TicketData>, attachments: File[]) => Promise<void>;
+    onSave: (data: any, attachments: File[]) => Promise<void>;
     initialData: TicketData | null;
-    departments: Department[];
+    departments: Department[]; // Se mantiene por compatibilidad
     users: User[];
     currentUserRole: UserRole;
 }
 
-const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSave, departments, users, currentUserRole }) => {
+const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSave, users, currentUserRole }) => {
     const { user: loggedInUser } = useAuth();
-    
-    const initialFormData: FormDataType = {
-        title: '',
+
+    // Estados para listas
+    const [systems, setSystems] = useState<ConfigOption[]>([]);
+    const [equipment, setEquipment] = useState<ConfigOption[]>([]);
+    const [categories, setCategories] = useState<ConfigOption[]>([]);
+    const [specificProblems, setSpecificProblems] = useState<ConfigOption[]>([]);
+
+    // Formulario (SIN TITULO)
+    const [formData, setFormData] = useState({
+        user_id: undefined as number | undefined,
+        // title: '', // ELIMINADO: Se genera en backend
+        system_id: '',
+        custom_system: '',
+        equipment_id: '',
+        custom_equipment: '',
+        problem_category_id: '',
+        specific_problem_id: '',
+        custom_problem: '',
         description: '',
         priority: 'medium',
-        department_id: undefined,
-        category_id: undefined,
-        user_id: undefined,
-        location_id: undefined,
-        depositario_id: undefined, 
-        predefined_problem_id: '', // String vacío por defecto para el select
-    };
+    });
 
-    const [formData, setFormData] = useState<FormDataType>(initialFormData);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [loading, setLoading] = useState(false);
-    
-    // Estados de IA
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Estados de datos
-    const [locations, setLocations] = useState<Location[]>([]);
-    const [depositarios, setDepositarios] = useState<DepositarioOption[]>([]);
-    const [predefinedProblems, setPredefinedProblems] = useState<PredefinedProblemLocal[]>([]); // <--- NUEVO ESTADO
-    
     const hardStyle = {
         backgroundColor: '#ffffff',
         color: '#000000',
         borderColor: '#d1d5db'
     };
 
-    const targetCompanyId = useMemo(() => {
-        if ((currentUserRole === 'admin' || currentUserRole === 'agent') && formData.user_id) {
-            return users.find(u => u.id === formData.user_id)?.company_id;
-        }
-        return loggedInUser?.company_id;
-    }, [currentUserRole, formData.user_id, users, loggedInUser]);
-
-    // 1. CARGA INICIAL DE DATOS
+    // Cargar opciones
     useEffect(() => {
         if (isOpen) {
-            const fetchModalData = async () => {
-                try {
-                    // Cargar Problemas Predefinidos (Siempre)
-                    const problemsRes = await api.get('/api/tickets/predefined-problems');
-                    setPredefinedProblems(problemsRes.data.data || []);
-
-                    // Cargar Ubicaciones/Depositarios solo si hay empresa
-                    if (targetCompanyId) {
-                        let locationsUrl = currentUserRole === 'client' 
-                            ? '/api/locations' 
-                            : `/api/locations/${targetCompanyId}`;
-
-                        const [locRes, depRes] = await Promise.all([
-                            api.get(locationsUrl),
-                            api.get(`/api/depositarios?companyId=${targetCompanyId}`)
-                        ]);
-
-                        setLocations(locRes.data.data || []);
-                        setDepositarios(depRes.data.data || []); 
+            api.get('/api/ticket-config/options')
+                .then(res => {
+                    if (res.data.success) {
+                        setSystems(res.data.data.systems || []);
+                        setEquipment(res.data.data.equipment || []);
+                        setCategories(res.data.data.categories || []);
+                        setSpecificProblems(res.data.data.problems || []);
                     }
-                } catch (error) {
-                    console.error("Error cargando datos del modal:", error);
-                }
-            };
-            fetchModalData();
+                })
+                .catch(err => console.error("Error options", err));
+        } else {
+            // Reset
+            setFormData({
+                user_id: undefined,
+                system_id: '', custom_system: '',
+                equipment_id: '', custom_equipment: '',
+                problem_category_id: '',
+                specific_problem_id: '', custom_problem: '',
+                description: '',
+                priority: 'medium'
+            });
+            setAttachments([]);
         }
-        if (!isOpen) {
-            setFormData(initialFormData);
-            setLocations([]);
-            setDepositarios([]);
-            setIsAnalyzing(false);
-        }
-    }, [isOpen, targetCompanyId, currentUserRole]);
-    
-    // --- LÓGICA DE AUTOCOMPLETADO POR PROBLEMA ---
-    const handleProblemSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const problemId = parseInt(e.target.value);
-        if (!problemId) {
-            setFormData(prev => ({ ...prev, predefined_problem_id: '' }));
-            return;
-        }
+    }, [isOpen]);
 
-        const problem = predefinedProblems.find(p => p.id === problemId);
-        if (problem) {
-            setFormData(prev => ({
-                ...prev,
-                predefined_problem_id: problemId,
-                title: problem.title,             // Autocompleta Título
-                description: problem.description, // Autocompleta Descripción
-                // Autocompleta Prioridad si existe, sino mantiene la actual
-                priority: (problem.priority as any) || prev.priority, 
-                // Autocompleta Departamento si existe
-                department_id: problem.department_id || prev.department_id 
-            }));
-            toast.info("Plantilla aplicada: Campos actualizados.");
-        }
-    };
-
-    // 2. IA PREDICTIVA (Se mantiene, pero no sobreescribe si ya elegiste un problema predefinido)
-    useEffect(() => {
-        if (!isOpen || !formData.description || formData.description.length < 10) return;
-        // Si ya seleccionó un problema predefinido, evitamos que la IA lo cambie
-        if (formData.predefined_problem_id) return; 
-
-        if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current);
-        
-        analysisTimeoutRef.current = setTimeout(async () => {
-            setIsAnalyzing(true);
-            try {
-                const res = await api.post('/api/ai/predict', { text: formData.description });
-                const { suggestedPriority } = res.data.data;
-                const priorityMap: Record<string, string> = { 'Crítica': 'urgent', 'Alta': 'high', 'Media': 'medium', 'Baja': 'low' };
-                
-                if (suggestedPriority && priorityMap[suggestedPriority]) {
-                    setFormData(prev => ({ ...prev, priority: priorityMap[suggestedPriority] as any }));
-                }
-                
-                if (!formData.title) {
-                     setFormData(prev => ({
-                        ...prev,
-                        title: formData.description!.length > 50 ? formData.description!.substring(0, 50) + '...' : formData.description
-                     }));
-                }
-
-            } catch (error) { console.error("Error IA:", error); } finally { setIsAnalyzing(false); }
-        }, 1200); 
-        return () => { if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current); };
-    }, [formData.description, isOpen, formData.predefined_problem_id]);
-
+    const filteredProblems = useMemo(() => {
+        if (!formData.problem_category_id) return [];
+        return specificProblems.filter(p => p.category_id === Number(formData.problem_category_id));
+    }, [formData.problem_category_id, specificProblems]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        const numValue = parseInt(value, 10);
-        
-        if (name === 'user_id') {
-            setFormData({ ...initialFormData, user_id: numValue || undefined });
-            return;
-        }
-        
-        const newValue = name.endsWith('_id') ? numValue || undefined : value;
-        setFormData(prev => ({ ...prev, [name]: newValue }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) setAttachments(Array.from(e.target.files));
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            const validFiles = files.filter(f => ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(f.type));
+            if (validFiles.length !== files.length) toast.warn("Solo imágenes y PDF.");
+            setAttachments(validFiles);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if ((currentUserRole === 'admin' || currentUserRole === 'agent') && !formData.user_id) {
-            toast.warn("Por favor, selecciona el cliente para quien es este ticket.");
-            return;
+            return toast.warn("Selecciona el cliente afectado.");
         }
-
-        const requiredFields = [formData.title, formData.description];
-        if (requiredFields.some(field => !field)) {
-            toast.warn("Por favor, complete el título y la descripción.");
-            return;
+        if (!formData.description.trim()) {
+            return toast.warn("Describe el problema.");
+        }
+        if (!formData.problem_category_id || !formData.specific_problem_id) {
+            return toast.warn("Selecciona categoría y problema.");
         }
 
         setLoading(true);
@@ -214,180 +119,126 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         setLoading(false);
     };
 
+    const isOther = (id: string, list: ConfigOption[]) => {
+        const item = list.find(i => i.id === Number(id));
+        return item?.name.toLowerCase() === 'otros' || item?.name.toLowerCase() === 'otro';
+    };
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 className="text-2xl font-bold text-gray-800">Crear Nuevo Ticket</h2>
-                    {isAnalyzing && (
-                        <span className="text-sm font-bold text-blue-600 animate-pulse bg-blue-50 px-3 py-1 rounded-full border border-blue-200">🤖 IA Analizando...</span>
-                    )}
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col">
+                
+                <div className="flex justify-between items-center p-6 border-b bg-gray-50 rounded-t-xl">
+                    <h2 className="text-2xl font-bold text-gray-800">Nuevo Ticket</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><FaTimes size={24} /></button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     
                     {/* CLIENTE (SOLO ADMIN/AGENT) */}
                     {(currentUserRole === 'admin' || currentUserRole === 'agent') && (
-                        <div>
-                            <label className="block text-gray-700 font-medium">Crear Ticket para (Cliente):</label>
+                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                            <label className="block text-yellow-800 font-bold mb-1 text-sm">Cliente:</label>
                             <select 
                                 name="user_id" 
                                 value={formData.user_id || ''} 
                                 onChange={handleChange} 
-                                className="w-full p-2 border rounded mt-1" 
+                                className="w-full p-2 bg-white border border-yellow-300 rounded focus:ring-2 focus:ring-yellow-500 outline-none"
+                                required
+                            >
+                                <option value="">-- Seleccione Cliente --</option>
+                                {users.filter(u => u.role === 'client').map(client => (
+                                    <option key={client.id} value={client.id}>{client.username} ({client.business_name || 'Sin Empresa'})</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* SISTEMA Y EQUIPO */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-gray-700 font-bold mb-1 text-sm">Sistema Afectado</label>
+                            <select name="system_id" value={formData.system_id} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none" style={hardStyle} required>
+                                <option value="">Seleccione...</option>
+                                {systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                            {isOther(formData.system_id, systems) && (
+                                <input type="text" name="custom_system" placeholder="Especifique..." className="mt-2 w-full p-2 border rounded bg-gray-50 text-sm" onChange={handleChange} required />
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 font-bold mb-1 text-sm">Equipo Afectado</label>
+                            <select name="equipment_id" value={formData.equipment_id} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none" style={hardStyle} required>
+                                <option value="">Seleccione...</option>
+                                {equipment.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                            </select>
+                            {isOther(formData.equipment_id, equipment) && (
+                                <input type="text" name="custom_equipment" placeholder="Especifique..." className="mt-2 w-full p-2 border rounded bg-gray-50 text-sm" onChange={handleChange} required />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* CATEGORÍA Y PROBLEMA */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-gray-700 font-bold mb-1 text-sm">Categoría</label>
+                            <select 
+                                name="problem_category_id"
+                                value={formData.problem_category_id}
+                                onChange={(e) => { handleChange(e); setFormData(prev => ({ ...prev, specific_problem_id: '' })); }}
+                                className="w-full p-2.5 border rounded-lg outline-none"
                                 style={hardStyle}
                                 required
                             >
-                                <option value="" style={hardStyle}>-- Seleccione un usuario --</option>
-                                {users.filter(u => u.role === 'client').map(client => (
-                                    <option key={client.id} value={client.id} style={hardStyle}>{client.username}</option>
-                                ))}
+                                <option value="">Seleccione...</option>
+                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
-                    )}
-
-                    {/* --- NUEVO: SELECTOR DE PROBLEMAS PREDEFINIDOS --- */}
-                    {predefinedProblems.length > 0 && (
-                        <div className="bg-blue-50 p-3 rounded border border-blue-100">
-                            <label className="block text-blue-800 font-bold mb-1 flex items-center gap-2">
-                                ⚡ Selección Rápida de Problema:
-                                <span className="text-xs font-normal text-blue-600">(Autocompletar formulario)</span>
-                            </label>
-                            <select
-                                name="predefined_problem_id"
-                                value={formData.predefined_problem_id || ''}
-                                onChange={handleProblemSelect}
-                                className="w-full p-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                style={hardStyle}
-                            >
-                                <option value="">-- Seleccionar tipo de problema frecuente --</option>
-                                {predefinedProblems.map(prob => (
-                                    <option key={prob.id} value={prob.id}>
-                                        {prob.title}
-                                    </option>
-                                ))}
+                        <div>
+                            <label className="block text-gray-700 font-bold mb-1 text-sm">Problema Específico</label>
+                            <select name="specific_problem_id" value={formData.specific_problem_id} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none disabled:bg-gray-100" style={hardStyle} disabled={!formData.problem_category_id} required>
+                                <option value="">Seleccione...</option>
+                                {filteredProblems.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
+                            {isOther(formData.specific_problem_id, specificProblems) && (
+                                <input type="text" name="custom_problem" placeholder="Detalle el problema..." className="mt-2 w-full p-2 border rounded bg-gray-50 text-sm" onChange={handleChange} required />
+                            )}
                         </div>
-                    )}
-                    
-                    {/* UBICACIONES Y DEPOSITARIOS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {locations.length > 0 && (
-                            <div>
-                                <label className="block text-gray-700 font-medium">{locations[0]?.type || 'Ubicación'}:</label>
-                                <select 
-                                    name="location_id" 
-                                    value={formData.location_id || ''} 
-                                    onChange={handleChange} 
-                                    className="w-full p-2 border rounded mt-1" 
-                                    style={hardStyle}
-                                >
-                                    <option value="" style={hardStyle}>-- Seleccione ubicación --</option>
-                                    {locations.map(loc => (
-                                        <option key={loc.id} value={loc.id} style={hardStyle}>
-                                            {loc.alias || loc.name} {loc.serial_number ? `(S/N: ${loc.serial_number})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        {depositarios.length > 0 && (
-                            <div>
-                                <label className="block text-gray-700 font-medium flex items-center gap-2">
-                                    <span>📠 Equipo Afectado:</span>
-                                    <span className="text-xs text-gray-400 font-normal">(Opcional)</span>
-                                </label>
-                                <select 
-                                    name="depositario_id" 
-                                    value={formData.depositario_id || ''} 
-                                    onChange={handleChange} 
-                                    className="w-full p-2 border rounded mt-1"
-                                    style={hardStyle}
-                                >
-                                    <option value="" style={hardStyle}>-- Ninguno / No aplica --</option>
-                                    {depositarios.map(dep => (
-                                        <option key={dep.id} value={dep.id} style={hardStyle}>
-                                            {dep.alias} (S/N: {dep.serial_number})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
                     </div>
 
-                    <div className="bg-gray-50 p-3 rounded border">
-                        <label className="block text-gray-700 font-bold mb-1">
-                            ¿Qué está sucediendo?
-                        </label>
-                        <textarea 
-                            name="description" 
-                            value={formData.description || ''} 
-                            onChange={handleChange} 
-                            placeholder="Ej: La impresora no enciende y sale humo..." 
-                            rows={4} 
-                            className="w-full p-2 border rounded mt-1 outline-none transition-all"
-                            style={hardStyle}
-                            required 
-                        />
-                    </div>
-
-                    <input 
-                        type="text" 
-                        name="title" 
-                        value={formData.title || ''} 
-                        onChange={handleChange} 
-                        placeholder="Título del ticket" 
-                        className="w-full p-2 border rounded mt-1" 
-                        style={hardStyle}
-                        required 
-                    />
-                    
                     {/* PRIORIDAD */}
                     <div>
-                        <label className="block text-gray-700 font-medium">Prioridad:</label>
-                        <select 
-                            name="priority" 
-                            value={formData.priority || 'medium'} 
-                            onChange={handleChange} 
-                            className="w-full p-2 border rounded mt-1" 
-                            style={hardStyle}
-                            required
-                        >
-                            <option value="low" style={hardStyle}>Baja</option>
-                            <option value="medium" style={hardStyle}>Media</option>
-                            <option value="high" style={hardStyle}>Alta</option>
-                            <option value="urgent" style={{ ...hardStyle, color: 'red', fontWeight: 'bold' }}>Urgente</option>
+                        <label className="block text-gray-700 font-bold mb-1 text-sm">Prioridad</label>
+                        <select name="priority" value={formData.priority} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none" style={hardStyle}>
+                            <option value="low">🟢 Baja (Consulta)</option>
+                            <option value="medium">🟡 Media (Inconveniente)</option>
+                            <option value="high">🟠 Alta (Interrupción parcial)</option>
+                            <option value="urgent">🔴 Urgente (Sistema caído)</option>
                         </select>
                     </div>
-                    
-                    {/* DEPARTAMENTO (Visible y autocompletable) */}
+
+                    {/* DESCRIPCIÓN */}
                     <div>
-                         <label className="block text-gray-700 font-medium">Departamento:</label>
-                         <select 
-                            name="department_id" 
-                            value={formData.department_id || ''} 
-                            onChange={handleChange}
-                            className="w-full p-2 border rounded mt-1"
-                            style={hardStyle}
-                         >
-                             <option value="">-- Automático / General --</option>
-                             {departments.map(dept => (
-                                 <option key={dept.id} value={dept.id}>{dept.name}</option>
-                             ))}
-                         </select>
+                        <label className="block text-gray-700 font-bold mb-1 text-sm flex items-center gap-2">
+                            <FaExclamationTriangle className="text-orange-500"/> ¿Qué está sucediendo?
+                        </label>
+                        <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Describa el problema detalladamente..." rows={4} className="w-full p-3 border rounded-lg outline-none resize-none text-sm" style={hardStyle} required />
                     </div>
 
-                    <div>
-                        <label className="block text-gray-700 font-medium">Adjuntar Archivos:</label>
-                        <input type="file" multiple onChange={handleFileChange} className="w-full text-sm mt-1" style={{ color: '#000000' }} />
+                    {/* ADJUNTOS */}
+                    <div className="border-t pt-4">
+                        <label className="block text-gray-700 font-bold mb-2 text-sm flex items-center gap-2"><FaImage className="text-gray-500"/> Adjuntar Imágenes (Opcional)</label>
+                        <input type="file" multiple className="w-full text-sm text-gray-500" onChange={handleFileChange} accept="image/*,.pdf" />
+                        {attachments.length > 0 && <div className="mt-2 text-xs text-gray-600"><strong>Archivos:</strong> {attachments.map(f => f.name).join(', ')}</div>}
                     </div>
                     
-                    <div className="flex justify-end gap-4 pt-4 border-t">
-                        <button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">Cancelar</button>
-                        <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" disabled={loading}>{loading ? 'Guardando...' : 'Guardar Ticket'}</button>
+                    <div className="flex justify-end gap-3 pt-2 border-t mt-4">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition">Cancelar</button>
+                        <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition flex items-center gap-2" disabled={loading}>
+                            <FaSave /> {loading ? 'Enviando...' : 'Crear Ticket'}
+                        </button>
                     </div>
                 </form>
             </div>
