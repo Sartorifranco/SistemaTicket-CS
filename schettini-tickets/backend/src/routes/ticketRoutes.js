@@ -12,9 +12,9 @@ const {
     reassignTicket,
     addCommentToTicket,
     deleteTicket,
-    getTicketCategories, // ✅ Ahora sí existe
-    getDepartments,      // ✅ Ahora sí existe
-    getTicketComments    // ✅ Ahora sí existe
+    getTicketCategories,
+    getDepartments,
+    getTicketComments
 } = require('../controllers/ticketController');
 
 // Configuración de Subida de Archivos
@@ -24,16 +24,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Rutas Públicas (Protegidas por Token)
+// Rutas Protegidas
 router.use(protect);
 
 router.post('/', upload.array('attachments', 5), createTicket);
-router.get('/', getTickets);
-router.get('/categories', getTicketCategories); // Para selectores viejos
-router.get('/departments', getDepartments);     // Para selectores viejos
+router.get('/', getTickets); // ✅ Ahora getTickets maneja los filtros de agente correctamente
+router.get('/categories', getTicketCategories);
+router.get('/departments', getDepartments);
 
 router.get('/:id', getTicketById);
-router.put('/:id', updateTicket); // Edición general
+router.put('/:id', updateTicket);
 router.delete('/:id', deleteTicket);
 
 // Rutas Específicas

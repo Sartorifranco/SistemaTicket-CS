@@ -1,17 +1,27 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
-// --- Obtener todos los usuarios (Con info del Plan) ---
+// --- Obtener todos los usuarios (Con info de Empresa, Depto y Plan) ---
 const getUsers = async (req, res) => {
     try {
         const [users] = await pool.query(`
-            SELECT u.id, u.username, u.email, u.role, u.department_id, u.company_id, u.status, u.created_at, u.plan_id,
-                   p.name as plan_name, p.color as plan_color,
-                   u.is_active, u.phone, u.cuit, u.business_name, u.last_login
+            SELECT 
+                u.id, 
+                u.username, 
+                u.email, 
+                u.role, 
+                u.status, 
+                u.plan, 
+                u.company_id, 
+                u.department_id,
+                c.name as company_name,
+                d.name as department_name
             FROM Users u
-            LEFT JOIN plans p ON u.plan_id = p.id
+            LEFT JOIN Companies c ON u.company_id = c.id
+            LEFT JOIN Departments d ON u.department_id = d.id
             ORDER BY u.id DESC
         `);
+
         res.json({ success: true, data: users });
     } catch (error) {
         console.error(error);
@@ -23,9 +33,9 @@ const getUsers = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const [users] = await pool.query(`
-            SELECT u.*, p.name as plan_name, p.color as plan_color
+            SELECT u.*, c.name as company_name 
             FROM Users u
-            LEFT JOIN plans p ON u.plan_id = p.id
+            LEFT JOIN Companies c ON u.company_id = c.id
             WHERE u.id = ?
         `, [req.params.id]);
         
@@ -39,7 +49,7 @@ const getUserById = async (req, res) => {
 // --- Crear usuario (Admin) ---
 const createUser = async (req, res) => {
     try {
-        const { username, email, password, role, department_id, company_id, plan_id, phone, cuit, business_name, fantasy_name } = req.body;
+        const { username, email, password, role, department_id, company_id, plan, phone, cuit, business_name, fantasy_name } = req.body;
 
         const [existing] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ message: 'El usuario ya existe' });
@@ -47,18 +57,25 @@ const createUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Insertar usuario con todos los campos nuevos y viejos
+        // Validación estricta para company_id (evita que se guarde 0 o undefined)
+        const finalCompanyId = (company_id && company_id !== '' && company_id !== '0') ? company_id : null;
+        const finalDepartmentId = (department_id && department_id !== '' && department_id !== '0') ? department_id : null;
+
         const [result] = await pool.query(
-            `INSERT INTO Users (username, email, password, role, department_id, company_id, plan_id, phone, cuit, business_name, fantasy_name, is_active, status, last_login) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW())`,
+            `INSERT INTO Users (
+                username, email, password, role, 
+                department_id, company_id, plan, 
+                phone, cuit, business_name, fantasy_name, 
+                is_active, status, last_login
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW())`,
             [
                 username, 
                 email, 
                 hashedPassword, 
                 role || 'client', 
-                department_id || null, 
-                company_id || null, 
-                plan_id || 1, // 1 es FREE por defecto
+                finalDepartmentId, 
+                finalCompanyId, 
+                plan || 'Free',
                 phone || '',
                 cuit || '',
                 business_name || '',
@@ -73,72 +90,59 @@ const createUser = async (req, res) => {
     }
 };
 
-// --- Actualizar usuario ---
+// --- Actualizar usuario (CORREGIDO PARA GUARDAR EMPRESA) ---
+// --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
-        const { username, email, role, status, department_id, company_id, plan_id, phone, cuit, business_name, fantasy_name } = req.body;
+        const { username, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name } = req.body;
         const userId = req.params.id;
 
-        // Mapear 'status' (string) a 'is_active' (booleano) para consistencia
-        const isActive = status === 'active' ? 1 : 0;
+        // Lógica corregida: Si 'status' no viene, asumimos 'active' por defecto para no bannear por error.
+        const newStatus = status || 'active';
+        const isActive = newStatus === 'active' ? 1 : 0;
         
+        // Aseguramos que si viene vacío sea NULL en la base de datos
+        const finalCompanyId = (company_id && company_id !== '' && company_id !== '0') ? company_id : null;
+        const finalDepartmentId = (department_id && department_id !== '' && department_id !== '0') ? department_id : null;
+
         await pool.query(
             `UPDATE Users SET 
                 username = ?, email = ?, role = ?, status = ?, is_active = ?, 
-                department_id = ?, company_id = ?, plan_id = ?,
+                department_id = ?, company_id = ?, plan = ?, 
                 phone = ?, cuit = ?, business_name = ?, fantasy_name = ?
              WHERE id = ?`,
             [
-                username, email, role, status || 'active', isActive,
-                department_id || null, company_id || null, plan_id || 1,
+                username, email, role, newStatus, isActive,
+                finalDepartmentId, finalCompanyId, plan || 'Free',
                 phone || '', cuit || '', business_name || '', fantasy_name || '',
                 userId
             ]
         );
-        res.json({ success: true, message: 'Usuario actualizado' });
+        res.json({ success: true, message: 'Usuario actualizado correctamente' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error al actualizar' });
     }
 };
 
-// ✅ --- ELIMINAR USUARIO (CASCADE MANUAL) ---
+// --- Eliminar usuario (Smart Delete) ---
 const deleteUser = async (req, res) => {
     const { id } = req.params;
-    
-    // 1. Obtener conexión para transacción
-    const connection = await pool.getConnection();
-    
     try {
-        await connection.beginTransaction(); // Iniciar transacción
+        const [tickets] = await pool.query('SELECT id FROM Tickets WHERE user_id = ? OR assigned_to_user_id = ? LIMIT 1', [id, id]);
 
-        // 2. Eliminar datos dependientes primero (Orden es clave)
-        // a. Notificaciones
-        await connection.query('DELETE FROM notifications WHERE user_id = ?', [id]);
-        
-        // b. Pagos
-        await connection.query('DELETE FROM payments WHERE user_id = ?', [id]);
-        
-        // c. Datos de Facturación
-        await connection.query('DELETE FROM billing_details WHERE user_id = ?', [id]);
+        if (tickets.length > 0) {
+            await pool.query('UPDATE Users SET status = "inactive", is_active = 0 WHERE id = ?', [id]);
+            return res.json({ success: true, message: 'Usuario desactivado (tiene historial).' });
+        }
 
-        // d. Opcional: Tickets (si quieres borrarlos también, descomenta esto)
-        // await connection.query('DELETE FROM Tickets WHERE created_by_user_id = ? OR assigned_to_user_id = ?', [id, id]);
-        // Si NO borras tickets, deberías poner el usuario en NULL para no romper integridad
-        // await connection.query('UPDATE Tickets SET assigned_to_user_id = NULL WHERE assigned_to_user_id = ?', [id]);
+        const [result] = await pool.query('DELETE FROM Users WHERE id = ?', [id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-        // 3. Finalmente eliminar al usuario
-        await connection.query('DELETE FROM Users WHERE id = ?', [id]);
-
-        await connection.commit(); // Confirmar cambios
-        res.json({ success: true, message: 'Usuario y sus datos eliminados correctamente' });
-
+        res.json({ success: true, message: 'Usuario eliminado.' });
     } catch (error) {
-        await connection.rollback(); // Deshacer todo si algo falla
-        console.error("Error eliminando usuario:", error);
-        res.status(500).json({ message: 'No se pudo eliminar el usuario debido a datos vinculados.' });
-    } finally {
-        connection.release(); // Liberar conexión
+        console.error(error);
+        res.status(500).json({ message: 'Error al eliminar usuario' });
     }
 };
 

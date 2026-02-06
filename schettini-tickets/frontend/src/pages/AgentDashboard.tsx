@@ -2,325 +2,170 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
-import { TicketData, ActivityLog, ApiResponseError, AgentMetrics, AgentNote } from '../types';
-import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
+import { TicketData, ActivityLog, AgentMetrics, AgentNote } from '../types';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
-import DepositariosWidget from '../components/Dashboard/DepositariosWidget';
-// ✅ IMPORTAR WIDGET GLOBAL
-import InfoWidget from '../components/Common/InfoWidget';
 
-// --- Componente genérico para el Modal de Detalles ---
-const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onClose: () => void; loading: boolean; role: 'agent' | 'admin' | 'client' }> = ({ title, items, onClose, loading, role }) => {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
-                <h2 className="text-2xl font-bold mb-4 border-b pb-3">{title}</h2>
-                <div className="max-h-96 overflow-y-auto">
-                    {loading ? (
-                        <p className="text-center text-gray-500 py-8">Cargando...</p>
-                    ) : items.length > 0 ? (
-                        <ul className="divide-y divide-gray-200">
-                            {items.map((ticket) => (
-                                <li key={ticket.id} className="p-3 flex justify-between items-center hover:bg-gray-50">
-                                    <div>
-                                        <span className="font-semibold">#{ticket.id} - {ticket.title}</span>
-                                        <span className="text-gray-500 ml-2">({ticket.client_name})</span>
-                                    </div>
-                                    <Link to={`/${role}/tickets/${ticket.id}`} className="text-red-600 hover:underline text-sm font-semibold">Ver</Link>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-gray-500 py-8">No hay tickets para mostrar en esta categoría.</p>
-                    )}
-                </div>
-                <button onClick={onClose} className="mt-6 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded w-full">Cerrar</button>
-            </div>
-        </div>
-    );
-};
+// --- Componentes Internos ---
+const MetricCard: React.FC<{ title: string; value: number | string; color: string }> = ({ title, value, color }) => (
+    <div className={`bg-white p-6 rounded-xl shadow-sm border border-${color}-100 flex flex-col items-center justify-center hover:shadow-md transition-shadow`}>
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{title}</span>
+        <span className={`text-4xl font-extrabold text-${color}-600 mt-2`}>{value}</span>
+    </div>
+);
 
-// --- Componente interno: TicketList ---
-const TicketList: React.FC<{ tickets: TicketData[], title: string, onTicketClick: (id: number) => void }> = ({ tickets, title, onTicketClick }) => {
-    return (
-        <div className="bg-white p-6 rounded-lg shadow-md h-full flex flex-col">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">{title}</h2>
-            {tickets.length === 0 ? (
-                 <p className="text-gray-600 flex-grow flex items-center justify-center">No hay tickets recientes.</p>
-            ) : (
-                <div className="overflow-x-auto flex-grow">
-                    <table className="min-w-full divide-y divide-gray-200 hidden sm:table">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Asunto</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prioridad</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {tickets.map((ticket) => (
-                                <tr key={ticket.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onTicketClick(ticket.id)}>
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">#{ticket.id}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">{ticket.title}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">{ticket.priority}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <div className="sm:hidden space-y-3">
-                        {tickets.map((ticket) => (
-                             <div key={ticket.id} className="bg-gray-50 p-3 rounded-md border" onClick={() => onTicketClick(ticket.id)}>
-                                 <p className="font-bold text-gray-800">#{ticket.id} - {ticket.title}</p>
-                                 <p className="text-sm text-gray-600 mt-1">Prioridad: {ticket.priority}</p>
-                             </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// --- Componente interno: ActivityLogList ---
-const ActivityLogList: React.FC<{ logs: ActivityLog[], title: string }> = ({ logs, title }) => {
-    return (
-        <div className="bg-white p-6 rounded-lg shadow-md h-full flex flex-col">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">{title}</h2>
-            {logs.length === 0 ? (
-                <p className="text-gray-600 flex-grow flex items-center justify-center">No hay actividad reciente.</p>
-            ) : (
-                <ul className="space-y-3 text-gray-700 overflow-y-auto flex-grow">
-                    {logs.map((log) => (
-                        <li key={log.id} className="border-b border-gray-100 pb-2 last:border-b-0">
-                            <p className="text-sm font-medium">{log.description}</p>
-                            <p className="text-xs text-gray-500">{formatLocalDate(log.created_at)} por {log.username}</p>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-};
-
-// --- Componente Principal del Dashboard ---
 const AgentDashboard: React.FC = () => {
-    const { user, token, isAuthenticated, loading: authLoading } = useAuth();
-    const { addNotification } = useNotification();
+    const { user, isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
-    const [agentMetrics, setAgentMetrics] = useState<AgentMetrics | null>(null);
+    const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
     const [recentTickets, setRecentTickets] = useState<TicketData[]>([]);
-    const [recentActivityLogs, setRecentActivityLogs] = useState<ActivityLog[]>([]);
+    const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [notes, setNotes] = useState<AgentNote[]>([]);
-    const [newNoteContent, setNewNoteContent] = useState('');
-    const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
-    const [editingContent, setEditingContent] = useState('');
+    const [newNote, setNewNote] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalContent, setModalContent] = useState<{ title: string; items: TicketData[] }>({ title: '', items: [] });
-    const [modalLoading, setModalLoading] = useState(false);
-
     const fetchData = useCallback(async () => {
-        if (!token || !user?.id) {
-            setLoading(false);
-            return;
-        }
+        if (!user?.id) return;
         setLoading(true);
         try {
+            // Nota: Quitamos depositarios para evitar 404 si no usas ese módulo
             const [metricsRes, ticketsRes, logsRes, notesRes] = await Promise.all([
-                api.get(`/api/dashboard/agent`),
-                api.get(`/api/tickets?view=assigned&limit=5`),
+                api.get('/api/dashboard/agent'),
+                api.get('/api/tickets?view=assigned&limit=5'),
                 api.get(`/api/activity-logs?user_id=${user.id}&limit=5`),
                 api.get('/api/notes')
             ]);
 
-            setAgentMetrics(metricsRes.data.data);
-            setRecentTickets(ticketsRes.data.data);
-            setRecentActivityLogs(logsRes.data.data);
+            setMetrics(metricsRes.data.data);
+            setRecentTickets(ticketsRes.data.data || []);
+            setLogs(logsRes.data.data || []);
             setNotes(notesRes.data.data || []);
-        } catch (err: unknown) {
-            if (isAxiosErrorTypeGuard(err)) {
-                const apiError = err.response?.data as ApiResponseError;
-                toast.error(`Error al cargar datos: ${apiError?.message || 'Error desconocido'}`);
-            } else {
-                toast.error('Ocurrió un error inesperado al cargar los datos.');
-            }
+        } catch (error) {
+            console.error("Dashboard Error:", error);
         } finally {
             setLoading(false);
         }
-    }, [token, user?.id]);
+    }, [user?.id]);
 
     useEffect(() => {
         if (!authLoading && isAuthenticated && user?.role === 'agent') {
             fetchData();
         } else if (!authLoading && (!isAuthenticated || user?.role !== 'agent')) {
-            addNotification('Acceso denegado.', 'error');
-            navigate('/login', { replace: true });
+            navigate('/login');
         }
-    }, [authLoading, isAuthenticated, user, navigate, addNotification, fetchData]);
+    }, [authLoading, isAuthenticated, user, navigate, fetchData]);
 
-    const handleCardClick = async (type: 'assigned' | 'unassigned' | 'resolved') => {
-        setModalLoading(true);
-        setIsModalOpen(true);
-
-        const titleMap = {
-            assigned: 'Mis Tickets Asignados',
-            unassigned: 'Tickets Sin Asignar',
-            resolved: 'Tickets Resueltos por Mí'
-        };
-        
-        const params = new URLSearchParams();
-        params.append('view', type);
-        
+    // --- Funciones Notas ---
+    const addNote = async () => {
+        if (!newNote.trim()) return;
         try {
-            const response = await api.get(`/api/tickets?${params.toString()}`);
-            setModalContent({ title: titleMap[type], items: response.data.data || [] });
-        } catch (error) {
-            toast.error('No se pudo cargar la lista de tickets.');
-            setIsModalOpen(false);
-        } finally {
-            setModalLoading(false);
-        }
-    };
-    
-    const handleCreateNote = async () => {
-        if (!newNoteContent.trim()) return toast.warn("La nota no puede estar vacía.");
-        try {
-            await api.post('/api/notes', { content: newNoteContent });
-            toast.success('Nota creada con éxito.');
-            setNewNoteContent('');
+            await api.post('/api/notes', { content: newNote });
+            toast.success('Nota creada');
+            setNewNote('');
             fetchData();
-        } catch (error) {
-            toast.error('No se pudo crear la nota.');
-        }
+        } catch (e) { toast.error('Error al crear nota'); }
     };
 
-    const handleDeleteNote = async (noteId: number) => {
-        if (window.confirm("¿Estás seguro de que quieres eliminar esta nota?")) {
-            try {
-                await api.delete(`/api/notes/${noteId}`);
-                toast.success('Nota eliminada.');
-                fetchData();
-            } catch (error) {
-                toast.error('No se pudo eliminar la nota.');
-            }
-        }
-    };
-    
-    const handleUpdateNote = async (noteId: number) => {
-        if (!editingContent.trim()) return toast.warn("La nota no puede estar vacía.");
+    const deleteNote = async (id: number) => {
+        if (!window.confirm('¿Borrar nota?')) return;
         try {
-            await api.put(`/api/notes/${noteId}`, { content: editingContent });
-            toast.success('Nota actualizada.');
-            setEditingNoteId(null);
+            await api.delete(`/api/notes/${id}`);
+            toast.success('Nota eliminada');
             fetchData();
-        } catch (error) {
-            toast.error('No se pudo actualizar la nota.');
-        }
-    };
-    
-    const startEditing = (note: AgentNote) => {
-        setEditingNoteId(note.id);
-        setEditingContent(note.content);
+        } catch (e) { toast.error('Error al borrar nota'); }
     };
 
-    if (authLoading || loading) {
-        return <div className="flex justify-center items-center h-screen"><span className="text-lg">Cargando Dashboard...</span></div>;
-    }
+    if (authLoading || loading) return <div className="p-10 text-center text-gray-500">Cargando panel...</div>;
 
     return (
-        <>
-            <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+        <div className="container mx-auto p-6 space-y-8 bg-gray-50 min-h-screen">
+            <div className="flex justify-between items-center border-b pb-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Dashboard de Agente</h1>
+                    <p className="text-gray-500">Bienvenido, {user?.username}</p>
+                </div>
+                <button onClick={() => navigate('/agent/tickets')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition">
+                    Ver Todos Mis Tickets
+                </button>
+            </div>
+
+            {/* 1. Métricas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <MetricCard title="Asignados" value={metrics?.assignedTickets || 0} color="blue" />
+                <MetricCard title="Sin Asignar" value={metrics?.unassignedTickets || 0} color="yellow" />
+                <MetricCard title="Resueltos (Histórico)" value={metrics?.resolvedByMe || 0} color="green" />
+            </div>
+
+            {/* 2. Contenido Principal */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                {/* ✅ WIDGET GLOBAL AQUÍ */}
-                <InfoWidget />
-
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Dashboard de Agente</h1>
-
-                {/* ✅ GRILA DE MÉTRICAS + WIDGET DE DEPOSITARIOS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <button onClick={() => handleCardClick('assigned')} className="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-xl transition-shadow text-left cursor-pointer">
-                        <h3 className="text-lg font-semibold text-gray-600">Tickets Asignados</h3>
-                        <p className="text-3xl sm:text-4xl font-bold text-indigo-600 mt-2">{agentMetrics?.assignedTickets ?? 0}</p>
-                    </button>
-                    <button onClick={() => handleCardClick('unassigned')} className="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-xl transition-shadow text-left cursor-pointer">
-                        <h3 className="text-lg font-semibold text-gray-600">Tickets Sin Asignar</h3>
-                        <p className="text-3xl sm:text-4xl font-bold text-yellow-600 mt-2">{agentMetrics?.unassignedTickets ?? 0}</p>
-                    </button>
-                    <button onClick={() => handleCardClick('resolved')} className="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-xl transition-shadow text-left cursor-pointer">
-                        <h3 className="text-lg font-semibold text-gray-600">Tickets Resueltos</h3>
-                        <p className="text-3xl sm:text-4xl font-bold text-green-600 mt-2">{agentMetrics?.resolvedByMe ?? 0}</p>
-                    </button>
-
-                    {/* ✅ WIDGET DE DEPOSITARIOS */}
-                    <DepositariosWidget />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <TicketList tickets={recentTickets} title="Tickets Asignados Recientes" onTicketClick={(id) => navigate(`/agent/tickets/${id}`)} />
-                    <ActivityLogList logs={recentActivityLogs} title="Mi Actividad Reciente" />
-                </div>
-
-                <div className="flex justify-center mb-8">
-                    <button onClick={() => navigate('/agent/tickets')} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg">
-                        Gestionar Todos Mis Tickets
-                    </button>
-                </div>
-                
-                <div id="quick-notes" className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Mis Notas Rápidas</h2>
-                    <textarea
-                        className="w-full p-3 border rounded-md h-24"
-                        placeholder="Escribe una nueva nota aquí..."
-                        value={newNoteContent}
-                        onChange={(e) => setNewNoteContent(e.target.value)}
-                    ></textarea>
-                    <button onClick={handleCreateNote} className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">
-                        Añadir Nota
-                    </button>
-
-                    <div className="mt-6 border-t pt-4 space-y-4">
-                        {notes.length > 0 ? notes.map(note => (
-                            <div key={note.id} className="bg-gray-50 p-4 rounded-md border">
-                                {editingNoteId === note.id ? (
-                                    <>
-                                        <textarea 
-                                            value={editingContent}
-                                            onChange={(e) => setEditingContent(e.target.value)}
-                                            className="w-full p-2 border rounded-md h-20"
-                                        />
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <button onClick={() => handleUpdateNote(note.id)} className="text-sm bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600">Guardar</button>
-                                            <button onClick={() => setEditingNoteId(null)} className="text-sm bg-gray-200 text-gray-700 py-1 px-3 rounded hover:bg-gray-300">Cancelar</button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-gray-800 whitespace-pre-wrap">{note.content}</p>
-                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-2">
-                                            <p className="text-xs text-gray-400">
-                                                Actualizado: {formatLocalDate(note.updated_at)}
-                                            </p>
-                                            <div className="flex items-center gap-4 mt-2 sm:mt-0">
-                                                <button onClick={() => startEditing(note)} className="text-sm text-blue-600 hover:underline">Editar</button>
-                                                <button onClick={() => handleDeleteNote(note.id)} className="text-sm text-red-600 hover:underline">Eliminar</button>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                {/* Tickets Recientes */}
+                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                        <h3 className="font-bold text-gray-700">Tickets Asignados Recientes</h3>
+                    </div>
+                    <div className="divide-y divide-gray-100 flex-1">
+                        {recentTickets.length > 0 ? recentTickets.map(ticket => (
+                            <div key={ticket.id} className="p-4 hover:bg-gray-50 transition flex justify-between items-center group">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-gray-800">#{ticket.id}</span>
+                                        <span className="text-sm text-gray-600 font-medium">{ticket.title}</span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wide ${
+                                            ticket.priority === 'urgent' ? 'bg-red-100 text-red-700' : 
+                                            ticket.priority === 'high' ? 'bg-orange-100 text-orange-700' : 
+                                            'bg-gray-100 text-gray-600'
+                                        }`}>{ticket.priority}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">{ticket.client_name} • {formatLocalDate(ticket.created_at)}</p>
+                                </div>
+                                <Link to={`/agent/tickets/${ticket.id}`} className="text-indigo-600 opacity-0 group-hover:opacity-100 font-semibold text-sm hover:underline transition-opacity">
+                                    Gestionar &rarr;
+                                </Link>
                             </div>
                         )) : (
-                            <p className="text-center text-gray-500">No tienes notas guardadas.</p>
+                            <div className="p-8 text-center text-gray-400">No tienes tickets recientes asignados.</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Notas Rápidas */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-96">
+                    <h3 className="font-bold text-gray-700 mb-4">Notas Rápidas</h3>
+                    
+                    <div className="flex gap-2 mb-4">
+                        <input 
+                            type="text" 
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                            placeholder="Escribe una nota..."
+                            value={newNote}
+                            onChange={e => setNewNote(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && addNote()}
+                        />
+                        <button onClick={addNote} className="bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg hover:bg-indigo-200 transition font-bold">+</button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                        {notes.length > 0 ? notes.map(note => (
+                            <div key={note.id} className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 relative group transition hover:shadow-sm">
+                                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                                <button 
+                                    onClick={() => deleteNote(note.id)}
+                                    className="absolute top-1 right-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-1"
+                                    title="Eliminar"
+                                >
+                                    &times;
+                                </button>
+                                <span className="text-[10px] text-gray-400 block mt-2 text-right">{formatLocalDate(note.updated_at)}</span>
+                            </div>
+                        )) : (
+                            <p className="text-center text-gray-400 text-sm mt-10">Tus notas personales aparecerán aquí.</p>
                         )}
                     </div>
                 </div>
             </div>
-            
-            {isModalOpen && user && <DetailsModal title={modalContent.title} items={modalContent.items} onClose={() => setIsModalOpen(false)} loading={modalLoading} role={user.role} />}
-        </>
+        </div>
     );
 };
 

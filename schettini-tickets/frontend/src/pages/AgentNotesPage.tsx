@@ -1,52 +1,34 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import api from '../config/axiosConfig';
 import { AgentNote } from '../types';
 import { toast } from 'react-toastify';
-import { formatLocalDate } from '../utils/dateFormatter'; // Asegúrate de tener este helper
+import { formatLocalDate } from '../utils/dateFormatter';
 
 const AgentNotesPage: React.FC = () => {
-    const { user } = useAuth();
     const [notes, setNotes] = useState<AgentNote[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const notesKey = user?.id ? `agent_all_notes_${user.id}` : null;
-
-    const loadNotes = useCallback(() => {
-        if (!notesKey) {
-            setNotes([]);
-            setLoading(false);
-            return;
-        }
+    const loadNotes = useCallback(async () => {
+        setLoading(true);
         try {
-            const storedNotesString = localStorage.getItem(notesKey);
-            const storedNotes: AgentNote[] = storedNotesString ? JSON.parse(storedNotesString) : [];
-            setNotes(storedNotes);
+            const response = await api.get('/api/notes');
+            setNotes(response.data.data || []);
         } catch (error) {
-            console.error('Error al cargar notas de localStorage:', error);
-            toast.error('Error al cargar tus notas.');
-            setNotes([]);
+            console.error('Error cargando notas:', error);
+            toast.error('No se pudieron cargar las notas.');
         } finally {
             setLoading(false);
         }
-    }, [notesKey]);
+    }, []);
 
-    const saveNotes = useCallback((updatedNotes: AgentNote[]) => {
-        if (!notesKey) return;
+    const handleDeleteNote = async (id: number) => {
+        if (!window.confirm("¿Eliminar nota?")) return;
         try {
-            localStorage.setItem(notesKey, JSON.stringify(updatedNotes));
-            setNotes(updatedNotes);
-            toast.success('Notas actualizadas.');
+            await api.delete(`/api/notes/${id}`);
+            toast.success('Nota eliminada.');
+            setNotes(prev => prev.filter(n => n.id !== id));
         } catch (error) {
-            console.error('Error al guardar notas en localStorage:', error);
-            toast.error('Error al guardar tus notas.');
-        }
-    }, [notesKey]);
-
-    const handleDeleteNote = (id: number) => {
-        if (window.confirm("¿Estás seguro de que quieres eliminar esta nota?")) {
-            const updatedNotes = notes.filter(note => note.id !== id);
-            saveNotes(updatedNotes);
-            toast.info('Nota eliminada.');
+            toast.error('Error al eliminar la nota.');
         }
     };
 
@@ -54,40 +36,31 @@ const AgentNotesPage: React.FC = () => {
         loadNotes();
     }, [loadNotes]);
 
-    if (loading) {
-        return <div className="p-8 text-center"><span className="text-lg">Cargando notas...</span></div>;
-    }
-
-    if (!user) {
-        return <div className="p-8 text-center text-red-600">Debes iniciar sesión para ver tus notas.</div>;
-    }
+    if (loading) return <div className="p-8 text-center text-gray-500">Cargando notas...</div>;
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-            {/* ✅ Título con tamaño de texto responsivo */}
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Mis Notas Rápidas</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Mis Notas Rápidas</h1>
 
             {notes.length === 0 ? (
-                <div className="bg-white p-6 rounded-lg shadow-md text-center text-gray-600">
-                    <p className="text-lg">No tienes notas rápidas guardadas aún.</p>
-                    <p className="text-sm mt-2">Puedes añadir nuevas notas desde tu Dashboard de Agente.</p>
+                <div className="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
+                    <p className="text-lg">No tienes notas guardadas.</p>
+                    <p className="text-sm mt-2">Agrega notas desde tu Dashboard principal.</p>
                 </div>
             ) : (
-                // ✅ La grilla ya era responsiva, se mantiene su excelente estructura
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {notes.map(note => (
-                        <div key={note.id} className="bg-white p-6 rounded-lg shadow-lg flex flex-col justify-between transition-transform hover:scale-105">
+                        <div key={note.id} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition flex flex-col justify-between border-t-4 border-yellow-400">
                             <div>
-                                <p className="text-gray-800 text-base mb-3 whitespace-pre-wrap">{note.content}</p>
-                                <span className="text-xs text-gray-500 block">
-                                    {/* Usamos el helper para formatear la fecha */}
-                                    Creada: {formatLocalDate(note.updated_at)}
+                                <p className="text-gray-800 text-base mb-4 whitespace-pre-wrap">{note.content}</p>
+                                <span className="text-xs text-gray-400 block border-t pt-2">
+                                    {formatLocalDate(note.updated_at)}
                                 </span>
                             </div>
                             <div className="mt-4 text-right">
                                 <button
                                     onClick={() => handleDeleteNote(note.id)}
-                                    className="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-1 px-3 rounded-md transition duration-300"
+                                    className="text-red-500 hover:text-red-700 text-sm font-bold uppercase tracking-wider"
                                 >
                                     Eliminar
                                 </button>

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { Notification } from '../types';
 import { SocketInstance } from '../App';
+import { useAuth } from './AuthContext'; // ✅ IMPORTANTE: Para verificar sesión
 
 const NOTIFICATION_SOUND = '/assets/sounds/notification.mp3';
 
@@ -33,6 +34,9 @@ export const useNotification = () => {
 };
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode; socket: SocketInstance | null }> = ({ children, socket }) => {
+    // ✅ 1. OBTENER ESTADO DE AUTENTICACIÓN
+    const { user, token, isAuthenticated } = useAuth();
+
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
@@ -61,65 +65,98 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; socket:
         audio.play().catch(err => console.log("Audio bloqueado:", err));
     };
 
+    // ✅ 2. FETCH PROTEGIDO (Solución al error 401)
     const fetchNotifications = useCallback(async () => {
+        // Si no hay sesión válida, NO llamamos a la API
+        if (!token || !isAuthenticated || !user) {
+            setNotifications([]);
+            setUnreadCount(0);
+            return;
+        }
+
         try {
             const res = await api.get('/api/notifications');
-            setNotifications(res.data.data);
-            const count = res.data.data.filter((n: Notification) => !n.is_read).length;
-            setUnreadCount(count);
-        } catch (error) { console.error(error); }
-    }, []);
-
-    useEffect(() => {
-        if (socket) {
-            // Casting a any para evitar error TS
-            (socket as any).onAny((event: string, ...args: any[]) => console.log(`📡 ${event}`, args));
-
-            socket.on('notification', (newNotification: Notification) => {
-                playSound();
-                
-                let msg = newNotification.message;
-                if(msg && msg.includes('|||')) msg = msg.split('|||')[1];
-                toast.info(`🔔 ${msg}`, { position: "top-right", autoClose: 5000 });
-                
-                setNotifications(prev => [newNotification, ...prev]);
-                setUnreadCount(prev => prev + 1);
-            });
-
-            socket.on('support_message_received', (msg: any) => {
-                // Si es mensaje de cliente y NO estoy en el chat
-                if (msg.sender_role === 'client' && window.location.pathname !== '/admin/chat') {
-                    // ✅ Verificar MUTE antes de sonar
-                    const isMuted = mutedUsers.includes(msg.user_id);
-                    
-                    if (!isMuted) {
-                        playSound();
-                        toast.info(`💬 ${msg.username || 'Cliente'}: ${msg.message}`, {
-                            position: "top-right",
-                            autoClose: 3000,
-                            onClick: () => window.location.href = '/admin/chat'
-                        });
-                    }
-
-                    setUnreadChatCount(prev => prev + 1);
-                }
-            });
+            if(res.data && Array.isArray(res.data.data)) {
+                setNotifications(res.data.data);
+                const count = res.data.data.filter((n: Notification) => !n.is_read).length;
+                setUnreadCount(count);
+            }
+        } catch (error) { 
+            console.error("Error fetching notifications:", error); 
         }
+    }, [token, isAuthenticated, user]);
+
+    // ✅ 3. SOCKET LISTENERS (Protegidos)
+    useEffect(() => {
+        if (!isAuthenticated || !socket) return;
+
+        // Casting a any para evitar error TS
+        (socket as any).onAny((event: string, ...args: any[]) => console.log(`📡 ${event}`, args));
+
+        socket.on('notification', (newNotification: Notification) => {
+            playSound();
+            
+            let msg = newNotification.message;
+            if(msg && msg.includes('|||')) msg = msg.split('|||')[1];
+            toast.info(`🔔 ${msg}`, { position: "top-right", autoClose: 5000 });
+            
+            setNotifications(prev => [newNotification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+        });
+
+        socket.on('support_message_received', (msg: any) => {
+            // Si es mensaje de cliente y NO estoy en el chat
+            if (msg.sender_role === 'client' && window.location.pathname !== '/admin/chat') {
+                // ✅ Verificar MUTE antes de sonar
+                const isMuted = mutedUsers.includes(msg.user_id);
+                
+                if (!isMuted) {
+                    playSound();
+                    toast.info(`💬 ${msg.username || 'Cliente'}: ${msg.message}`, {
+                        position: "top-right",
+                        autoClose: 3000,
+                        onClick: () => window.location.href = '/admin/chat'
+                    });
+                }
+
+                setUnreadChatCount(prev => prev + 1);
+            }
+        });
 
         return () => {
             socket?.off('notification');
             socket?.off('support_message_received');
             if(socket && (socket as any).offAny) (socket as any).offAny();
         };
-    }, [socket, mutedUsers]);
+    }, [socket, mutedUsers, isAuthenticated]); // Se ejecuta cuando cambia auth o mute
 
-    useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+    useEffect(() => { 
+        fetchNotifications(); 
+    }, [fetchNotifications]);
 
     // Helpers
-    const markNotificationAsRead = async (id: number) => { try{ await api.put(`/api/notifications/${id}/read`); setNotifications(prev=>prev.map(n=>n.id===id?{...n,is_read:true}:n)); setUnreadCount(p=>Math.max(0,p-1)); }catch(e){} };
-    const markAllNotificationsAsRead = async () => { try{ await api.put('/api/notifications'); setNotifications(prev=>prev.map(n=>({...n,is_read:true}))); setUnreadCount(0); }catch(e){} };
-    const deleteNotification = async (id: number) => { try{ await api.delete(`/api/notifications/${id}`); setNotifications(prev=>prev.filter(n=>n.id!==id)); }catch(e){} };
-    const addNotification = (message: string, type: 'success'|'error'|'info'|'warning') => { if(type==='success') toast.success(message); else if(type==='error') toast.error(message); else toast.info(message); };
+    const markNotificationAsRead = async (id: number) => { 
+        try{ await api.put(`/api/notifications/${id}/read`); setNotifications(prev=>prev.map(n=>n.id===id?{...n,is_read:true}:n)); setUnreadCount(p=>Math.max(0,p-1)); }catch(e){} 
+    };
+    
+    const markAllNotificationsAsRead = async () => { 
+        try{ 
+            // Usualmente es mejor un endpoint especifico como /read-all, ajusta si tu backend es diferente
+            await api.put('/api/notifications/read-all'); 
+            setNotifications(prev=>prev.map(n=>({...n,is_read:true}))); 
+            setUnreadCount(0); 
+        }catch(e){} 
+    };
+
+    const deleteNotification = async (id: number) => { 
+        try{ await api.delete(`/api/notifications/${id}`); setNotifications(prev=>prev.filter(n=>n.id!==id)); }catch(e){} 
+    };
+
+    const addNotification = (message: string, type: 'success'|'error'|'info'|'warning') => { 
+        if(type==='success') toast.success(message); 
+        else if(type==='error') toast.error(message); 
+        else toast.info(message); 
+    };
 
     return (
         <NotificationContext.Provider value={{

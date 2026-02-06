@@ -40,7 +40,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir archivos estáticos (uploads)
+// ✅ ARREGLO IMÁGENES: Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // --- 3. CONFIGURACIÓN SOCKET.IO ---
@@ -71,9 +71,12 @@ const moduleRoutes = require('./routes/moduleRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const paymentRoutes = require('./routes/paymentRoutes'); 
-// ✅ IMPORTAR RUTAS DE CONFIGURACIÓN DE TICKETS (Faltaba esto)
 const ticketConfigRoutes = require('./routes/ticketConfigRoutes'); 
-const promotionRoutes = require('./routes/promotionRoutes'); // 👈 Agregar
+const promotionRoutes = require('./routes/promotionRoutes');
+
+// ✅ NUEVAS RUTAS IMPORTADAS (Para arreglar Agente)
+const noteRoutes = require('./routes/noteRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -93,11 +96,14 @@ app.use('/api/modules', moduleRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/promotions', promotionRoutes); // 👈 Agregar
-// ✅ CONECTAR LA RUTA DE CONFIGURACIÓN DE TICKETS (Soluciona el 404)
 app.use('/api/ticket-config', ticketConfigRoutes); 
+app.use('/api/promotions', promotionRoutes);
 
-// RUTAS ADMIN EXTRA (Manejo de errores si no existen)
+// ✅ NUEVOS ENDPOINTS CONECTADOS
+app.use('/api/notes', noteRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
+
+// RUTAS ADMIN EXTRA
 try {
     app.use('/api/admin', require('./routes/problemAdminRoutes'));
 } catch (error) {
@@ -109,7 +115,7 @@ try {
     app.use('/api', require('./routes/dataRoutes'));
 } catch (error) {}
 
-// --- 6. SOCKET.IO (Lógica Mejorada para Salas) ---
+// --- 6. SOCKET.IO ---
 io.on('connection', (socket) => {
   console.log('🔌 Nuevo cliente conectado:', socket.id);
 

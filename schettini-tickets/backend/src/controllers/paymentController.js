@@ -21,18 +21,26 @@ const getPaymentInfo = async (req, res) => {
             [userId]
         );
 
-        // 3. ✅ AHORA SÍ: Obtener Datos del Plan Real del Usuario
+        // 3. ✅ CORREGIDO: Usamos 'plan' en lugar de 'plan_name'
         const [userProfile] = await pool.query(
-            'SELECT plan_name, plan_expiry, price FROM Users WHERE id = ?', 
+            'SELECT plan, plan_expiry, price FROM Users WHERE id = ?', 
             [userId]
         );
+
+        // Mapeamos 'plan' a 'plan_name' para que el frontend no se rompa si espera ese nombre
+        const userPlanData = userProfile[0] || {};
+        const normalizedPlan = {
+            plan_name: userPlanData.plan || 'Free', // Mapeo clave
+            plan_expiry: userPlanData.plan_expiry,
+            price: userPlanData.price
+        };
 
         res.json({
             success: true,
             data: {
                 payments,
                 billing: billing[0] || {},
-                userPlan: userProfile[0] || { plan_name: 'Free', plan_expiry: null, price: 0 } // Datos por defecto
+                userPlan: normalizedPlan
             }
         });
     } catch (error) {
@@ -62,14 +70,12 @@ const reportPayment = async (req, res) => {
             [userId, amount, method, receiptUrl, description]
         );
 
-        // 2. ✅ GUARDAR NOTIFICACIÓN EN BD PARA ADMINS (Evita error 404)
-        // Buscar todos los admins y agentes
+        // 2. Notificar a Admins
         const [admins] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent')");
 
         if (admins.length > 0 && req.io) {
             const msg = `Nuevo pago de $${amount} informado por ${username}`;
             
-            // Insertar una notificación para CADA admin
             for (const admin of admins) {
                 const [notifResult] = await pool.query(
                     `INSERT INTO notifications (user_id, type, message, related_id, related_type, is_read) 
@@ -77,9 +83,8 @@ const reportPayment = async (req, res) => {
                     [admin.id, msg, paymentResult.insertId]
                 );
 
-                // Emitir Socket con el ID REAL de la base de datos
                 req.io.to(`user-${admin.id}`).emit('notification', {
-                    id: notifResult.insertId, // ID real
+                    id: notifResult.insertId,
                     type: 'info',
                     message: msg,
                     related_id: paymentResult.insertId,
@@ -138,15 +143,23 @@ const getAdminClientPayments = async (req, res) => {
         // 2. Datos Facturación
         const [billing] = await pool.query('SELECT * FROM billing_details WHERE user_id = ?', [userId]);
 
-        // 3. Plan actual
-        const [userPlan] = await pool.query('SELECT plan_name, plan_expiry, price FROM Users WHERE id = ?', [userId]);
+        // 3. ✅ CORREGIDO: Usamos 'plan'
+        const [userPlan] = await pool.query('SELECT plan, plan_expiry, price FROM Users WHERE id = ?', [userId]);
+
+        // Normalizamos
+        const userPlanData = userPlan[0] || {};
+        const normalizedPlan = {
+            plan_name: userPlanData.plan || 'Free',
+            plan_expiry: userPlanData.plan_expiry,
+            price: userPlanData.price
+        };
 
         res.json({
             success: true,
             data: {
                 payments,
                 billing: billing[0] || {},
-                userPlan: userPlan[0] || {}
+                userPlan: normalizedPlan
             }
         });
     } catch (error) {
@@ -163,7 +176,6 @@ const updatePaymentStatus = async (req, res) => {
 
         await pool.query('UPDATE payments SET status = ? WHERE id = ?', [status, paymentId]);
 
-        // Notificar al Cliente (Guardando en BD para evitar 404 en su panel)
         const [payment] = await pool.query('SELECT user_id, amount FROM payments WHERE id = ?', [paymentId]);
         
         if (payment.length > 0) {
@@ -172,7 +184,6 @@ const updatePaymentStatus = async (req, res) => {
                 ? `Tu pago de $${payment[0].amount} ha sido APROBADO ✅` 
                 : `Tu pago de $${payment[0].amount} ha sido RECHAZADO ❌`;
 
-            // Insertar Notificación Real
             const [notifResult] = await pool.query(
                 `INSERT INTO notifications (user_id, type, message, related_id, related_type, is_read) 
                  VALUES (?, ?, ?, ?, 'payment', 0)`,
@@ -181,7 +192,7 @@ const updatePaymentStatus = async (req, res) => {
 
             if (req.io) {
                 req.io.to(`user-${userId}`).emit('notification', {
-                    id: notifResult.insertId, // ID Real
+                    id: notifResult.insertId,
                     type: status === 'approved' ? 'success' : 'error',
                     message: msg,
                     related_id: paymentId,
@@ -202,15 +213,19 @@ const updatePaymentStatus = async (req, res) => {
 const updateUserPlan = async (req, res) => {
     try {
         const { userId } = req.params;
-        const { plan_name, plan_expiry, price } = req.body;
+        // El frontend puede enviar 'plan_name' o 'plan', lo manejamos:
+        const plan = req.body.plan || req.body.plan_name; 
+        const { plan_expiry, price } = req.body;
 
+        // ✅ CORREGIDO: Actualizamos la columna 'plan'
         await pool.query(
-            'UPDATE Users SET plan_name = ?, plan_expiry = ?, price = ? WHERE id = ?',
-            [plan_name, plan_expiry, price, userId]
+            'UPDATE Users SET plan = ?, plan_expiry = ?, price = ? WHERE id = ?',
+            [plan, plan_expiry || null, price || 0, userId]
         );
 
         res.json({ success: true, message: 'Plan del usuario actualizado' });
     } catch (error) {
+        console.error("Error al actualizar plan:", error); // Log para ver detalles si falla
         res.status(500).json({ success: false, message: 'Error al actualizar plan' });
     }
 };

@@ -51,6 +51,8 @@ export interface User {
     plan_id?: number;
     plan_name?: string;
     plan_color?: string;
+    plan?: string;      // 👈 Agrega esto
+   
 
     first_name?: string | null;
     last_name?: string | null;
@@ -62,6 +64,7 @@ export interface User {
     phone?: string;           // Teléfono / WhatsApp
     cuit?: string;            // CUIT / RUT
     last_login?: string;      // Para calcular inactividad
+    
 }
 
 // ====================================================================

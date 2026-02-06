@@ -5,7 +5,9 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Proteger todas las rutas
 router.use(protect);
-router.use(authorize('admin')); // Solo admins ven reportes
+
+// ✅ CORRECCIÓN: Permitimos 'admin' Y 'agent'
+router.use(authorize('admin', 'agent'));
 
 // GET /api/reports (Reporte completo con gráficos)
 router.get('/', getReports);
