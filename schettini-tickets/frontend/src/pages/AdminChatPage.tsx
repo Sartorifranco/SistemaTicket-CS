@@ -18,6 +18,7 @@ interface Message {
     sender_role: 'client' | 'admin' | 'agent' | 'system';
     message: string;
     created_at: string;
+    is_archived?: number; // ✅ AGREGADO: Para detectar si el chat está cerrado
 }
 
 const AdminChatPage: React.FC = () => {
@@ -50,6 +51,7 @@ const AdminChatPage: React.FC = () => {
                 fetchConversations();
                 if (selectedUser && msg.user_id === selectedUser.id) {
                     setMessages(prev => [...prev, msg]);
+                    // Si el cliente escribe, el chat se reactiva
                     if (msg.sender_role === 'client') setIsCurrentChatClosed(false);
                 }
             });
@@ -61,7 +63,8 @@ const AdminChatPage: React.FC = () => {
                         id: Date.now(),
                         sender_role: 'system',
                         message: data.message,
-                        created_at: new Date().toISOString()
+                        created_at: new Date().toISOString(),
+                        is_archived: 1
                     }]);
                 }
             });
@@ -83,13 +86,23 @@ const AdminChatPage: React.FC = () => {
     const fetchMessages = async (userId: number) => {
         try {
             const res = await api.get(`/api/chat/${userId}`);
-            setMessages(res.data.data);
+            const msgs: Message[] = res.data.data;
+            setMessages(msgs);
             setConversations(prev => prev.map(c => c.id === userId ? { ...c, unread_count: 0 } : c));
             
-            // Verificar si el último mensaje fue de cierre (opcional, lógica simple visual)
-            if (res.data.data.length > 0) {
-               // Aquí podrías chequear una bandera si viniera del backend, por ahora lo manejamos por evento
+            // ✅ CORRECCIÓN CLAVE: Verificar el estado del último mensaje
+            if (msgs.length > 0) {
+                const lastMsg = msgs[msgs.length - 1];
+                // Si el último mensaje está archivado, el chat se considera cerrado visualmente
+                if (lastMsg.is_archived === 1) {
+                    setIsCurrentChatClosed(true);
+                } else {
+                    setIsCurrentChatClosed(false);
+                }
+            } else {
+                setIsCurrentChatClosed(false);
             }
+
         } catch (error) { console.error(error); }
     };
 
@@ -104,23 +117,26 @@ const AdminChatPage: React.FC = () => {
             });
             setMessages([...messages, res.data.data]);
             setNewMessage('');
+            // Al enviar un mensaje, se reactiva el chat
             setIsCurrentChatClosed(false);
             fetchConversations();
         } catch (error) { console.error(error); }
     };
 
-    // ✅ ADMIN CIERRA CHAT
+    // ADMIN CIERRA CHAT
     const handleAdminCloseChat = async () => {
         if (!selectedUser) return;
         if (!window.confirm(`¿Finalizar conversación con ${selectedUser.username}?`)) return;
 
         try {
             await api.post('/api/chat/admin/close', { userId: selectedUser.id });
+            // Agregamos mensaje localmente para feedback inmediato
             const sysMsg: Message = {
                 id: Date.now(),
                 sender_role: 'system',
                 message: "Has finalizado esta conversación.",
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                is_archived: 1
             };
             setMessages(prev => [...prev, sysMsg]);
             setIsCurrentChatClosed(true);
@@ -172,7 +188,11 @@ const AdminChatPage: React.FC = () => {
                                 <FaUserCircle size={32} className="text-gray-400" />
                                 <div>
                                     <h3 className="font-bold text-gray-800">{selectedUser.username}</h3>
-                                    <span className="text-xs text-green-600 flex items-center gap-1"><FaCircle size={8}/> En línea</span>
+                                    {isCurrentChatClosed ? (
+                                        <span className="text-xs text-red-500 flex items-center gap-1 font-bold">● Finalizado</span>
+                                    ) : (
+                                        <span className="text-xs text-green-600 flex items-center gap-1"><FaCircle size={8}/> En línea</span>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">

@@ -79,6 +79,12 @@ const RegisterPage: React.FC = () => {
                 
                 {/* Panel Izquierdo (Visual) */}
                 <div className="bg-red-700 p-8 flex flex-col justify-center items-center text-white md:w-1/3">
+                    {/* ✅ LOGO ACTUALIZADO: Lila.png (Agregado aquí) */}
+                    <img 
+                        src="/images/Lila.png" 
+                        alt="Schettini" 
+                        className="h-20 w-auto object-contain mb-4 bg-white rounded-xl p-2" 
+                    />
                     <h2 className="text-3xl font-extrabold mb-2">Schettini</h2>
                     <p className="text-red-100 text-center text-sm">Sistema de Gestión de Clientes</p>
                     <div className="mt-8 text-center text-xs opacity-80">

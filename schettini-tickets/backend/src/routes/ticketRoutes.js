@@ -9,7 +9,8 @@ const {
     getTicketById,
     updateTicket,
     updateTicketStatus,
-    reassignTicket,
+    assignTicket,   // ✅ Importar
+    reassignTicket, // ✅ Importar
     addCommentToTicket,
     deleteTicket,
     getTicketCategories,
@@ -28,7 +29,7 @@ const upload = multer({ storage });
 router.use(protect);
 
 router.post('/', upload.array('attachments', 5), createTicket);
-router.get('/', getTickets); // ✅ Ahora getTickets maneja los filtros de agente correctamente
+router.get('/', getTickets);
 router.get('/categories', getTicketCategories);
 router.get('/departments', getDepartments);
 
@@ -36,9 +37,15 @@ router.get('/:id', getTicketById);
 router.put('/:id', updateTicket);
 router.delete('/:id', deleteTicket);
 
-// Rutas Específicas
+// --- RUTAS DE ESTADO Y ASIGNACIÓN (CORREGIDAS) ---
 router.put('/:id/status', updateTicketStatus);
-router.put('/:id/assign', authorize('admin', 'agent'), reassignTicket);
+
+// 1. Tomar Ticket (Auto-asignación) -> Botón "Tomar" del Agente
+router.put('/:id/assign', authorize('admin', 'agent'), assignTicket);
+
+// 2. Reasignar Ticket (Delegar) -> Modal de "Reasignar" del Admin/Agente
+router.put('/:id/reassign', authorize('admin', 'agent'), reassignTicket); // ✅ Esta faltaba y daba 404
+
 router.post('/:id/comments', addCommentToTicket);
 router.get('/:id/comments', getTicketComments);
 

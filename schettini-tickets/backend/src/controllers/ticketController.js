@@ -19,10 +19,8 @@ const notifyUser = async (io, userId, message, relatedId, relatedType = 'ticket'
 // --- Crear Ticket ---
 const createTicket = async (req, res) => {
     try {
-        const { description, priority, department_id, title } = req.body; // Simplificado para coincidir con tu form
+        const { description, priority, department_id, title } = req.body;
         const user = req.user;
-        
-        // Si hay archivos
         const files = req.files || [];
 
         const [result] = await pool.query(
@@ -32,10 +30,14 @@ const createTicket = async (req, res) => {
         );
         const ticketId = result.insertId;
 
-        // Guardar adjuntos
         if (files.length > 0) {
             const attachments = files.map(f => [ticketId, f.filename, `/uploads/${f.filename}`, f.mimetype]);
             await pool.query(`INSERT INTO ticket_attachments (ticket_id, file_name, file_url, file_type) VALUES ?`, [attachments]);
+        }
+
+        // Notificar a admins/agentes
+        if (req.io) {
+            req.io.to('admin').to('agent').emit('dashboard_update', { message: 'Nuevo ticket creado' });
         }
 
         res.status(201).json({ success: true, message: 'Ticket creado', data: { id: ticketId } });
@@ -45,10 +47,10 @@ const createTicket = async (req, res) => {
     }
 };
 
-// --- ✅ OBTENER TICKETS (LOGICA CORREGIDA PARA AGENTE) ---
+// --- Obtener Tickets (Con Filtros de Agente) ---
 const getTickets = async (req, res) => {
     try {
-        const { view, status, priority, agentId, startDate, endDate } = req.query;
+        const { view, status, priority, agentId } = req.query;
         const userId = req.user.id;
         const userRole = req.user.role;
 
@@ -67,13 +69,11 @@ const getTickets = async (req, res) => {
         
         const params = [];
 
-        // 1. FILTROS DE ROL Y VISTA
         if (userRole === 'client') {
-            // Cliente solo ve lo suyo
             query += ' AND t.user_id = ?';
             params.push(userId);
         } else {
-            // Lógica para Admin y Agente según la "vista" del dashboard
+            // Lógica Agente/Admin
             if (view === 'assigned') {
                 query += ' AND t.assigned_to_user_id = ?';
                 params.push(userId);
@@ -83,15 +83,12 @@ const getTickets = async (req, res) => {
                 query += ' AND t.assigned_to_user_id = ? AND t.status IN ("resolved", "closed")';
                 params.push(userId);
             }
-            // Si view es 'all' o vacio, el admin/agente ve todo (sin filtro extra)
         }
 
-        // 2. FILTROS ADICIONALES (Buscador)
         if (status) { query += ' AND t.status = ?'; params.push(status); }
         if (priority) { query += ' AND t.priority = ?'; params.push(priority); }
         if (agentId) { query += ' AND t.assigned_to_user_id = ?'; params.push(agentId); }
         
-        // Ordenamiento
         query += ' ORDER BY t.created_at DESC';
 
         const [tickets] = await pool.query(query, params);
@@ -103,7 +100,7 @@ const getTickets = async (req, res) => {
     }
 };
 
-// --- Obtener Ticket por ID ---
+// --- Obtener Ticket ID ---
 const getTicketById = async (req, res) => {
     try {
         const [tickets] = await pool.query(`
@@ -116,7 +113,6 @@ const getTicketById = async (req, res) => {
         if (tickets.length === 0) return res.status(404).json({ success: false, message: 'No encontrado' });
         
         const ticket = tickets[0];
-        // Seguridad: Cliente solo ve su ticket
         if (req.user.role === 'client' && ticket.user_id !== req.user.id) {
             return res.status(403).json({ message: 'Acceso denegado' });
         }
@@ -128,7 +124,7 @@ const getTicketById = async (req, res) => {
     } catch (error) { res.status(500).json({ message: 'Error server' }); }
 };
 
-// --- Funciones Extra ---
+// --- Actualizar Estado ---
 const updateTicketStatus = async (req, res) => {
     try {
         const { status } = req.body;
@@ -137,14 +133,44 @@ const updateTicketStatus = async (req, res) => {
     } catch (e) { res.status(500).json({ message: 'Error' }); }
 };
 
+// --- ✅ NUEVO: Asignar Ticket (Tomar Ticket) ---
+// El agente logueado se asigna el ticket a sí mismo
+const assignTicket = async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const agentId = req.user.id; 
+        
+        await pool.query('UPDATE Tickets SET assigned_to_user_id = ?, status = "in-progress" WHERE id = ?', [agentId, ticketId]);
+        
+        res.json({ success: true, message: 'Has tomado el ticket correctamente.' });
+    } catch (error) {
+        console.error("Error assignTicket:", error);
+        res.status(500).json({ message: 'Error al tomar el ticket' });
+    }
+};
+
+// --- ✅ NUEVO: Reasignar Ticket (Admin/Agente a otro) ---
+// Se asigna a un ID específico recibido en el body
 const reassignTicket = async (req, res) => {
     try {
         const { newAgentId } = req.body;
-        await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, req.params.id]);
-        res.json({ success: true, message: 'Reasignado' });
-    } catch (e) { res.status(500).json({ message: 'Error' }); }
+        const ticketId = req.params.id;
+
+        if (!newAgentId) return res.status(400).json({ message: 'Se requiere el ID del agente.' });
+
+        await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, ticketId]);
+        
+        if (req.io) {
+            await notifyUser(req.io, newAgentId, `Se te ha asignado el Ticket #${ticketId}`, ticketId);
+        }
+        res.json({ success: true, message: 'Ticket reasignado correctamente.' });
+    } catch (error) { 
+        console.error("Error reassignTicket:", error);
+        res.status(500).json({ message: 'Error al reasignar' }); 
+    }
 };
 
+// --- Agregar Comentario ---
 const addCommentToTicket = async (req, res) => {
     try {
         const { comment_text, is_internal } = req.body;
@@ -155,6 +181,7 @@ const addCommentToTicket = async (req, res) => {
     } catch (e) { res.status(500).json({ message: 'Error' }); }
 };
 
+// --- Borrar Ticket ---
 const deleteTicket = async (req, res) => {
     try {
         const id = req.params.id;
@@ -165,7 +192,7 @@ const deleteTicket = async (req, res) => {
     } catch (e) { res.status(500).json({ message: 'Error' }); }
 };
 
-// Selectores
+// Helpers
 const getTicketCategories = async (req, res) => {
     const [d] = await pool.query('SELECT * FROM problem_categories');
     res.json({ success: true, data: d });
@@ -174,10 +201,14 @@ const getDepartments = async (req, res) => {
     const [d] = await pool.query('SELECT * FROM Departments');
     res.json({ success: true, data: d });
 };
-const getTicketComments = async (req, res) => { /* Ya incluido en getById, pero por si acaso */ };
-const updateTicket = async (req, res) => { /* Update general si hace falta */ };
+const getTicketComments = async (req, res) => { /* Placeholder */ };
+const updateTicket = async (req, res) => { /* Placeholder */ };
 
 module.exports = {
-    createTicket, getTickets, getTicketById, updateTicketStatus, reassignTicket, addCommentToTicket, deleteTicket,
+    createTicket, getTickets, getTicketById, 
+    updateTicketStatus, 
+    assignTicket,   // ✅ Exportado
+    reassignTicket, // ✅ Exportado
+    addCommentToTicket, deleteTicket,
     getTicketCategories, getDepartments, getTicketComments, updateTicket
 };

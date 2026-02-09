@@ -30,14 +30,13 @@ import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage';
 import AdminChatPage from './pages/AdminChatPage';
 import AdminResourcesPage from './pages/AdminResourcesPage';
 import AdminUserPaymentsPage from './pages/AdminUserPaymentsPage';
-
-// ✅ IMPORTACIÓN NUEVA: PÁGINA DE MARKETING (ADMIN)
 import AdminPromotionsPage from './pages/AdminPromotionsPage';
 
 // --- AGENT PAGES ---
 import AgentDashboard from './pages/AgentDashboard';
-import AgentTicketsPage from './pages/AgentTicketPage';
-import AgentTicketDetailPage from './pages/AgentTicketDetailPage';
+import AgentTicketsPage from './pages/AgentTicketPage'; // Lista de tickets
+import AgentTicketDetailPage from './pages/AgentTicketDetailPage'; // Detalle de ticket
+import AgentReportsPage from './pages/AgentReportsPage'; // ✅ IMPORTANTE: Reporte de agente
 
 // --- CLIENT PAGES ---
 import ClientDashboard from './pages/ClientDashboard';
@@ -45,12 +44,10 @@ import ClientTicketsPage from './pages/ClientMyTicketsPage';
 import ClientTicketDetailPage from './pages/ClientTicketDetailPage';
 import ClientResourcesPage from './pages/ClientResourcesPage';
 import ClientPaymentsPage from './pages/ClientPaymentsPage'; 
-
-// ✅ IMPORTACIÓN NUEVA: PÁGINA DE OFERTAS (CLIENTE)
 import OffersPage from './pages/OffersPage';
 
 import PrivateRoute from './components/Common/PrivateRoute';
-import ReportsPage from './pages/ReportsPage';
+import ReportsPage from './pages/ReportsPage'; // Ruta legacy
 
 export type SocketInstance = ReturnType<typeof io>;
 
@@ -75,8 +72,6 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
         const currentHost = window.location.hostname;
         const socketUrl = `http://${currentHost}:5050`;
         
-        console.log(`[Socket] Iniciando conexión única a: ${socketUrl}`);
-
         const newSocket = io(socketUrl, {
             auth: { token },
             transports: ['websocket', 'polling'],
@@ -87,9 +82,6 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
 
         socketRef.current = newSocket;
         setSocket(newSocket);
-
-        newSocket.on('connect', () => console.log('[Socket] ✅ Conectado:', newSocket.id));
-        newSocket.on('connect_error', (err: any) => console.error('[Socket] ❌ Error:', err.message));
 
         return () => {};
     }, [isAuthenticated, token]);
@@ -120,17 +112,13 @@ const App: React.FC = () => {
                             <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminDashboard /></PrivateRoute>} />
                             <Route path="/admin/users" element={<PrivateRoute roles={['admin']}><AdminUsersPage /></PrivateRoute>} />
                             <Route path="/admin/users/:userId/payments" element={<PrivateRoute roles={['admin']}><AdminUserPaymentsPage /></PrivateRoute>} />
-                            
                             <Route path="/admin/companies" element={<PrivateRoute roles={['admin']}><AdminCompaniesPage /></PrivateRoute>} />
                             <Route path="/admin/companies/:companyId/departments" element={<PrivateRoute roles={['admin']}><AdminCompanyDepartmentsPage /></PrivateRoute>} />
                             <Route path="/admin/tickets" element={<PrivateRoute roles={['admin']}><AdminTicketsPage /></PrivateRoute>} />
                             <Route path="/admin/tickets/:id" element={<PrivateRoute roles={['admin']}><AdminTicketDetailPage /></PrivateRoute>} />
                             <Route path="/admin/reports" element={<PrivateRoute roles={['admin']}><AdminReportsPage /></PrivateRoute>} />
                             <Route path="/admin/announcements" element={<PrivateRoute roles={['admin']}><AdminAnnouncementsPage /></PrivateRoute>} />
-                            
-                            {/* ✅ RUTA NUEVA: MARKETING Y PROMOCIONES */}
                             <Route path="/admin/promotions" element={<PrivateRoute roles={['admin']}><AdminPromotionsPage /></PrivateRoute>} />
-
                             <Route path="/admin/plans" element={<PrivateRoute roles={['admin']}><AdminPlansPage /></PrivateRoute>} />
                             <Route path="/admin/modules" element={<PrivateRoute roles={['admin']}><AdminModulesPage /></PrivateRoute>} />
                             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfigPage /></PrivateRoute>} />
@@ -140,8 +128,17 @@ const App: React.FC = () => {
 
                             {/* --- RUTAS AGENTE --- */}
                             <Route path="/agent" element={<PrivateRoute roles={['agent']}><AgentDashboard /></PrivateRoute>} />
-                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
+                            
+                            {/* ✅ CORRECCIÓN 1: La lista de tickets usa AgentTicketsPage */}
+                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketsPage /></PrivateRoute>} />
+                            
+                            {/* Detalle de ticket */}
                             <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
+                            
+                            {/* ✅ CORRECCIÓN 2: RUTA FALTANTE PARA REPORTES DE AGENTE */}
+                            <Route path="/agent/reports" element={<PrivateRoute roles={['agent']}><AgentReportsPage /></PrivateRoute>} />
+                            
+                            {/* Ruta legacy */}
                             <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent']}><ReportsPage /></PrivateRoute>} />
                             
                             {/* --- RUTAS CLIENTE --- */}
@@ -150,8 +147,6 @@ const App: React.FC = () => {
                             <Route path="/client/tickets/:id" element={<PrivateRoute roles={['client']}><ClientTicketDetailPage /></PrivateRoute>} />
                             <Route path="/client/help" element={<PrivateRoute roles={['client']}><ClientResourcesPage /></PrivateRoute>} />
                             <Route path="/client/payments" element={<PrivateRoute roles={['client']}><ClientPaymentsPage /></PrivateRoute>} />
-                            
-                            {/* ✅ RUTA NUEVA: OFERTAS PARA CLIENTES */}
                             <Route path="/client/offers" element={<PrivateRoute roles={['client']}><OffersPage /></PrivateRoute>} />
                         </Route>
 

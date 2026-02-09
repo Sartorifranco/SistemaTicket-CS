@@ -6,13 +6,13 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 // Proteger todas las rutas
 router.use(protect);
 
-// ✅ CORRECCIÓN: Permitimos 'admin' Y 'agent'
+// Permitimos 'admin' Y 'agent'
 router.use(authorize('admin', 'agent'));
 
-// GET /api/reports (Reporte completo con gráficos)
+// GET /api/reports (Reporte completo)
 router.get('/', getReports);
 
-// GET /api/reports/metrics/resolution-time (Métrica rápida simple)
+// GET /api/reports/metrics/resolution-time (Métrica rápida)
 router.get('/metrics/resolution-time', getResolutionMetrics);
 
 module.exports = router;

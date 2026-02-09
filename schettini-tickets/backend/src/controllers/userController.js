@@ -11,10 +11,14 @@ const getUsers = async (req, res) => {
                 u.email, 
                 u.role, 
                 u.status, 
+                u.is_active,
                 u.plan, 
+                u.phone,
+                u.cuit,
                 u.company_id, 
                 u.department_id,
-                c.name as company_name,
+                u.business_name as business_name_text,  -- Nombre escrito manualmente
+                c.name as company_name_linked,          -- Nombre real por ID
                 d.name as department_name
             FROM Users u
             LEFT JOIN Companies c ON u.company_id = c.id
@@ -22,7 +26,18 @@ const getUsers = async (req, res) => {
             ORDER BY u.id DESC
         `);
 
-        res.json({ success: true, data: users });
+        // ✅ LOGICA DE RESPALDO:
+        // Si hay empresa vinculada (ID), usa ese nombre.
+        // Si no, usa el nombre escrito manualmente.
+        // Si no, muestra "Sin Empresa".
+        const formattedUsers = users.map(user => ({
+            ...user,
+            business_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada',
+            // Mantenemos compatibilidad si el front espera 'company_name'
+            company_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada'
+        }));
+
+        res.json({ success: true, data: formattedUsers });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error al obtener usuarios' });
@@ -57,7 +72,7 @@ const createUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Validación estricta para company_id (evita que se guarde 0 o undefined)
+        // Validación estricta para company_id
         const finalCompanyId = (company_id && company_id !== '' && company_id !== '0') ? company_id : null;
         const finalDepartmentId = (department_id && department_id !== '' && department_id !== '0') ? department_id : null;
 
@@ -66,8 +81,8 @@ const createUser = async (req, res) => {
                 username, email, password, role, 
                 department_id, company_id, plan, 
                 phone, cuit, business_name, fantasy_name, 
-                is_active, status, last_login
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW())`,
+                is_active, status, last_login, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW(), NOW())`,
             [
                 username, 
                 email, 
@@ -90,14 +105,13 @@ const createUser = async (req, res) => {
     }
 };
 
-// --- Actualizar usuario (CORREGIDO PARA GUARDAR EMPRESA) ---
 // --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
         const { username, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name } = req.body;
         const userId = req.params.id;
 
-        // Lógica corregida: Si 'status' no viene, asumimos 'active' por defecto para no bannear por error.
+        // Lógica corregida: Si 'status' no viene, asumimos 'active'
         const newStatus = status || 'active';
         const isActive = newStatus === 'active' ? 1 : 0;
         

@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../config/axiosConfig';
-import { FaCommentDots, FaVideo, FaDownload, FaTimes, FaPaperPlane, FaChevronLeft, FaHeadset, FaQuestion, FaBook, FaLink, FaFileAlt, FaCheckCircle } from 'react-icons/fa';
+import { FaCommentDots, FaVideo, FaDownload, FaTimes, FaPaperPlane, FaChevronLeft, FaHeadset, FaQuestion, FaBook, FaLink, FaFileAlt, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import io from 'socket.io-client';
 
 const NOTIFICATION_SOUND = '/assets/sounds/notification.mp3';
 
 interface Message {
     id: number;
-    sender_role: 'client' | 'agent' | 'admin';
+    sender_role: 'client' | 'agent' | 'admin' | 'system'; // ✅ Agregamos 'system'
     message: string;
     created_at: string;
 }
@@ -32,6 +32,7 @@ const HelpWidget: React.FC = () => {
     const [loadingChat, setLoadingChat] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [socket, setSocket] = useState<any>(null);
+    const [isChatClosed, setIsChatClosed] = useState(false); // ✅ Nuevo estado
 
     const [resources, setResources] = useState<Resource[]>([]);
     const [loadingResources, setLoadingResources] = useState(false);
@@ -48,6 +49,7 @@ const HelpWidget: React.FC = () => {
             const newSocket = io(`http://${currentHost}:5050`, { auth: { token } });
             setSocket(newSocket);
 
+            // Mensajes normales
             newSocket.on('support_message_received', (msg: Message) => {
                 if (msg.sender_role !== 'client') { 
                     setMessages(prev => [...prev, msg]);
@@ -57,6 +59,27 @@ const HelpWidget: React.FC = () => {
                     }
                 }
             });
+
+            // ✅ NUEVO: Escuchar evento de cierre de chat
+            newSocket.on('chat_closed', (data: any) => {
+                setIsChatClosed(true); // Bloquear input
+                
+                // Agregar mensaje de sistema visual
+                const systemMsg: Message = {
+                    id: Date.now(),
+                    sender_role: 'system',
+                    message: data.message || "La conversación ha finalizado.",
+                    created_at: new Date().toISOString()
+                };
+                setMessages(prev => [...prev, systemMsg]);
+                
+                // Si el widget está cerrado, notificar
+                if (!isOpen) {
+                    setUnreadCount(prev => prev + 1);
+                    playSound();
+                }
+            });
+
             return () => { newSocket.disconnect(); };
         }
     }, [token, isOpen, view]);
@@ -78,7 +101,13 @@ const HelpWidget: React.FC = () => {
         setLoadingChat(true);
         try {
             const res = await api.get('/api/chat');
-            setMessages(res.data.data);
+            const loadedMsgs = res.data.data;
+            setMessages(loadedMsgs);
+            
+            // Verificar si el último mensaje indica cierre o si viene archivado
+            // (Si tuvieras is_archived en el mensaje podrías chequearlo aquí)
+            setIsChatClosed(false); // Reset al abrir por defecto, a menos que la lógica diga lo contrario
+            
         } catch (error) { console.error(error); } finally { setLoadingChat(false); }
     };
 
@@ -99,21 +128,30 @@ const HelpWidget: React.FC = () => {
         if (!newMessage.trim()) return;
         const tempMsg = newMessage;
         setNewMessage(''); 
+        
+        // Si estaba cerrado y el usuario escribe, asumimos que quiere reabrir (opcional)
+        if (isChatClosed) setIsChatClosed(false);
+
         try {
             const res = await api.post('/api/chat', { message: tempMsg });
             setMessages(prev => [...prev, res.data.data]);
         } catch (error) { console.error(error); }
     };
 
-    // ✅ FUNCIÓN PARA FINALIZAR CHAT
+    // CLIENTE FINALIZA SU CHAT
     const handleFinishChat = async () => {
-        if (!window.confirm("¿Deseas finalizar esta conversación? El historial se archivará.")) return;
+        if (!window.confirm("¿Deseas finalizar esta conversación?")) return;
         
         try {
             await api.post('/api/chat/close');
-            setMessages([]); // Limpiar vista local
-            setView('home'); // Volver al menú
-            setUnreadCount(0);
+            // ✅ En lugar de borrar todo, agregamos mensaje de sistema y cerramos visualmente
+            setIsChatClosed(true);
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                sender_role: 'system',
+                message: "Has finalizado la conversación.",
+                created_at: new Date().toISOString()
+            }]);
         } catch (error) {
             console.error("Error al finalizar chat", error);
         }
@@ -140,7 +178,7 @@ const HelpWidget: React.FC = () => {
             {isOpen && (
                 <div className="bg-white w-80 md:w-96 rounded-2xl shadow-2xl border border-gray-200 mb-4 overflow-hidden flex flex-col animate-fade-in-up transition-all" style={{ height: '550px' }}>
                     
-                    {/* CABECERA (flex-shrink-0 EVITA QUE SE ENCOJA) */}
+                    {/* CABECERA */}
                     <div className="bg-gradient-to-r from-orange-500 to-red-600 p-4 text-white flex justify-between items-center shadow-md z-10 flex-shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="bg-white/20 p-2 rounded-full cursor-pointer hover:bg-white/30 transition">
@@ -154,8 +192,7 @@ const HelpWidget: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            {/* ✅ BOTÓN CHECK PARA FINALIZAR */}
-                            {view === 'chat' && (
+                            {view === 'chat' && !isChatClosed && (
                                 <button onClick={handleFinishChat} className="text-white/80 hover:text-white bg-white/10 p-1.5 rounded-full hover:bg-white/20 transition" title="Finalizar conversación">
                                     <FaCheckCircle size={18}/>
                                 </button>
@@ -167,6 +204,7 @@ const HelpWidget: React.FC = () => {
                     {/* VISTA HOME */}
                     {view === 'home' && (
                         <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+                            {/* ... (Se mantiene igual que antes) ... */}
                             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-5 text-center">
                                 <p className="text-gray-600 text-sm mb-3 font-medium">¿Necesitas asistencia técnica?</p>
                                 <button onClick={handleOpenChat} className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition flex justify-center items-center gap-2 shadow-md relative">
@@ -176,7 +214,6 @@ const HelpWidget: React.FC = () => {
                                 {isPlanFree && <p className="text-[10px] text-gray-500 mt-2 bg-yellow-50 p-1.5 rounded border border-yellow-100">⏱️ Demora estimada: 24hs (Plan Free)</p>}
                             </div>
                             
-                            {/* LINKS FIJOS (TeamViewer / AnyDesk) */}
                             <div className="space-y-2 mb-4">
                                 <p className="text-xs font-bold text-gray-400 uppercase ml-1">Herramientas</p>
                                 <a href="https://download.teamviewer.com/download/TeamViewer_Setup.exe" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
@@ -207,11 +244,11 @@ const HelpWidget: React.FC = () => {
                         </div>
                     )}
 
-                    {/* VISTA CHAT (ESTRUCTURA CORREGIDA PARA INPUT VISIBLE) */}
+                    {/* VISTA CHAT */}
                     {view === 'chat' && (
                         <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
                             
-                            {/* AREA MENSAJES (OCUPA TODO EL ESPACIO RESTANTE) */}
+                            {/* AREA MENSAJES */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 min-h-0">
                                 {loadingChat && <div className="flex justify-center p-4"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div></div>}
                                 
@@ -224,6 +261,17 @@ const HelpWidget: React.FC = () => {
                                 )}
 
                                 {messages.map((msg) => {
+                                    // ✅ Manejo de mensajes de sistema (rojos/grises)
+                                    if (msg.sender_role === 'system') {
+                                        return (
+                                            <div key={msg.id} className="flex justify-center my-3 animate-fade-in">
+                                                <div className="bg-red-50 border border-red-100 text-red-600 text-xs px-4 py-2 rounded-full font-medium flex items-center gap-2 shadow-sm">
+                                                    <FaExclamationCircle /> {msg.message}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
                                     const isMe = msg.sender_role === 'client';
                                     return (
                                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
@@ -237,15 +285,27 @@ const HelpWidget: React.FC = () => {
                                 <div ref={chatEndRef} />
                             </div>
 
-                            {/* INPUT (FLEX-SHRINK-0 PARA QUE NO DESAPAREZCA) */}
-                            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-200 flex gap-2 items-center flex-shrink-0 z-20">
-                                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Escribe un mensaje..." className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none text-sm transition-all" />
-                                <button type="submit" className={`p-3 rounded-full text-white shadow-md transition-all ${newMessage.trim() ? 'bg-orange-500 hover:bg-orange-600 transform hover:scale-105' : 'bg-gray-300 cursor-not-allowed'}`} disabled={!newMessage.trim()}><FaPaperPlane size={16} /></button>
-                            </form>
+                            {/* INPUT (Se deshabilita visualmente si está cerrado) */}
+                            {isChatClosed ? (
+                                <div className="p-4 bg-gray-50 border-t border-gray-200 text-center flex-shrink-0">
+                                    <p className="text-xs text-gray-500 mb-2">La conversación ha finalizado.</p>
+                                    <button 
+                                        onClick={() => setIsChatClosed(false)} 
+                                        className="text-indigo-600 text-xs font-bold hover:underline"
+                                    >
+                                        Iniciar nueva consulta
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-200 flex gap-2 items-center flex-shrink-0 z-20">
+                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Escribe un mensaje..." className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none text-sm transition-all" />
+                                    <button type="submit" className={`p-3 rounded-full text-white shadow-md transition-all ${newMessage.trim() ? 'bg-orange-500 hover:bg-orange-600 transform hover:scale-105' : 'bg-gray-300 cursor-not-allowed'}`} disabled={!newMessage.trim()}><FaPaperPlane size={16} /></button>
+                                </form>
+                            )}
                         </div>
                     )}
 
-                    {/* Footer Nav solo en Home */}
+                    {/* Footer Nav */}
                     {view === 'home' && (
                         <div className="bg-white p-3 border-t border-gray-200 flex justify-around text-xs text-gray-500 flex-shrink-0">
                             <button className="flex flex-col items-center text-orange-600 font-bold transition"><FaHeadset size={20} className="mb-1"/> Inicio</button>

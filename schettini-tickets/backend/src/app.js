@@ -14,7 +14,8 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// --- 2. CONFIGURACIÓN ROBUSTA DE CORS ---
+
+// --- 2. CONFIGURACIÓN DE CORS ---
 const allowedOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',') 
   : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5050'];
@@ -22,47 +23,42 @@ const allowedOrigins = process.env.CORS_ORIGINS
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log(`[CORS] Bloqueado: ${origin}`); 
-      callback(new Error('No permitido por CORS (Política de Seguridad Schettini)'));
+      callback(new Error('No permitido por CORS'));
     }
   },
-  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
   credentials: true, 
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
 };
 
-// Aplicar CORS
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// ✅ ARREGLO IMÁGENES: Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// --- 3. CONFIGURACIÓN SOCKET.IO ---
+// --- 3. SOCKET.IO ---
 const io = new Server(server, {
   cors: corsOptions, 
   transports: ['websocket', 'polling']
 });
 
-// Middleware para inyectar io en req
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// --- 4. IMPORTACIÓN DE RUTAS ---
+// --- 4. RUTAS ---
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
-const reportRoutes = require('./routes/reportRoutes');
+const reportRoutes = require('./routes/reportRoutes'); // ✅ Asegurado
 const companyRoutes = require('./routes/companyRoutes');
 const aiRoutes = require('./routes/aiRoutes'); 
 const planRoutes = require('./routes/planRoutes');
@@ -73,14 +69,12 @@ const resourceRoutes = require('./routes/resourceRoutes');
 const paymentRoutes = require('./routes/paymentRoutes'); 
 const ticketConfigRoutes = require('./routes/ticketConfigRoutes'); 
 const promotionRoutes = require('./routes/promotionRoutes');
-
-// ✅ NUEVAS RUTAS IMPORTADAS (Para arreglar Agente)
 const noteRoutes = require('./routes/noteRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
-// --- 5. DEFINICIÓN DE ENDPOINTS ---
+// --- 5. ENDPOINTS ---
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tickets', ticketRoutes);
@@ -98,59 +92,27 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ticket-config', ticketConfigRoutes); 
 app.use('/api/promotions', promotionRoutes);
-
-// ✅ NUEVOS ENDPOINTS CONECTADOS
 app.use('/api/notes', noteRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 
-// RUTAS ADMIN EXTRA
-try {
-    app.use('/api/admin', require('./routes/problemAdminRoutes'));
-} catch (error) {
-    console.warn("⚠️ Advertencia: problemAdminRoutes no encontrado.");
-}
+try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) {}
+try { app.use('/api', require('./routes/dataRoutes')); } catch (e) {}
 
-// RUTAS DATA
-try {
-    app.use('/api', require('./routes/dataRoutes'));
-} catch (error) {}
-
-// --- 6. SOCKET.IO ---
+// --- 6. SOCKET LOGIC ---
 io.on('connection', (socket) => {
-  console.log('🔌 Nuevo cliente conectado:', socket.id);
-
   const token = socket.handshake.auth.token;
-
   if (token) {
       try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
-          
-          console.log(`✅ Usuario autenticado en Socket: ${decoded.username} (${decoded.role})`);
-
-          // 1. Unirse a sala personal (user-ID)
           socket.join(`user-${decoded.id}`);
-          console.log(`👤 Unido a sala: user-${decoded.id}`);
-
-          // 2. Unirse a sala de ROL (admin, agent, client)
-          if (decoded.role) {
-              socket.join(decoded.role);
-              console.log(`🛡️ Unido a sala de rol: ${decoded.role}`);
-          }
-
+          if (decoded.role) socket.join(decoded.role);
       } catch (error) {
-          console.log('❌ Token de socket inválido:', error.message);
           socket.disconnect(); 
       }
-  } else {
-      console.log('⚠️ Cliente conectado sin token (Socket)');
   }
-
-  socket.on('disconnect', () => {
-      // console.log('🔌 Cliente desconectado:', socket.id);
-  });
 });
 
-// --- 7. SERVIR FRONTEND ---
+// --- 7. FRONTEND ---
 app.use(express.static(path.join(__dirname, '../../frontend/build')));
 app.get('*', (req, res) => {
   if (req.url.startsWith('/api')) {

@@ -17,15 +17,13 @@ const Layout: React.FC = () => {
     
     const [currentDate, setCurrentDate] = useState(new Date());
     // @ts-ignore
-    const [realTimePlan, setRealTimePlan] = useState(user?.plan || 'Free');
+    const [realTimePlan, setRealTimePlan] = useState(user?.plan || 'Gratis');
 
-    // Reloj
     useEffect(() => {
         const timer = setInterval(() => setCurrentDate(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
 
-    // Actualizar Plan en tiempo real
     useEffect(() => {
         if (user?.role === 'client') {
             api.get('/api/dashboard/client')
@@ -40,7 +38,7 @@ const Layout: React.FC = () => {
 
     const handleLogout = () => {
         logout();
-        toast.info('Sesión cerrada exitosamente.');
+        toast.info('Sesión cerrada correctamente.');
     };
 
     const getLinkClassName = ({ isActive }: { isActive: boolean }) =>
@@ -54,39 +52,39 @@ const Layout: React.FC = () => {
             case 'admin':
                 return (
                     <>
-                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Admin</li>
-                        <li><NavLink to="/admin" end className={getLinkClassName}><FaHome /> Dashboard</NavLink></li>
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Administración</li>
+                        <li><NavLink to="/admin" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/admin/users" className={getLinkClassName}><FaUsers /> Usuarios</NavLink></li>
                         <li><NavLink to="/admin/companies" className={getLinkClassName}><FaBuilding /> Empresas</NavLink></li>
                         <li><NavLink to="/admin/tickets" className={getLinkClassName}><FaTicketAlt /> Tickets</NavLink></li>
                         <li><NavLink to="/admin/reports" className={getLinkClassName}><FaChartBar /> Reportes</NavLink></li>
-                        <li><NavLink to="/admin/promotions" className={getLinkClassName}><FaBullhorn /> Marketing & Ofertas</NavLink></li>
+                        <li><NavLink to="/admin/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
                         <li><NavLink to="/admin/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Soporte</li>
                         <li><NavLink to="/admin/chat" className={getLinkClassName}><div className="flex items-center justify-between w-full"><span className="flex items-center gap-3"><FaHeadset /> Chat Soporte</span>{unreadChatCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">{unreadChatCount}</span>}</div></NavLink></li>
-                        <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Base Conocimiento</NavLink></li>
+                        <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
-                        <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config Global</NavLink></li>
-                        <li><NavLink to="/admin/problemas" className={getLinkClassName}>Tipos Problema</NavLink></li>
+                        <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config. Global</NavLink></li>
+                        <li><NavLink to="/admin/problemas" className={getLinkClassName}>Tipos de Problema</NavLink></li>
                     </>
                 );
             case 'agent':
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Agente</li>
-                        <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Dashboard</NavLink></li>
+                        <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
                         <li><NavLink to="/admin/chat" className={getLinkClassName}><div className="flex items-center justify-between w-full"><span className="flex items-center gap-3"><FaHeadset /> Chat Soporte</span>{unreadChatCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">{unreadChatCount}</span>}</div></NavLink></li>
-                        <li><NavLink to="/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
+                        <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
                     </>
                 );
             case 'client':
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Cliente</li>
-                        <li><NavLink to="/client" end className={getLinkClassName}><FaHome /> Dashboard</NavLink></li>
+                        <li><NavLink to="/client" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/client/payments" className={getLinkClassName}><FaCreditCard /> Mis Pagos</NavLink></li>
                         <li><NavLink to="/client/offers" className={getLinkClassName}><FaTags /> Ofertas y Beneficios</NavLink></li>
                         <li><NavLink to="/client/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
@@ -105,7 +103,8 @@ const Layout: React.FC = () => {
         <div className="flex h-screen bg-gray-100 font-sans">
             <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 text-white flex flex-col shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
                 <div className="h-20 flex items-center justify-center border-b border-gray-800 bg-gray-950 px-4">
-                    <img src="/images/logosch.png" alt="Schettini" className="h-12 w-auto object-contain" />
+                    {/* ✅ LOGO NUEVO: Lila.png */}
+                    <img src="/images/Lila.png" alt="Schettini" className="h-12 w-auto object-contain" />
                 </div>
                 <nav className="flex-grow p-4 overflow-y-auto"><ul className="space-y-1">{renderNavLinks()}</ul></nav>
                 <div className="p-4 border-t border-gray-800 bg-gray-950">
@@ -120,7 +119,6 @@ const Layout: React.FC = () => {
                     </button>
                     
                     <div className="flex flex-1 items-center justify-end space-x-6">
-                        {/* Fecha y Hora (Nuevo lugar) */}
                         <div className="hidden md:flex flex-col items-end text-right mr-4 border-r pr-6 border-gray-200">
                              <div className="flex items-center gap-2 text-gray-800 font-bold text-lg">
                                 <FaClock className="text-indigo-500 text-sm"/>
@@ -131,7 +129,6 @@ const Layout: React.FC = () => {
                              </span>
                         </div>
 
-                        {/* Plan (Nuevo lugar) */}
                         {user?.role === 'client' && (
                             <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isPremium ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
                                 <FaCrown className={isPremium ? 'text-yellow-500' : 'text-gray-400'} size={14} />
@@ -147,7 +144,7 @@ const Layout: React.FC = () => {
                         <div className="flex items-center space-x-4">
                             <div className="hidden sm:flex flex-col items-end">
                                 <span className="text-sm font-bold text-gray-800">{user?.username || 'Usuario'}</span>
-                                <span className="text-xs text-gray-500 capitalize">{user?.role}</span>
+                                <span className="text-xs text-gray-500 capitalize">{user?.role === 'admin' ? 'Administrador' : user?.role === 'agent' ? 'Agente' : 'Cliente'}</span>
                             </div>
                             <NotificationBell />
                         </div>
