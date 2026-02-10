@@ -69,8 +69,8 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (socketRef.current && socketRef.current.connected) return;
 
-        // ✅ CORRECCIÓN AQUÍ: Usamos la variable de entorno, igual que Axios
-        const SOCKET_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5050`;
+        // ✅ CORRECCIÓN PARA CRA (React Scripts)
+        const SOCKET_URL = process.env.REACT_APP_API_URL || "http://localhost:5050";
         
         console.log(`[Socket] Conectando a: ${SOCKET_URL}`);
 
@@ -80,7 +80,6 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 2000,
-            // Importante para Render: path por defecto es /socket.io
         });
 
         socketRef.current = newSocket;

@@ -1,9 +1,8 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 
-// ✅ LÓGICA CORREGIDA:
-// 1. Primero busca la variable de entorno de Render (VITE_API_URL).
-// 2. Si no existe (estás en tu PC), usa localhost:5050.
-const API_BASE_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5050`;
+// ✅ CORRECCIÓN PARA REACT SCRIPTS (CRA):
+// Usamos process.env.REACT_APP_API_URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5050";
 
 console.log(`[Axios] Conectando a: ${API_BASE_URL}`);
 
@@ -28,7 +27,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Log para depurar errores de conexión
         if (error.code === "ERR_NETWORK") {
             console.error(`❌ Error de Red: No se puede conectar al Backend en ${API_BASE_URL}`);
         }
