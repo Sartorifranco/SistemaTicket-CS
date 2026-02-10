@@ -78,12 +78,15 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
         console.log(`[Socket] Conectando a: ${SOCKET_URL}`);
 
         const newSocket = io(SOCKET_URL, {
-            auth: { token },
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 2000,
-        });
+    auth: { token },
+    transports: ['websocket'], // <--- REMOVE 'polling', keep only 'websocket'
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 2000,
+    // Add this to ensure secure connection details are handled correctly
+    withCredentials: true,
+    secure: true, 
+});
 
         socketRef.current = newSocket;
         setSocket(newSocket);
