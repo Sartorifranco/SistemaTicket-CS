@@ -1,9 +1,15 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 
-// ✅ CORRECCIÓN PARA REACT SCRIPTS (CRA):
-// Usamos process.env.REACT_APP_API_URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5050";
+// 🔥 SOLUCIÓN FINAL (Detectar URL del navegador):
+// Si el navegador dice que estamos en "localhost", usa el puerto 5050.
+// Si no, usa la URL FIJA de tu backend en Render.
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
+const API_BASE_URL = isLocal 
+    ? 'http://localhost:5050' 
+    : 'https://backend-schettini.onrender.com'; // <--- URL FIJA AQUÍ
+
+console.log(`[Axios] Entorno: ${isLocal ? 'LOCAL' : 'NUBE'}`);
 console.log(`[Axios] Conectando a: ${API_BASE_URL}`);
 
 const api = axios.create({
@@ -28,7 +34,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.code === "ERR_NETWORK") {
-            console.error(`❌ Error de Red: No se puede conectar al Backend en ${API_BASE_URL}`);
+            console.error(`❌ Error Crítico: No se puede conectar al Backend en ${API_BASE_URL}`);
         }
         return Promise.reject(error);
     }

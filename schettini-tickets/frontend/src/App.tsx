@@ -59,7 +59,6 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
     useEffect(() => {
         if (!isAuthenticated || !token) {
             if (socketRef.current) {
-                console.log('[Socket] Cerrando conexión (Logout)...');
                 socketRef.current.disconnect();
                 socketRef.current = null;
                 setSocket(null);
@@ -69,9 +68,13 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (socketRef.current && socketRef.current.connected) return;
 
-        // ✅ CORRECCIÓN PARA CRA (React Scripts)
-        const SOCKET_URL = process.env.REACT_APP_API_URL || "http://localhost:5050";
+        // 🔥 SOLUCIÓN FINAL AQUÍ TAMBIÉN:
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
+        const SOCKET_URL = isLocal 
+            ? 'http://localhost:5050' 
+            : 'https://backend-schettini.onrender.com'; // <--- URL FIJA AQUÍ
+
         console.log(`[Socket] Conectando a: ${SOCKET_URL}`);
 
         const newSocket = io(SOCKET_URL, {
