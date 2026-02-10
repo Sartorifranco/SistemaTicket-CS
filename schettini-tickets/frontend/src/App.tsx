@@ -34,9 +34,9 @@ import AdminPromotionsPage from './pages/AdminPromotionsPage';
 
 // --- AGENT PAGES ---
 import AgentDashboard from './pages/AgentDashboard';
-import AgentTicketsPage from './pages/AgentTicketPage'; // Lista de tickets
-import AgentTicketDetailPage from './pages/AgentTicketDetailPage'; // Detalle de ticket
-import AgentReportsPage from './pages/AgentReportsPage'; // ✅ IMPORTANTE: Reporte de agente
+import AgentTicketsPage from './pages/AgentTicketPage';
+import AgentTicketDetailPage from './pages/AgentTicketDetailPage'; 
+import AgentReportsPage from './pages/AgentReportsPage';
 
 // --- CLIENT PAGES ---
 import ClientDashboard from './pages/ClientDashboard';
@@ -47,7 +47,7 @@ import ClientPaymentsPage from './pages/ClientPaymentsPage';
 import OffersPage from './pages/OffersPage';
 
 import PrivateRoute from './components/Common/PrivateRoute';
-import ReportsPage from './pages/ReportsPage'; // Ruta legacy
+import ReportsPage from './pages/ReportsPage';
 
 export type SocketInstance = ReturnType<typeof io>;
 
@@ -69,15 +69,18 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (socketRef.current && socketRef.current.connected) return;
 
-        const currentHost = window.location.hostname;
-        const socketUrl = `http://${currentHost}:5050`;
+        // ✅ CORRECCIÓN AQUÍ: Usamos la variable de entorno, igual que Axios
+        const SOCKET_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5050`;
         
-        const newSocket = io(socketUrl, {
+        console.log(`[Socket] Conectando a: ${SOCKET_URL}`);
+
+        const newSocket = io(SOCKET_URL, {
             auth: { token },
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 2000,
+            // Importante para Render: path por defecto es /socket.io
         });
 
         socketRef.current = newSocket;
@@ -128,14 +131,8 @@ const App: React.FC = () => {
 
                             {/* --- RUTAS AGENTE --- */}
                             <Route path="/agent" element={<PrivateRoute roles={['agent']}><AgentDashboard /></PrivateRoute>} />
-                            
-                            {/* ✅ CORRECCIÓN 1: La lista de tickets usa AgentTicketsPage */}
                             <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketsPage /></PrivateRoute>} />
-                            
-                            {/* Detalle de ticket */}
                             <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
-                            
-                            {/* ✅ CORRECCIÓN 2: RUTA FALTANTE PARA REPORTES DE AGENTE */}
                             <Route path="/agent/reports" element={<PrivateRoute roles={['agent']}><AgentReportsPage /></PrivateRoute>} />
                             
                             {/* Ruta legacy */}
