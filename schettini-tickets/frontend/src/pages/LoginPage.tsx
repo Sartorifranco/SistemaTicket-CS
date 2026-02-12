@@ -5,7 +5,7 @@ import { useNotification } from '../context/NotificationContext';
 import { toast } from 'react-toastify';
 
 const LoginPage: React.FC = () => {
-    const [email, setEmail] = useState('');
+    const [emailOrUser, setEmailOrUser] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const { login, user } = useAuth();
@@ -23,7 +23,7 @@ const LoginPage: React.FC = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const success = await login({ email, password }); 
+            const success = await login({ email: emailOrUser, password }); 
             if (success) {
                 addNotification('Inicio de sesión exitoso.', 'success');
             }
@@ -51,17 +51,17 @@ const LoginPage: React.FC = () => {
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm -space-y-px">
                         <div>
-                            <label htmlFor="email-address" className="sr-only">Correo</label>
+                            <label htmlFor="email-or-user" className="sr-only">Correo o usuario</label>
                             <input
-                                id="email-address"
+                                id="email-or-user"
                                 name="email"
-                                type="email"
-                                autoComplete="email"
+                                type="text"
+                                autoComplete="username"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
-                                placeholder="Correo Electrónico"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Correo electrónico o usuario"
+                                value={emailOrUser}
+                                onChange={(e) => setEmailOrUser(e.target.value)}
                                 disabled={loading}
                             />
                         </div>

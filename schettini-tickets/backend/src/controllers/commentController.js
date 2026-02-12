@@ -20,7 +20,7 @@ const addCommentToTicket = asyncHandler(async (req, res) => {
     }
 
     // Verificar si el ticket existe
-    const [tickets] = await pool.execute('SELECT id, user_id, assigned_to_user_id, department_id, title FROM tickets WHERE id = ?', [ticketId]); // MODIFICADO: Añadir department_id, title
+    const [tickets] = await pool.execute('SELECT id, user_id, assigned_to_user_id, department_id, title FROM Tickets WHERE id = ?', [ticketId]); // MODIFICADO: Añadir department_id, title
     if (tickets.length === 0) {
         res.status(404);
         throw new Error('Ticket no encontrado.');
@@ -49,7 +49,7 @@ const addCommentToTicket = asyncHandler(async (req, res) => {
     const newCommentId = result.insertId;
     const [newCommentRows] = await pool.execute(
         'SELECT c.id, c.ticket_id, c.user_id, u.username AS user_username, c.comment_text AS message, c.created_at ' + // MODIFICADO: Alias 'comment_text' a 'message'
-        'FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?',
+        'FROM comments c JOIN Users u ON c.user_id = u.id WHERE c.id = ?',
         [newCommentId]
     );
 
@@ -142,7 +142,7 @@ const getCommentsForTicket = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
     // Verificar si el ticket existe y si el usuario tiene permiso para verlo
-    const [tickets] = await pool.execute('SELECT id, user_id, assigned_to_user_id, department_id FROM tickets WHERE id = ?', [ticketId]); // MODIFICADO: Añadir department_id
+    const [tickets] = await pool.execute('SELECT id, user_id, assigned_to_user_id, department_id FROM Tickets WHERE id = ?', [ticketId]); // MODIFICADO: Añadir department_id
     if (tickets.length === 0) {
         res.status(404);
         throw new Error('Ticket no encontrado.');
@@ -163,7 +163,7 @@ const getCommentsForTicket = asyncHandler(async (req, res) => {
 
     const [rows] = await pool.execute(
         'SELECT c.id, c.ticket_id, c.user_id, u.username AS user_username, c.comment_text AS message, c.created_at ' + // MODIFICADO: Alias 'comment_text' a 'message'
-        'FROM comments c JOIN users u ON c.user_id = u.id WHERE c.ticket_id = ? ORDER BY c.created_at ASC',
+        'FROM comments c JOIN Users u ON c.user_id = u.id WHERE c.ticket_id = ? ORDER BY c.created_at ASC',
         [ticketId]
     );
 
@@ -188,7 +188,7 @@ const deleteComment = asyncHandler(async (req, res) => {
 
     const comment = commentRows[0];
     // Obtener datos del ticket para notificaciones
-    const [ticketRows] = await pool.execute('SELECT user_id, assigned_to_user_id, department_id, title FROM tickets WHERE id = ?', [comment.ticket_id]);
+    const [ticketRows] = await pool.execute('SELECT user_id, assigned_to_user_id, department_id, title FROM Tickets WHERE id = ?', [comment.ticket_id]);
     const ticket = ticketRows[0];
 
     // Solo el administrador o el usuario que creó el comentario pueden eliminarlo

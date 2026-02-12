@@ -68,12 +68,10 @@ const SocketConnectionManager: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (socketRef.current && socketRef.current.connected) return;
 
-        // 🔥 SOLUCIÓN FINAL AQUÍ TAMBIÉN:
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        
-        const SOCKET_URL = isLocal 
-            ? 'http://localhost:5050' 
-            : 'https://backend-schettini.onrender.com'; // <--- URL FIJA AQUÍ
+        const SOCKET_URL = isLocal
+            ? 'http://localhost:5050'
+            : (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_API_URL || window.location.origin);
 
         console.log(`[Socket] Conectando a: ${SOCKET_URL}`);
 

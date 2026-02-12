@@ -40,7 +40,7 @@ const createPromotion = async (req, res) => {
         );
 
         // 2. 🔔 NOTIFICACIÓN MASIVA A CLIENTES
-        const [clients] = await pool.query("SELECT id FROM users WHERE role = 'client'");
+        const [clients] = await pool.query("SELECT id FROM Users WHERE role = 'client'");
         
         if (clients.length > 0) {
             const notifValues = clients.map(client => [
@@ -85,10 +85,10 @@ const registerInterest = async (req, res) => {
 
         // 3. Datos para notificar al admin
         const [promo] = await pool.query('SELECT title FROM promotions WHERE id = ?', [id]);
-        const [user] = await pool.query('SELECT username FROM users WHERE id = ?', [userId]);
+        const [user] = await pool.query('SELECT username FROM Users WHERE id = ?', [userId]);
 
         // 4. 🔔 NOTIFICAR A LOS ADMINS
-        const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+        const [admins] = await pool.query("SELECT id FROM Users WHERE role = 'admin'");
         if (admins.length > 0) {
             const adminNotifs = admins.map(admin => [
                 admin.id,

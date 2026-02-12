@@ -1,6 +1,8 @@
-// backend/src/models/Notification.js (Ejemplo con Sequelize)
+// backend/src/models/Notification.js (Legacy Sequelize - NO USADO)
+// Las notificaciones se manejan con MySQL en notificationController/notificationManager
+// usando config/db.js. Este archivo requiere config/database (Sequelize) que no existe.
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); // Tu configuración de Sequelize
+const sequelize = require('../config/database'); // No existe: el proyecto usa MySQL (db.js)
 
 const Notification = sequelize.define('Notification', {
   id: {

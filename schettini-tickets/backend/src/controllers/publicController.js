@@ -8,10 +8,10 @@ const asyncHandler = require('express-async-handler');
  */
 const getRegistrationData = asyncHandler(async (req, res) => {
     // 1. Obtener todas las empresas
-    const [companies] = await pool.execute('SELECT id, name FROM companies ORDER BY name ASC');
+    const [companies] = await pool.execute('SELECT id, name FROM Companies ORDER BY name ASC');
 
     // 2. Obtener todos los departamentos
-    const [departments] = await pool.execute('SELECT id, name, company_id FROM departments ORDER BY name ASC');
+    const [departments] = await pool.execute('SELECT id, name, company_id FROM Departments ORDER BY name ASC');
 
     // 3. Estructurar los datos anidando los departamentos dentro de cada empresa
     const registrationData = companies.map(company => {

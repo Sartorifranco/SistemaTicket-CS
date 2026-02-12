@@ -35,7 +35,7 @@ router.get('/reports', asyncHandler(async (req, res) => { // Envuelto en asyncHa
                 DATE(created_at) AS date,
                 status,
                 COUNT(*) AS count
-            FROM tickets
+            FROM Tickets
             WHERE created_at BETWEEN ? AND ?
             GROUP BY DATE(created_at), status
             ORDER BY date ASC, status;
@@ -71,7 +71,7 @@ router.get('/reports', asyncHandler(async (req, res) => { // Envuelto en asyncHa
                 DATE(created_at) AS date,
                 priority,
                 COUNT(*) AS count
-            FROM tickets
+            FROM Tickets
             WHERE created_at BETWEEN ? AND ?
             GROUP BY DATE(created_at), priority
             ORDER BY date ASC, priority;
@@ -103,8 +103,8 @@ router.get('/reports', asyncHandler(async (req, res) => { // Envuelto en asyncHa
                 u.username AS agentName,
                 COUNT(t.id) AS resolvedTickets,
                 AVG(TIMESTAMPDIFF(HOUR, t.created_at, t.closed_at)) AS avgResolutionTimeHours
-            FROM users u
-            LEFT JOIN tickets t ON u.id = t.assigned_to_user_id AND (t.status = 'resolved' OR t.status = 'closed') AND t.closed_at BETWEEN ? AND ?
+            FROM Users u
+            LEFT JOIN Tickets t ON u.id = t.assigned_to_user_id AND (t.status = 'resolved' OR t.status = 'closed') AND t.closed_at BETWEEN ? AND ?
             WHERE u.role = 'agent'
             GROUP BY u.id, u.username
             ORDER BY resolvedTickets DESC;
@@ -126,8 +126,8 @@ router.get('/reports', asyncHandler(async (req, res) => { // Envuelto en asyncHa
                 d.name AS departmentName,
                 COUNT(t.id) AS totalTickets,
                 AVG(CASE WHEN t.status = 'resolved' THEN TIMESTAMPDIFF(HOUR, t.created_at, t.closed_at) ELSE NULL END) AS avgResolutionTimeHours
-            FROM departments d
-            LEFT JOIN tickets t ON d.id = t.department_id AND t.created_at BETWEEN ? AND ?
+            FROM Departments d
+            LEFT JOIN Tickets t ON d.id = t.department_id AND t.created_at BETWEEN ? AND ?
             GROUP BY d.id, d.name
             ORDER BY totalTickets DESC;
         `, [startOfDay, endOfDay]);

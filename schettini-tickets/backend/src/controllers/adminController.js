@@ -75,7 +75,7 @@ const deleteProblem = asyncHandler(async (req, res) => {
 // --- CONTROLADORES PARA UBICACIONES ---
 
 const getAllLocations = asyncHandler(async (req, res) => {
-    const [locations] = await pool.execute('SELECT l.*, c.name as company_name FROM locations l LEFT JOIN companies c ON l.company_id = c.id ORDER BY l.name ASC');
+    const [locations] = await pool.execute('SELECT l.*, c.name as company_name FROM locations l LEFT JOIN Companies c ON l.company_id = c.id ORDER BY l.name ASC');
     res.status(200).json({ success: true, data: locations });
 });
 
@@ -130,8 +130,8 @@ const getReports = asyncHandler(async (req, res) => {
                 u.username AS agentName,
                 COUNT(t.id) AS resolvedTickets,
                 AVG(TIMESTAMPDIFF(HOUR, t.created_at, t.closed_at)) AS avgResolutionTimeHours
-            FROM users u
-            JOIN tickets t ON u.id = t.assigned_to_user_id
+            FROM Users u
+            JOIN Tickets t ON u.id = t.assigned_to_user_id
             WHERE u.role IN ('agent', 'admin')
               AND t.status IN ('resolved', 'closed')
               AND t.closed_at IS NOT NULL

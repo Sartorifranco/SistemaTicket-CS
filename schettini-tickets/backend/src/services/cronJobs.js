@@ -10,7 +10,7 @@ const closeOldResolvedTickets = async () => {
         connection = await pool.getConnection();
 
         const [ticketsToClose] = await connection.execute(
-            `SELECT id, user_id FROM tickets WHERE status = 'resolved' AND updated_at < NOW() - INTERVAL 48 HOUR`
+            `SELECT id, user_id FROM Tickets WHERE status = 'resolved' AND updated_at < NOW() - INTERVAL 48 HOUR`
         );
 
         if (ticketsToClose.length === 0) {
@@ -23,7 +23,7 @@ const closeOldResolvedTickets = async () => {
         for (const ticket of ticketsToClose) {
             // ✅ CORRECCIÓN: Se añade 'closure_reason' a la consulta UPDATE.
             await connection.execute(
-                `UPDATE tickets SET status = 'closed', closure_reason = 'AUTO_INACTIVITY' WHERE id = ?`,
+                `UPDATE Tickets SET status = 'closed', closure_reason = 'AUTO_INACTIVITY' WHERE id = ?`,
                 [ticket.id]
             );
 

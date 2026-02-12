@@ -17,10 +17,12 @@ const server = http.createServer(app);
 // --- 2. CONFIGURACIÓN DE CORS (CORREGIDA) ---
 // Aquí agregamos explícitamente tu URL de Render Frontend
 const allowedOrigins = [
-  'http://localhost:3000',      // Tu PC (Frontend React)
-  'http://localhost:5050',      // Tu PC (Pruebas locales)
+  'http://localhost:3000',
+  'http://localhost:5050',
   'http://127.0.0.1:3000',
-  'https://sistematicket-cs.onrender.com' // 👈 ¡ESTA ES LA CLAVE QUE FALTABA!
+  'https://sistematicket-cs.onrender.com',
+  'https://a0021444.ferozo.com',
+  'http://a0021444.ferozo.com'
 ];
 
 // Si tienes configurada la variable en Render, la sumamos a la lista

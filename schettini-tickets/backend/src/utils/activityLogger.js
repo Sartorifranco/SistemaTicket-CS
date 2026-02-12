@@ -21,7 +21,7 @@ const createActivityLog = async (userId, targetType, actionType, description, ta
         let username = null;
         let userRole = null;
         if (userId) {
-            const [userRows] = await pool.execute('SELECT username, role FROM users WHERE id = ?', [userId]);
+            const [userRows] = await pool.execute('SELECT username, role FROM Users WHERE id = ?', [userId]);
             if (userRows.length > 0) {
                 username = userRows[0].username;
                 userRole = userRows[0].role;

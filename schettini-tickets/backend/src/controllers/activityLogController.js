@@ -5,7 +5,7 @@ const getActivityLogs = asyncHandler(async (req, res) => {
     let query = `
         SELECT log.*, u.username as username 
         FROM activity_logs log
-        LEFT JOIN users u ON log.user_id = u.id
+        LEFT JOIN Users u ON log.user_id = u.id
     `;
     const params = [];
     const whereClauses = [];

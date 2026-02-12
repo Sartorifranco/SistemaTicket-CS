@@ -22,7 +22,7 @@ const createNotification = async (message, type, userId = null, relatedId = null
             }
         } else {
             // Notificar a todos los administradores
-            const [adminUsers] = await pool.execute('SELECT id FROM users WHERE role = ?', ['admin']);
+            const [adminUsers] = await pool.execute('SELECT id FROM Users WHERE role = ?', ['admin']);
             for (const admin of adminUsers) {
                 await pool.execute(
                     `INSERT INTO notifications (user_id, message, type, related_id, related_type)

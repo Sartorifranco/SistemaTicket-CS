@@ -11,14 +11,16 @@ const DynamicSpecsViewer: React.FC<Props> = ({ pcId }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Escucha en tiempo real (Realtime)
-        const unsub = onSnapshot(doc(db, "computadoras", pcId), (doc) => {
-            if (doc.exists()) {
-                setSpecs(doc.data());
+        if (!db) {
+            setLoading(false);
+            return;
+        }
+        const unsub = onSnapshot(doc(db, "computadoras", pcId), (docSnap) => {
+            if (docSnap.exists()) {
+                setSpecs(docSnap.data());
             }
             setLoading(false);
         });
-
         return () => unsub();
     }, [pcId]);
 
@@ -53,6 +55,7 @@ const DynamicSpecsViewer: React.FC<Props> = ({ pcId }) => {
     };
 
     if (loading) return <div className="animate-pulse">Cargando especificaciones...</div>;
+    if (!db) return <div className="text-amber-600">Firebase no está configurado. Configura REACT_APP_FIREBASE_* en el entorno para ver especificaciones en vivo.</div>;
     if (!specs) return <div className="text-red-500">No se encontraron datos para esta PC.</div>;
 
     return (

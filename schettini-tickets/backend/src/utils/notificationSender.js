@@ -15,10 +15,10 @@ const sendNotification = async (userId, message, type, targetId = null, role = n
     try {
         // Guardar la notificación en la base de datos
         // Asegúrate de que tu tabla 'notifications' tiene estas columnas
-        await pool.query(
-            `INSERT INTO notifications (user_id, message, type, is_read, target_id)
-             VALUES ($1, $2, $3, FALSE, $4)`,
-            [userId, message, type, targetId]
+        await pool.execute(
+            `INSERT INTO notifications (user_id, message, type, related_id, related_type, is_read)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [userId, message, type, targetId, 'ticket', false]
         );
         console.log(`[NotificationSender] Notificación guardada para ${userId || role}: ${message}`);
 

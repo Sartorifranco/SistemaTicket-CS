@@ -30,9 +30,9 @@ const getResolutionTimeMetrics = asyncHandler(async (req, res) => {
     const query = `
         SELECT
             COUNT(*) as resolvedTicketsCount,
-            AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at)) as averageResolutionTimeInSeconds
-        FROM tickets
-        WHERE resolved_at IS NOT NULL AND status IN ('resolved', 'closed');
+            AVG(TIMESTAMPDIFF(SECOND, created_at, closed_at)) as averageResolutionTimeInSeconds
+        FROM Tickets
+        WHERE closed_at IS NOT NULL AND status IN ('resolved', 'closed');
     `;
     const [rows] = await pool.execute(query);
     const metrics = rows[0];

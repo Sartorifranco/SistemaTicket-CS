@@ -17,7 +17,7 @@ const submitFeedback = asyncHandler(async (req, res) => {
     }
 
     const [ticketRows] = await pool.execute(
-        'SELECT id, status, user_id FROM tickets WHERE id = ?',
+        'SELECT id, status, user_id FROM Tickets WHERE id = ?',
         [ticket_id]
     );
 

@@ -37,7 +37,7 @@ const notifyAdminsAndAgents = async (req, data) => {
 
     try {
         // --- CAMBIO: La consulta ahora es dinámica para filtrar por departamento.
-        let getUsersQuery = "SELECT id FROM users WHERE role = 'admin'";
+        let getUsersQuery = "SELECT id FROM Users WHERE role = 'admin'";
         const queryParams = [];
 
         // Si se está creando un nuevo ticket, se notifica también a los agentes del departamento correspondiente.

@@ -1,0 +1,52 @@
+# Crear deploy.sh en el VPS desde cero
+
+En el VPS, ejecutá estos comandos en orden.
+
+## 1. Crear la carpeta scripts
+
+cd /var/www/tickets/schettini-tickets
+mkdir -p scripts
+
+## 2. Crear el archivo deploy.sh
+
+Ejecutá este bloque completo (copiá y pegá todo en la terminal):
+
+cat > scripts/deploy.sh << 'ENDOFFILE'
+#!/bin/bash
+# Script de despliegue - ejecutar EN EL VPS (Linux)
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$ROOT_DIR"
+echo ">>> Raíz del proyecto: $ROOT_DIR"
+echo ""
+if [[ "$1" == "--pull" ]]; then
+    if [[ -d ".git" ]]; then
+        echo ">>> Git pull..."
+        git pull
+        echo ""
+    else
+        echo ">>> (Sin Git, se omite pull)"
+        echo ""
+    fi
+fi
+echo ">>> Build del frontend..."
+cd frontend
+npm run build
+cd ..
+echo ">>> Build listo."
+echo ""
+echo ">>> Reiniciando backend (PM2 tickets-api)..."
+pm2 restart tickets-api
+echo ""
+echo ">>> Despliegue terminado."
+pm2 list
+ENDOFFILE
+
+## 3. Dar permiso de ejecución
+
+chmod +x scripts/deploy.sh
+
+## 4. Probar
+
+bash scripts/deploy.sh

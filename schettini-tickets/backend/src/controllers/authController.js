@@ -110,7 +110,12 @@ const loginUser = async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ message: 'Faltan credenciales.' });
 
-        const [users] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
+        // Aceptar login por email O por nombre de usuario (sin exigir @)
+        const identifier = (email || '').trim();
+        const [users] = await pool.query(
+            'SELECT * FROM Users WHERE email = ? OR username = ? LIMIT 1',
+            [identifier, identifier]
+        );
         const user = users[0];
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
