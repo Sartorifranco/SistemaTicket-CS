@@ -28,18 +28,23 @@ const createActivityLog = async (userId, targetType, actionType, description, ta
             }
         }
 
-        const fullQuery = `INSERT INTO activity_logs (user_id, description, user_username, user_role, activity_type, action_type, target_type, target_id, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-        const fullValues = [userId, description, username, userRole, actionType, actionType, targetType, targetId, oldValJson, newValJson];
-
-        try {
-            await pool.execute(fullQuery, fullValues);
-        } catch (err) {
-            if (err.code === 'ER_BAD_FIELD_ERROR' || err.errno === 1054) {
-                await pool.execute('INSERT INTO activity_logs (user_id, action_type, description) VALUES (?, ?, ?)', [userId, actionType, description]);
-            } else {
+        const queries = [
+            { sql: 'INSERT INTO activity_logs (user_id, description, user_username, user_role, activity_type, action_type, target_type, target_id, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', vals: [userId, description, username, userRole, actionType, actionType, targetType, targetId, oldValJson, newValJson] },
+            { sql: 'INSERT INTO activity_logs (user_id, action_type, description) VALUES (?, ?, ?)', vals: [userId, actionType, description] },
+            { sql: 'INSERT INTO activity_logs (user_id, description) VALUES (?, ?)', vals: [userId, description] }
+        ];
+        let ok = false;
+        for (const q of queries) {
+            try {
+                await pool.execute(q.sql, q.vals);
+                ok = true;
+                break;
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR' || err.errno === 1054) continue;
                 throw err;
             }
         }
+        if (!ok) return;
         console.log('[ACTIVITY LOGGER] Actividad registrada:', description);
 
     } catch (error) {
