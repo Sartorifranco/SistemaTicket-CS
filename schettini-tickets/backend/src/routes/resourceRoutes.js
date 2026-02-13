@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { getResources, createResource, deleteResource } = require('../controllers/resourceController');
+const { getResources, createResource, updateResource, deleteResource } = require('../controllers/resourceController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Configuración de almacenamiento
@@ -29,6 +29,7 @@ router.get('/', getResources);
 
 // ✅ RUTAS DE ADMINISTRADOR (Crear y Borrar)
 router.post('/', authorize('admin'), upload.single('file'), createResource);
+router.put('/:id', authorize('admin'), updateResource);
 router.delete('/:id', authorize('admin'), deleteResource);
 
 module.exports = router;

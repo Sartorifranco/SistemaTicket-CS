@@ -159,6 +159,17 @@ const AdminResourcesPage: React.FC = () => {
         }
     };
 
+    const handleUpdateResourceSection = async (resourceId: number, newSectionId: string, newSystemId: string) => {
+        try {
+            await api.put(`/api/resources/${resourceId}`, { section_id: newSectionId || null, system_id: newSystemId || null });
+            toast.success('Sección actualizada');
+            fetchResources();
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar');
+        }
+    };
+
     const handleDeleteSection = async (id: number) => {
         if (!window.confirm('¿Eliminar esta sección? Los recursos quedarán sin sección.')) return;
         try {
@@ -192,10 +203,10 @@ const AdminResourcesPage: React.FC = () => {
                             />
                         </div>
                         
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Sección (visible para el cliente)</label>
+                        <div className="border-l-4 border-red-600 bg-red-50/50 rounded-r-lg p-3">
+                            <label className="block text-xs font-bold text-gray-700 mb-1">¿A qué sección va este recurso?</label>
                             <select 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500 outline-none bg-white font-medium" 
                                 value={sectionId} 
                                 onChange={e => setSectionId(e.target.value)}
                             >
@@ -204,6 +215,9 @@ const AdminResourcesPage: React.FC = () => {
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                             </select>
+                            {sections.length === 0 && (
+                                <p className="text-xs text-amber-700 mt-1">Expandí &quot;Gestionar secciones&quot; abajo para crear Tutoriales, Drivers, etc.</p>
+                            )}
                         </div>
 
                         <div>
@@ -372,8 +386,8 @@ const AdminResourcesPage: React.FC = () => {
                     )}
                     
                     {resources.map(res => (
-                        <div key={res.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center hover:shadow-md transition">
-                            <div className="flex items-center gap-4 overflow-hidden">
+                        <div key={res.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3 hover:shadow-md transition">
+                            <div className="flex items-center gap-4 overflow-hidden flex-1 min-w-0">
                                 <div className={`text-xl p-3 rounded-full shrink-0 ${
                                     res.type === 'video' ? 'bg-red-100 text-red-600' : 
                                     res.type === 'image' ? 'bg-purple-100 text-purple-600' :
@@ -384,26 +398,50 @@ const AdminResourcesPage: React.FC = () => {
                                      res.type === 'image' ? <FaImage/> :
                                      res.type === 'link' ? <FaLink/> : <FaFileAlt/>}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                     <h4 className="font-bold text-gray-800 truncate">{res.title}</h4>
                                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 flex-wrap">
-                                        {res.section_name && <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{res.section_name}</span>}
+                                        {res.section_name && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded">{res.section_name}</span>}
                                         {res.system_name && <span className="bg-gray-100 px-2 py-0.5 rounded">{res.system_name}</span>}
                                         <span className="bg-gray-100 px-2 py-0.5 rounded">{res.category}</span>
                                         <span className="capitalize">• {res.type}</span>
                                     </div>
-                                    <span className="text-xs text-indigo-500 truncate block max-w-md">
+                                    <span className="text-xs text-gray-500 truncate block max-w-md">
                                         {res.type === 'video' || res.type === 'image' ? 'Archivo subido' : res.type === 'download' ? 'Descargar Archivo' : res.content}
                                     </span>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => handleDelete(res.id)} 
-                                className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition"
-                                title="Eliminar Recurso"
-                            >
-                                <FaTrash/>
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <select
+                                    value={res.section_id || ''}
+                                    onChange={e => handleUpdateResourceSection(res.id, e.target.value, String(res.system_id || ''))}
+                                    className="text-xs p-1.5 border rounded focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                    title="Cambiar sección"
+                                >
+                                    <option value="">Sin sección</option>
+                                    {sections.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={res.system_id || ''}
+                                    onChange={e => handleUpdateResourceSection(res.id, String(res.section_id || ''), e.target.value)}
+                                    className="text-xs p-1.5 border rounded focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                    title="Cambiar sistema"
+                                >
+                                    <option value="">Sin sistema</option>
+                                    {systems.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                                <button 
+                                    onClick={() => handleDelete(res.id)} 
+                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition"
+                                    title="Eliminar Recurso"
+                                >
+                                    <FaTrash/>
+                                </button>
+                            </div>
                         </div>
                     ))}
                     </SectionCard>

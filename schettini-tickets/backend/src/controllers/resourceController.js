@@ -72,6 +72,29 @@ const createResource = async (req, res) => {
     }
 };
 
+const updateResource = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { section_id, system_id } = req.body;
+        const secId = section_id !== undefined && section_id !== '' ? parseInt(section_id) : null;
+        const sysId = system_id !== undefined && system_id !== '' ? parseInt(system_id) : null;
+        try {
+            await pool.query(
+                'UPDATE knowledge_base SET section_id = ?, system_id = ? WHERE id = ?',
+                [secId, sysId, id]
+            );
+        } catch (e) {
+            if (e.message && (e.message.includes('section_id') || e.message.includes('Unknown column'))) {
+                return res.status(400).json({ message: 'La base de datos no tiene las columnas section_id/system_id. Ejecutá la migración.' });
+            }
+            throw e;
+        }
+        res.json({ success: true, message: 'Recurso actualizado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al actualizar' });
+    }
+};
+
 const deleteResource = async (req, res) => {
     try {
         const { id } = req.params;
@@ -82,4 +105,4 @@ const deleteResource = async (req, res) => {
     }
 };
 
-module.exports = { getResources, createResource, deleteResource };
+module.exports = { getResources, createResource, updateResource, deleteResource };
