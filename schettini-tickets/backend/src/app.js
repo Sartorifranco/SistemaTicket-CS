@@ -26,7 +26,11 @@ const allowedOrigins = [
   'https://a0021444.ferozo.com',
   'http://a0021444.ferozo.com',
   'http://200.58.127.173',
-  'https://200.58.127.173'
+  'https://200.58.127.173',
+  'https://sch-soporte.com.ar',
+  'http://sch-soporte.com.ar',
+  'https://www.sch-soporte.com.ar',
+  'http://www.sch-soporte.com.ar'
 ];
 
 // Si tienes configurada la variable en Render, la sumamos a la lista
@@ -92,6 +96,7 @@ const configRoutes = require('./routes/configRoutes');
 const moduleRoutes = require('./routes/moduleRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+const resourceSectionRoutes = require('./routes/resourceSectionRoutes');
 const paymentRoutes = require('./routes/paymentRoutes'); 
 const ticketConfigRoutes = require('./routes/ticketConfigRoutes'); 
 const promotionRoutes = require('./routes/promotionRoutes');
@@ -115,6 +120,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/resources', resourceRoutes);
+app.use('/api/resource-sections', resourceSectionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ticket-config', ticketConfigRoutes); 
 app.use('/api/promotions', promotionRoutes);

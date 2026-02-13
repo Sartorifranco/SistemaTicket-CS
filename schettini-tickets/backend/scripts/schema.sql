@@ -213,6 +213,17 @@ CREATE TABLE IF NOT EXISTS billing_details (
   UNIQUE KEY uk_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Secciones de recursos (Tutoriales, Drivers, Programas de soporte, etc.)
+CREATE TABLE IF NOT EXISTS resource_sections (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  icon VARCHAR(50) DEFAULT NULL,
+  sort_order INT DEFAULT 0,
+  description VARCHAR(500) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Base de conocimiento
 CREATE TABLE IF NOT EXISTS knowledge_base (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -220,6 +231,9 @@ CREATE TABLE IF NOT EXISTS knowledge_base (
   type VARCHAR(50),
   content LONGTEXT,
   category VARCHAR(100),
+  section_id INT UNSIGNED NULL,
+  system_id INT UNSIGNED NULL,
+  description VARCHAR(500) NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

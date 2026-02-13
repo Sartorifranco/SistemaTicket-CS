@@ -1,31 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage } from 'react-icons/fa';
+import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
 
-// Definimos una interfaz para el tipo de recurso
 interface Resource {
     id: number;
     title: string;
     type: 'video' | 'image' | 'download' | 'link' | 'article';
     category: string;
     content: string;
+    section_id?: number | null;
+    system_id?: number | null;
+    section_name?: string;
+    system_name?: string;
+}
+
+interface ResourceSection {
+    id: number;
+    name: string;
+    icon: string | null;
+    sort_order: number;
+    description?: string | null;
+}
+
+interface System {
+    id: number;
+    name: string;
 }
 
 const AdminResourcesPage: React.FC = () => {
     const [resources, setResources] = useState<Resource[]>([]);
+    const [sections, setSections] = useState<ResourceSection[]>([]);
+    const [systems, setSystems] = useState<System[]>([]);
     const [title, setTitle] = useState('');
     const [type, setType] = useState('video');
     const [category, setCategory] = useState('General');
     const [content, setContent] = useState('');
+    const [sectionId, setSectionId] = useState<string>('');
+    const [systemId, setSystemId] = useState<string>('');
     const [file, setFile] = useState<File | null>(null);
-
-    // Obtener la URL base desde la configuración de Axios para los enlaces de descarga
-    const API_BASE_URL = api.defaults.baseURL || '';
+    const [showSectionsManager, setShowSectionsManager] = useState(false);
+    const [newSectionName, setNewSectionName] = useState('');
+    const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
+    const [editingSectionName, setEditingSectionName] = useState('');
+    const [editingSectionDescription, setEditingSectionDescription] = useState('');
 
     useEffect(() => {
         fetchResources();
+        fetchSections();
+        fetchSystems();
     }, []);
 
     const fetchResources = async () => {
@@ -38,24 +62,40 @@ const AdminResourcesPage: React.FC = () => {
         }
     };
 
+    const fetchSections = async () => {
+        try {
+            const res = await api.get('/api/resource-sections');
+            setSections(res.data.data || []);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const fetchSystems = async () => {
+        try {
+            const res = await api.get('/api/ticket-config/options');
+            setSystems(res.data.data?.systems || []);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const formData = new FormData();
         formData.append('title', title);
         formData.append('type', type);
         formData.append('category', category);
+        formData.append('section_id', sectionId || '');
+        formData.append('system_id', systemId || '');
 
         if (type === 'video' || type === 'image') {
             if (!file) return toast.error('Debes subir un archivo de video o imagen');
             formData.append('file', file);
         } else if (type === 'download' || type === 'article') {
-            if (file) {
-                formData.append('file', file);
-            } else if (content) {
-                formData.append('content', content);
-            } else {
-                return toast.error('Sube un archivo o ingresa texto/URL');
-            }
+            if (file) formData.append('file', file);
+            else if (content) formData.append('content', content);
+            else return toast.error('Sube un archivo o ingresa texto/URL');
         } else {
             if (!content) return toast.error('La URL es obligatoria para enlaces');
             formData.append('content', content);
@@ -66,14 +106,12 @@ const AdminResourcesPage: React.FC = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             toast.success('Recurso agregado correctamente');
-            
-            // Resetear formulario
             setTitle('');
             setType('video');
             setContent('');
             setFile(null);
-            
-            // Recargar lista
+            setSectionId('');
+            setSystemId('');
             fetchResources();
         } catch (error) {
             console.error(error);
@@ -82,9 +120,7 @@ const AdminResourcesPage: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        // ✅ CORRECCIÓN: Usamos window.confirm explícitamente para evitar error de ESLint
         if (!window.confirm('¿Estás seguro de que deseas borrar este recurso?')) return;
-        
         try {
             await api.delete(`/api/resources/${id}`);
             toast.success('Recurso eliminado');
@@ -95,12 +131,45 @@ const AdminResourcesPage: React.FC = () => {
         }
     };
 
-    // Función auxiliar para construir la URL correcta del recurso
-    const getResourceLink = (res: Resource) => {
-        if (res.content.startsWith('/')) {
-            return `${API_BASE_URL}${res.content}`;
+    const handleAddSection = async () => {
+        if (!newSectionName.trim()) return toast.error('Escribe el nombre de la sección');
+        try {
+            await api.post('/api/resource-sections', { name: newSectionName.trim() });
+            toast.success('Sección creada');
+            setNewSectionName('');
+            fetchSections();
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al crear sección');
         }
-        return res.content;
+    };
+
+    const handleUpdateSection = async (id: number) => {
+        if (!editingSectionName.trim()) return toast.error('El nombre no puede estar vacío');
+        try {
+            await api.put(`/api/resource-sections/${id}`, { name: editingSectionName.trim(), description: editingSectionDescription.trim() || null });
+            toast.success('Sección actualizada');
+            setEditingSectionId(null);
+            setEditingSectionName('');
+            setEditingSectionDescription('');
+            fetchSections();
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar');
+        }
+    };
+
+    const handleDeleteSection = async (id: number) => {
+        if (!window.confirm('¿Eliminar esta sección? Los recursos quedarán sin sección.')) return;
+        try {
+            await api.delete(`/api/resource-sections/${id}`);
+            toast.success('Sección eliminada');
+            fetchSections();
+            fetchResources();
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar');
+        }
     };
 
     return (
@@ -121,6 +190,34 @@ const AdminResourcesPage: React.FC = () => {
                                 onChange={e => setTitle(e.target.value)} 
                                 required 
                             />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Sección (visible para el cliente)</label>
+                            <select 
+                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                value={sectionId} 
+                                onChange={e => setSectionId(e.target.value)}
+                            >
+                                <option value="">Sin sección</option>
+                                {sections.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Sistema (para filtrar)</label>
+                            <select 
+                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                value={systemId} 
+                                onChange={e => setSystemId(e.target.value)}
+                            >
+                                <option value="">Sin sistema</option>
+                                {systems.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
                         </div>
                         
                         <div>
@@ -196,6 +293,75 @@ const AdminResourcesPage: React.FC = () => {
                             <FaPlus/> Publicar Recurso
                         </button>
                     </form>
+
+                    {/* Gestión de secciones */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                        <button 
+                            type="button"
+                            onClick={() => setShowSectionsManager(!showSectionsManager)}
+                            className="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-indigo-600 transition w-full"
+                        >
+                            <FaCog size={14}/> Gestionar secciones (Tutoriales, Drivers, etc.)
+                            {showSectionsManager ? <FaChevronUp/> : <FaChevronDown/>}
+                        </button>
+                        {showSectionsManager && (
+                            <div className="mt-2 space-y-2">
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Nueva sección..." 
+                                        className="flex-1 p-2 border rounded text-sm" 
+                                        value={newSectionName} 
+                                        onChange={e => setNewSectionName(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSection())}
+                                    />
+                                    <button type="button" onClick={handleAddSection} className="bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700">
+                                        <FaPlus/>
+                                    </button>
+                                </div>
+                                <ul className="space-y-1">
+                                    {sections.map(s => (
+                                        <li key={s.id} className="bg-gray-50 p-2 rounded text-sm">
+                                            {editingSectionId === s.id ? (
+                                                <div className="space-y-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={editingSectionName} 
+                                                        onChange={e => setEditingSectionName(e.target.value)}
+                                                        placeholder="Nombre"
+                                                        className="w-full p-1 border rounded text-sm"
+                                                        autoFocus
+                                                    />
+                                                    <textarea 
+                                                        value={editingSectionDescription} 
+                                                        onChange={e => setEditingSectionDescription(e.target.value)}
+                                                        placeholder="Descripción (visible en la tarjeta)"
+                                                        className="w-full p-1 border rounded text-sm resize-none"
+                                                        rows={2}
+                                                    />
+                                                    <div className="flex gap-1">
+                                                        <button type="button" onClick={() => handleUpdateSection(s.id)} className="text-green-600 hover:text-green-700 font-bold">Guardar</button>
+                                                        <button type="button" onClick={() => { setEditingSectionId(null); setEditingSectionName(''); setEditingSectionDescription(''); }} className="text-gray-500">Cancelar</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <span className="font-medium">{s.name}</span>
+                                                        {s.description && <p className="text-xs text-gray-500 truncate max-w-[180px]">{s.description}</p>}
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button type="button" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.name); setEditingSectionDescription(s.description || ''); }} className="text-indigo-600 hover:text-indigo-700"><FaEdit size={12}/></button>
+                                                        <button type="button" onClick={() => handleDeleteSection(s.id)} className="text-red-500 hover:text-red-600"><FaTrash size={12}/></button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
                 </SectionCard>
 
                 {/* Lista de Recursos */}
@@ -220,7 +386,9 @@ const AdminResourcesPage: React.FC = () => {
                                 </div>
                                 <div className="min-w-0">
                                     <h4 className="font-bold text-gray-800 truncate">{res.title}</h4>
-                                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 flex-wrap">
+                                        {res.section_name && <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{res.section_name}</span>}
+                                        {res.system_name && <span className="bg-gray-100 px-2 py-0.5 rounded">{res.system_name}</span>}
                                         <span className="bg-gray-100 px-2 py-0.5 rounded">{res.category}</span>
                                         <span className="capitalize">• {res.type}</span>
                                     </div>

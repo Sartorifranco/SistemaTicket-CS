@@ -2,7 +2,29 @@ const pool = require('../config/db');
 
 const getResources = async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM knowledge_base ORDER BY created_at DESC');
+        const { section_id, system_id } = req.query;
+        let sql = `
+            SELECT kb.*, rs.name as section_name, ts.name as system_name
+            FROM knowledge_base kb
+            LEFT JOIN resource_sections rs ON kb.section_id = rs.id
+            LEFT JOIN ticket_systems ts ON kb.system_id = ts.id
+            ORDER BY rs.sort_order, kb.created_at DESC
+        `;
+        const params = [];
+        const conditions = [];
+        if (section_id) { conditions.push('kb.section_id = ?'); params.push(section_id); }
+        if (system_id) { conditions.push('kb.system_id = ?'); params.push(system_id); }
+        if (conditions.length) {
+            sql = sql.replace('ORDER BY', 'WHERE ' + conditions.join(' AND ') + ' ORDER BY');
+        }
+        let rows;
+        try {
+            [rows] = await pool.query(sql, params);
+        } catch (e) {
+            if (e.message && (e.message.includes('resource_sections') || e.message.includes('section_id'))) {
+                [rows] = await pool.query('SELECT * FROM knowledge_base ORDER BY created_at DESC');
+            } else throw e;
+        }
         res.json({ success: true, data: rows });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error al obtener recursos' });
@@ -11,7 +33,7 @@ const getResources = async (req, res) => {
 
 const createResource = async (req, res) => {
     try {
-        const { title, type, content, category } = req.body;
+        const { title, type, content, category, section_id, system_id, description } = req.body;
         let finalContent = content || '';
 
         // Para video e image: archivo obligatorio. Para link: content obligatorio.
@@ -28,10 +50,21 @@ const createResource = async (req, res) => {
             return res.status(400).json({ message: 'El título es obligatorio' });
         }
 
-        await pool.query(
-            'INSERT INTO knowledge_base (title, type, content, category) VALUES (?, ?, ?, ?)',
-            [title, type, finalContent, category || 'General']
-        );
+        const secId = section_id ? parseInt(section_id) : null;
+        const sysId = system_id ? parseInt(system_id) : null;
+        try {
+            await pool.query(
+                'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [title, type, finalContent, category || 'General', secId, sysId, description || null]
+            );
+        } catch (e) {
+            if (e.message && (e.message.includes('section_id') || e.message.includes('Unknown column'))) {
+                await pool.query(
+                    'INSERT INTO knowledge_base (title, type, content, category) VALUES (?, ?, ?, ?)',
+                    [title, type, finalContent, category || 'General']
+                );
+            } else throw e;
+        }
         res.json({ success: true, message: 'Recurso creado correctamente' });
     } catch (error) {
         console.error(error);
