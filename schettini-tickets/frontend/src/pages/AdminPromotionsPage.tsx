@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl, getImageUrlFallback } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { FaTrash, FaPlus } from 'react-icons/fa';
 
@@ -102,9 +103,16 @@ const AdminPromotionsPage = () => {
                 {promos.map((p: any) => (
                     <div key={p.id} className="bg-white rounded shadow overflow-hidden relative group">
                         <img 
-                            src={p.image_url ? `${API_BASE_URL}${p.image_url}` : ''} 
+                            src={p.image_url ? getImageUrl(p.image_url) : ''} 
                             alt={p.title} 
-                            className="w-full h-40 object-cover" 
+                            className="w-full h-40 object-cover"
+                            onError={(e) => {
+                                const img = e.currentTarget;
+                                if (p.image_url && !img.dataset.retried) {
+                                    img.dataset.retried = '1';
+                                    img.src = getImageUrlFallback(p.image_url);
+                                }
+                            }}
                         />
                         <button onClick={() => handleDelete(p.id)} className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition">
                             <FaTrash/>

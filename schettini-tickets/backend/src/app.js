@@ -57,6 +57,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos (imágenes subidas)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Ruta alternativa bajo /api para cuando frontend y backend usan mismo origen (proxy)
+app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // --- 3. SOCKET.IO ---
 const io = new Server(server, {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl, getImageUrlFallback } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { FaPercentage } from 'react-icons/fa';
 
@@ -52,10 +53,19 @@ const OffersPage = () => {
                             <div className="h-48 overflow-hidden bg-gray-100 relative">
                                 {offer.image_url ? (
                                     <img 
-                                        src={`${API_BASE_URL}${offer.image_url}`} 
+                                        src={getImageUrl(offer.image_url)} 
                                         alt={offer.title} 
                                         className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement?.querySelector('.img-fallback')?.classList.remove('hidden'); }}
+                                        onError={(e) => {
+                                            const img = e.target as HTMLImageElement;
+                                            if (!img.dataset.retried) {
+                                                img.dataset.retried = '1';
+                                                img.src = getImageUrlFallback(offer.image_url);
+                                            } else {
+                                                img.style.display = 'none';
+                                                img.parentElement?.querySelector('.img-fallback')?.classList.remove('hidden');
+                                            }
+                                        }}
                                     />
                                 ) : null}
                                 <div className={`img-fallback w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 absolute inset-0 ${offer.image_url ? 'hidden' : ''}`}>

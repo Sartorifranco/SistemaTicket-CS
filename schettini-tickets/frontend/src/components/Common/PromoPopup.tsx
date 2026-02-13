@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import api, { API_BASE_URL } from '../../config/axiosConfig';
+import api from '../../config/axiosConfig';
+import { getImageUrl, getImageUrlFallback } from '../../utils/imageUrl';
 
 const PromoPopup = () => {
     const [promo, setPromo] = useState<any>(null);
@@ -51,12 +52,17 @@ const PromoPopup = () => {
                 
                 <div className="h-64 w-full bg-gray-100 relative">
                     <img 
-                        src={promo.image_url ? `${API_BASE_URL}${promo.image_url}` : 'https://via.placeholder.com/400x200?text=Promo'} 
+                        src={promo.image_url ? getImageUrl(promo.image_url) : 'https://via.placeholder.com/400x200?text=Promo'} 
                         alt={promo.title} 
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                            // Esto ayuda a saber si falló la carga
-                            e.currentTarget.src = 'https://via.placeholder.com/400x200?text=Error+Imagen';
+                            const img = e.currentTarget;
+                            if (promo.image_url && !img.dataset.retried) {
+                                img.dataset.retried = '1';
+                                img.src = getImageUrlFallback(promo.image_url);
+                            } else {
+                                img.src = 'https://via.placeholder.com/400x200?text=Imagen+no+disponible';
+                            }
                         }}
                     />
                 </div>

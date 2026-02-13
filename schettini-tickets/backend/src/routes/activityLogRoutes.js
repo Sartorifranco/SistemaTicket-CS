@@ -57,7 +57,6 @@ router.get('/', async (req, res) => {
                 if (dateTo) { safeC.push('DATE(al.created_at) <= ?'); safeP.push(dateTo); }
                 const whereClause = safeC.length > 0 ? ' WHERE ' + safeC.join(' AND ') : '';
                 const simpleQueries = [
-                    `SELECT al.id, al.user_id, u.username, al.action as action_type, al.description, al.created_at FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id${whereClause} ORDER BY al.created_at DESC LIMIT ${limit}`,
                     `SELECT al.id, al.user_id, u.username, al.action_type, al.description, al.created_at FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id${whereClause} ORDER BY al.created_at DESC LIMIT ${limit}`,
                     `SELECT al.id, al.user_id, u.username, 'actividad' as action_type, al.description, al.created_at FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id${whereClause} ORDER BY al.created_at DESC LIMIT ${limit}`
                 ];

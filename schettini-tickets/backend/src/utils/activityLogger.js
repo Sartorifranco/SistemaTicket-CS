@@ -28,26 +28,18 @@ const createActivityLog = async (userId, targetType, actionType, description, ta
             }
         }
 
-        const query = `
-            INSERT INTO activity_logs
-            (user_id, action, description, user_username, user_role, activity_type, action_type, target_type, target_id, old_value, new_value)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        const values = [
-            userId,
-            actionType, // Columna 'action' (legacy, requerida)
-            description,
-            username,
-            userRole,
-            actionType,
-            actionType,
-            targetType,
-            targetId,
-            oldValJson,
-            newValJson,
-        ];
+        const fullQuery = `INSERT INTO activity_logs (user_id, description, user_username, user_role, activity_type, action_type, target_type, target_id, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const fullValues = [userId, description, username, userRole, actionType, actionType, targetType, targetId, oldValJson, newValJson];
 
-        await pool.execute(query, values);
+        try {
+            await pool.execute(fullQuery, fullValues);
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR' || err.errno === 1054) {
+                await pool.execute('INSERT INTO activity_logs (user_id, action_type, description) VALUES (?, ?, ?)', [userId, actionType, description]);
+            } else {
+                throw err;
+            }
+        }
         console.log('[ACTIVITY LOGGER] Actividad registrada:', description);
 
     } catch (error) {
