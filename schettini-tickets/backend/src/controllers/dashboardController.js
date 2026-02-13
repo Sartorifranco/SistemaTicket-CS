@@ -30,7 +30,12 @@ const getAdminDashboardData = async (req, res) => {
         try {
             const [logs] = await pool.query(`SELECT al.id, al.user_id, COALESCE(al.action_type, al.action) as action_type, al.description, al.created_at, u.username FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT 10`);
             recentActivity = logs;
-        } catch (e) {}
+        } catch (e) {
+            try {
+                const [logs] = await pool.query(`SELECT al.id, al.user_id, u.username, al.action as action_type, al.description, al.created_at FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT 10`);
+                recentActivity = logs;
+            } catch (_) {}
+        }
 
         res.json({ success: true, data: { totalTickets: stats[0].totalTickets, activeTickets: stats[0].activeTickets, totalUsers: stats[0].totalUsers, departmentCounts, agentWorkload: workload, recentActivity } });
     } catch (error) {

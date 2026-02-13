@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../config/axiosConfig';
+import api, { API_BASE_URL } from '../config/axiosConfig';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { TicketData } from '../types';
@@ -140,7 +140,7 @@ const ClientDashboard: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {banners.map((banner) => (
                                 <div key={banner.id} className="relative rounded-2xl overflow-hidden shadow-lg group h-56 cursor-pointer bg-gray-100">
-                                    <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5050'}${banner.image_url}`} alt={banner.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                    <img src={`${API_BASE_URL}${banner.image_url}`} alt={banner.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-8">
                                         <h4 className="text-white text-2xl font-bold">{banner.title}</h4>
                                         <p className="text-gray-300 text-sm line-clamp-2">{banner.description}</p>

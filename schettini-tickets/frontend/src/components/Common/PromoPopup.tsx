@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import api from '../../config/axiosConfig';
+import api, { API_BASE_URL } from '../../config/axiosConfig';
 
 const PromoPopup = () => {
     const [promo, setPromo] = useState<any>(null);
@@ -51,7 +51,7 @@ const PromoPopup = () => {
                 
                 <div className="h-64 w-full bg-gray-100 relative">
                     <img 
-                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:5050'}${promo.image_url}`} 
+                        src={promo.image_url ? `${API_BASE_URL}${promo.image_url}` : 'https://via.placeholder.com/400x200?text=Promo'} 
                         alt={promo.title} 
                         className="w-full h-full object-cover"
                         onError={(e) => {

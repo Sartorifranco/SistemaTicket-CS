@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../config/axiosConfig';
+import api, { API_BASE_URL } from '../config/axiosConfig';
 import { toast } from 'react-toastify';
 import { FaTrash, FaPlus } from 'react-icons/fa';
 
@@ -102,7 +102,7 @@ const AdminPromotionsPage = () => {
                 {promos.map((p: any) => (
                     <div key={p.id} className="bg-white rounded shadow overflow-hidden relative group">
                         <img 
-                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:5050'}${p.image_url}`} 
+                            src={p.image_url ? `${API_BASE_URL}${p.image_url}` : ''} 
                             alt={p.title} 
                             className="w-full h-40 object-cover" 
                         />

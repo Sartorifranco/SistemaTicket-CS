@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../config/axiosConfig';
+import api, { API_BASE_URL } from '../config/axiosConfig';
 import { toast } from 'react-toastify';
 import { FaPercentage } from 'react-icons/fa';
 
@@ -50,11 +50,17 @@ const OffersPage = () => {
                     {offers.map((offer: any) => (
                         <div key={offer.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden border border-gray-100 flex flex-col">
                             <div className="h-48 overflow-hidden bg-gray-100 relative">
-                                <img 
-                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:5050'}${offer.image_url}`} 
-                                    alt={offer.title} 
-                                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500" 
-                                />
+                                {offer.image_url ? (
+                                    <img 
+                                        src={`${API_BASE_URL}${offer.image_url}`} 
+                                        alt={offer.title} 
+                                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement?.querySelector('.img-fallback')?.classList.remove('hidden'); }}
+                                    />
+                                ) : null}
+                                <div className={`img-fallback w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 absolute inset-0 ${offer.image_url ? 'hidden' : ''}`}>
+                                    <span className="text-4xl font-bold">{offer.title?.charAt(0) || '?'}</span>
+                                </div>
                                 <div className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                                     PROMO
                                 </div>

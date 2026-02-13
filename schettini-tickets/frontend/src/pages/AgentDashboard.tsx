@@ -30,17 +30,20 @@ const AgentDashboard: React.FC = () => {
         setLoading(true);
         try {
             // Nota: Quitamos depositarios para evitar 404 si no usas ese módulo
-            const [metricsRes, ticketsRes, logsRes, notesRes] = await Promise.all([
+            const [metricsRes, ticketsRes, notesRes] = await Promise.all([
                 api.get('/api/dashboard/agent'),
                 api.get('/api/tickets?view=assigned&limit=5'),
-                api.get(`/api/activity-logs?user_id=${user.id}&limit=5`),
                 api.get('/api/notes')
             ]);
 
             setMetrics(metricsRes.data.data);
             setRecentTickets(ticketsRes.data.data || []);
-            setLogs(logsRes.data.data || []);
             setNotes(notesRes.data.data || []);
+
+            try {
+                const logsRes = await api.get(`/api/activity-logs?user_id=${user.id}&limit=5`);
+                setLogs(logsRes.data.data || []);
+            } catch (_) {}
         } catch (error) {
             console.error("Dashboard Error:", error);
         } finally {
