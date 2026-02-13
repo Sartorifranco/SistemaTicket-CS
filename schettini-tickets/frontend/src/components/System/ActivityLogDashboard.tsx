@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { ActivityLog, ApiResponseError } from '../../types';
 import { isAxiosErrorTypeGuard } from '../../utils/typeGuards';
-import { formatLocalDate } from '../../utils/dateFormatter'; // Asegúrate de tener este helper
+import { formatLocalDate } from '../../utils/dateFormatter';
+import { translateActionType, translateDescription } from '../../utils/activityTranslations';
 
 const ActivityLogs: React.FC = () => {
     const { token } = useAuth();
@@ -66,11 +67,6 @@ const ActivityLogs: React.FC = () => {
         fetchActivityLogs();
     };
     
-    // Función para capitalizar y formatear el tipo de acción
-    const formatActionType = (action: string) => {
-        return action.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-    };
-
     if (loading) return <div className="p-8 text-center">Cargando registros de actividad...</div>;
     if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
 
@@ -124,8 +120,8 @@ const ActivityLogs: React.FC = () => {
                                 {activityLogs.map((log) => (
                                     <tr key={log.id}>
                                         <td className="px-6 py-4 whitespace-nowrap">{log.username}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap font-medium">{formatActionType(log.action_type)}</td>
-                                        <td className="px-6 py-4">{log.description}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap font-medium">{translateActionType(log.action_type)}</td>
+                                        <td className="px-6 py-4">{translateDescription(log.description || '')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">{formatLocalDate(log.created_at)}</td>
                                     </tr>
                                 ))}
@@ -140,8 +136,8 @@ const ActivityLogs: React.FC = () => {
                                         <p className="text-xs text-gray-500 flex-shrink-0 ml-2">{formatLocalDate(log.created_at)}</p>
                                     </div>
                                     <div className="text-sm text-gray-600 mt-2 space-y-1">
-                                        <p><strong>{formatActionType(log.action_type)}</strong></p>
-                                        <p>{log.description}</p>
+                                        <p><strong>{translateActionType(log.action_type)}</strong></p>
+                                        <p>{translateDescription(log.description || '')}</p>
                                     </div>
                                 </div>
                             ))}

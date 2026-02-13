@@ -30,16 +30,17 @@ const createActivityLog = async (userId, targetType, actionType, description, ta
 
         const query = `
             INSERT INTO activity_logs
-            (user_id, user_username, user_role, activity_type, action_type, description, target_type, target_id, old_value, new_value)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, action, description, user_username, user_role, activity_type, action_type, target_type, target_id, old_value, new_value)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const values = [
             userId,
-            username, // Usar el username obtenido o null
-            userRole, // Usar el rol obtenido o null
-            actionType, // activity_type es ahora actionType, ya que es lo que se usa en los controladores
-            actionType, // action_type
+            actionType, // Columna 'action' (legacy, requerida)
             description,
+            username,
+            userRole,
+            actionType,
+            actionType,
             targetType,
             targetId,
             oldValJson,

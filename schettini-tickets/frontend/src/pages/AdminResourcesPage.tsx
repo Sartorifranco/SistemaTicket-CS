@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle } from 'react-icons/fa';
+import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage } from 'react-icons/fa';
 
 // Definimos una interfaz para el tipo de recurso
 interface Resource {
     id: number;
     title: string;
-    type: 'video' | 'download' | 'link' | 'article';
+    type: 'video' | 'image' | 'download' | 'link' | 'article';
     category: string;
     content: string;
 }
@@ -44,19 +44,19 @@ const AdminResourcesPage: React.FC = () => {
         formData.append('type', type);
         formData.append('category', category);
 
-        if (type === 'download' || type === 'article') {
-            // Si es descarga o articulo, priorizamos el archivo si existe
+        if (type === 'video' || type === 'image') {
+            if (!file) return toast.error('Debes subir un archivo de video o imagen');
+            formData.append('file', file);
+        } else if (type === 'download' || type === 'article') {
             if (file) {
                 formData.append('file', file);
             } else if (content) {
-                // Si no hay archivo pero hay contenido (texto)
                 formData.append('content', content);
             } else {
                 return toast.error('Sube un archivo o ingresa texto/URL');
             }
         } else {
-            // Para videos y links, el contenido es obligatorio (la URL)
-            if (!content) return toast.error('La URL es obligatoria para videos/links');
+            if (!content) return toast.error('La URL es obligatoria para enlaces');
             formData.append('content', content);
         }
 
@@ -96,8 +96,7 @@ const AdminResourcesPage: React.FC = () => {
 
     // Función auxiliar para construir la URL correcta del recurso
     const getResourceLink = (res: Resource) => {
-        if (res.type === 'download' && res.content.startsWith('/')) {
-            // Si es un archivo local del servidor, le pegamos la URL base del backend
+        if (res.content.startsWith('/')) {
             return `${API_BASE_URL}${res.content}`;
         }
         return res.content;
@@ -129,22 +128,23 @@ const AdminResourcesPage: React.FC = () => {
                             <select 
                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
                                 value={type} 
-                                onChange={e => setType(e.target.value)}
+                                onChange={e => { setType(e.target.value); setFile(null); setContent(''); }}
                             >
-                                <option value="video">Video Tutorial (YouTube/Vimeo)</option>
-                                <option value="download">Archivo (PDF, Imágenes, Zip)</option>
+                                <option value="video">Video (subir archivo MP4/WebM)</option>
+                                <option value="image">Imagen (subir archivo PNG/JPG)</option>
+                                <option value="download">Archivo (PDF, Zip)</option>
                                 <option value="link">Enlace Externo</option>
                                 <option value="article">Artículo de Texto</option>
                             </select>
                         </div>
 
-                        {type === 'video' && (
+                        {(type === 'video' || type === 'image') && (
                             <div className="bg-blue-50 p-3 rounded border border-blue-100 text-xs text-blue-800 mb-2">
                                 <div className="flex items-start gap-2">
                                     <FaInfoCircle className="mt-0.5 shrink-0"/>
                                     <div>
-                                        <strong>Recomendación:</strong><br/>
-                                        Sube los videos a YouTube como "No listado" y pega aquí el enlace.
+                                        <strong>Subida directa:</strong><br/>
+                                        {type === 'video' ? 'Sube el archivo de video (MP4, WebM). Máx. 100MB.' : 'Sube la imagen (PNG, JPG, WebP).'}
                                     </div>
                                 </div>
                             </div>
@@ -163,21 +163,24 @@ const AdminResourcesPage: React.FC = () => {
 
                         <div>
                              <label className="block text-xs font-bold text-gray-500 mb-1">Contenido / Archivo</label>
-                            {(type === 'download' || type === 'article') ? (
+                            {(type === 'video' || type === 'image' || type === 'download' || type === 'article') ? (
                                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer relative hover:bg-gray-50 transition-colors">
                                     <input 
                                         type="file" 
+                                        accept={type === 'video' ? 'video/mp4,video/webm' : type === 'image' ? 'image/png,image/jpeg,image/webp' : undefined}
                                         onChange={e => setFile(e.target.files ? e.target.files[0] : null)} 
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     />
                                     <FaCloudUploadAlt className="mx-auto text-gray-400 text-3xl mb-2"/>
                                     <p className="text-sm text-gray-600 font-medium">{file ? file.name : 'Haz clic para subir un archivo'}</p>
-                                    <p className="text-xs text-gray-400 mt-1">Soporta PDF, ZIP, PNG, JPG</p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        {type === 'video' ? 'MP4, WebM (máx. 100MB)' : type === 'image' ? 'PNG, JPG, WebP' : 'PDF, ZIP, PNG, JPG'}
+                                    </p>
                                 </div>
                             ) : (
                                 <input 
                                     type="text" 
-                                    placeholder={type === 'video' ? "https://youtube.com/..." : "https://ejemplo.com"} 
+                                    placeholder="https://ejemplo.com" 
                                     className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
                                     value={content} 
                                     onChange={e => setContent(e.target.value)} 
@@ -207,10 +210,12 @@ const AdminResourcesPage: React.FC = () => {
                             <div className="flex items-center gap-4 overflow-hidden">
                                 <div className={`text-xl p-3 rounded-full shrink-0 ${
                                     res.type === 'video' ? 'bg-red-100 text-red-600' : 
+                                    res.type === 'image' ? 'bg-purple-100 text-purple-600' :
                                     res.type === 'link' ? 'bg-green-100 text-green-600' :
                                     'bg-blue-100 text-blue-600'
                                 }`}>
                                     {res.type === 'video' ? <FaVideo/> : 
+                                     res.type === 'image' ? <FaImage/> :
                                      res.type === 'link' ? <FaLink/> : <FaFileAlt/>}
                                 </div>
                                 <div className="min-w-0">
@@ -219,14 +224,9 @@ const AdminResourcesPage: React.FC = () => {
                                         <span className="bg-gray-100 px-2 py-0.5 rounded">{res.category}</span>
                                         <span className="capitalize">• {res.type}</span>
                                     </div>
-                                    <a 
-                                        href={getResourceLink(res)} 
-                                        target="_blank" 
-                                        rel="noreferrer" 
-                                        className="text-xs text-indigo-500 hover:underline truncate block max-w-md"
-                                    >
-                                        {res.type === 'download' ? 'Descargar Archivo' : res.content}
-                                    </a>
+                                    <span className="text-xs text-indigo-500 truncate block max-w-md">
+                                        {res.type === 'video' || res.type === 'image' ? 'Archivo subido' : res.type === 'download' ? 'Descargar Archivo' : res.content}
+                                    </span>
                                 </div>
                             </div>
                             <button 

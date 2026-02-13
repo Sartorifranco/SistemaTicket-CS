@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useNotification } from '../../context/NotificationContext';
 import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
 import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
-import HelpWidget from '../Common/HelpWidget'; 
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaHeadset, FaBook, FaCreditCard, FaTags, FaCrown, FaClock } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaCreditCard, FaTags, FaCrown, FaClock, FaHistory } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
-    const { unreadChatCount } = useNotification();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -61,13 +58,13 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
                         <li><NavLink to="/admin/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Soporte</li>
-                        <li><NavLink to="/admin/chat" className={getLinkClassName}><div className="flex items-center justify-between w-full"><span className="flex items-center gap-3"><FaHeadset /> Chat Soporte</span>{unreadChatCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">{unreadChatCount}</span>}</div></NavLink></li>
                         <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
                         <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config. Global</NavLink></li>
                         <li><NavLink to="/admin/problemas" className={getLinkClassName}>Tipos de Problema</NavLink></li>
+                        <li><NavLink to="/admin/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
                     </>
                 );
             case 'agent':
@@ -76,8 +73,8 @@ const Layout: React.FC = () => {
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Agente</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
-                        <li><NavLink to="/admin/chat" className={getLinkClassName}><div className="flex items-center justify-between w-full"><span className="flex items-center gap-3"><FaHeadset /> Chat Soporte</span>{unreadChatCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">{unreadChatCount}</span>}</div></NavLink></li>
                         <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
+                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
                     </>
                 );
             case 'client':
@@ -85,7 +82,6 @@ const Layout: React.FC = () => {
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Cliente</li>
                         <li><NavLink to="/client" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
-                        <li><NavLink to="/client/payments" className={getLinkClassName}><FaCreditCard /> Mis Pagos</NavLink></li>
                         <li><NavLink to="/client/offers" className={getLinkClassName}><FaTags /> Ofertas y Beneficios</NavLink></li>
                         <li><NavLink to="/client/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
                         <li><NavLink to="/client/help" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
@@ -154,7 +150,6 @@ const Layout: React.FC = () => {
             </div>
             
             <PromoModal /> 
-            {(user?.role === 'client' || user?.role === 'admin') && <HelpWidget />}
             {user?.role === 'client' && <PromoPopup />}
             {isSidebarOpen && <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black opacity-50 z-30 md:hidden"></div>}
         </div>

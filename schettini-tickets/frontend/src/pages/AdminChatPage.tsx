@@ -23,7 +23,7 @@ interface Message {
 
 const AdminChatPage: React.FC = () => {
     const { token } = useAuth();
-    const { setUnreadChatCount, toggleMuteUser, isUserMuted } = useNotification(); 
+    const { toggleMuteUser, isUserMuted } = useNotification(); 
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedUser, setSelectedUser] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -31,10 +31,6 @@ const AdminChatPage: React.FC = () => {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [socket, setSocket] = useState<any>(null);
     const [isCurrentChatClosed, setIsCurrentChatClosed] = useState(false);
-
-    useEffect(() => {
-        setUnreadChatCount(0);
-    }, [setUnreadChatCount]);
 
     useEffect(() => {
         setIsCurrentChatClosed(false);

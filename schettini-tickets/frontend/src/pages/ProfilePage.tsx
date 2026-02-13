@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaUser, FaBoxOpen, FaStore, FaMoneyBillWave, FaClock, FaCheck, FaBuilding, FaArrowRight, FaPuzzlePiece, FaCheckSquare, FaSquare } from 'react-icons/fa';
-import { Plan, SystemSettings, Module } from '../types';
+import { FaUser, FaBoxOpen, FaStore, FaMoneyBillWave, FaClock, FaCheck, FaArrowRight, FaPuzzlePiece, FaCheckSquare, FaSquare, FaHistory, FaCreditCard } from 'react-icons/fa';
+import { Plan, SystemSettings, Module, ActivityLog } from '../types';
+import { translateActionType, translateDescription } from '../utils/activityTranslations';
+import ClientPaymentsPage from './ClientPaymentsPage';
 
 // --- SUB-COMPONENTE: Tarjeta de Plan ---
 const PlanCard: React.FC<{ plan: Plan, currentPlanId?: number, onRequestChange: (itemName: string, type: 'plan'|'module') => void }> = ({ plan, currentPlanId, onRequestChange }) => {
@@ -59,7 +61,7 @@ const ModuleCard: React.FC<{ module: Module, onRequestModule: (moduleName: strin
 
 const ProfilePage: React.FC = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'profile' | 'plans' | 'costs'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'plans' | 'costs' | 'payments' | 'activity'>('profile');
     
     // Datos
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -67,6 +69,8 @@ const ProfilePage: React.FC = () => {
     const [settings, setSettings] = useState<SystemSettings | null>(null);
     const [companyName, setCompanyName] = useState<string>('No asignada');
     const [loadingDetails, setLoadingDetails] = useState<boolean>(true);
+    const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+    const [activityFilters, setActivityFilters] = useState({ ticket_id: '', date_from: '', date_to: '' });
     
     // Contraseña
     const [currentPassword, setCurrentPassword] = useState('');
@@ -102,6 +106,21 @@ const ProfilePage: React.FC = () => {
     }, [user]);
 
     useEffect(() => { fetchUserDetails(); }, [fetchUserDetails]);
+
+    useEffect(() => {
+        const fetchActivityLogs = async () => {
+            if (activeTab !== 'activity') return;
+            try {
+                const params = new URLSearchParams({ limit: '30' });
+                if (activityFilters.ticket_id) params.append('ticket_id', activityFilters.ticket_id);
+                if (activityFilters.date_from) params.append('date_from', activityFilters.date_from);
+                if (activityFilters.date_to) params.append('date_to', activityFilters.date_to);
+                const res = await api.get(`/api/activity-logs?${params.toString()}`);
+                setActivityLogs(res.data.data || []);
+            } catch (e) { console.error(e); }
+        };
+        fetchActivityLogs();
+    }, [activeTab, activityFilters.ticket_id, activityFilters.date_from, activityFilters.date_to]);
 
     const handleRequestChange = async (itemName: string, type: 'plan' | 'module') => {
         const action = type === 'plan' ? 'cambio al plan' : 'activación del módulo';
@@ -196,6 +215,48 @@ const ProfilePage: React.FC = () => {
         </div>
     );
 
+    const PaymentsContent = () => <ClientPaymentsPage />;
+
+    const ActivityContent = () => (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800">
+                <FaHistory className="text-indigo-500"/> Mi Actividad
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">Registro de tus acciones: tickets creados, comentarios agregados, etc.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Ticket #</label>
+                    <input type="number" placeholder="Ej: 5" value={activityFilters.ticket_id} onChange={e => setActivityFilters(f => ({ ...f, ticket_id: e.target.value }))} className="w-full p-2 border rounded-lg text-sm" min="1" />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Desde</label>
+                    <input type="date" value={activityFilters.date_from} onChange={e => setActivityFilters(f => ({ ...f, date_from: e.target.value }))} className="w-full p-2 border rounded-lg text-sm" />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Hasta</label>
+                    <input type="date" value={activityFilters.date_to} onChange={e => setActivityFilters(f => ({ ...f, date_to: e.target.value }))} className="w-full p-2 border rounded-lg text-sm" />
+                </div>
+            </div>
+            {activityLogs.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No hay actividad registrada. Se registrarán cuando crees tickets, agregues comentarios, etc.</p>
+            ) : (
+                <div className="space-y-3">
+                    {activityLogs.map((log) => (
+                        <div key={log.id} className="p-4 bg-gray-50 rounded-lg border border-gray-100 flex justify-between items-start">
+                            <div>
+                                <p className="font-medium text-gray-800">{translateActionType((log as any).action_type || '')}</p>
+                                <p className="text-sm text-gray-600 mt-1">{translateDescription(log.description || '')}</p>
+                            </div>
+                            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                                {new Date((log as any).created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
     const CostsContent = () => (
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
@@ -235,12 +296,18 @@ const ProfilePage: React.FC = () => {
                     <button onClick={() => setActiveTab('profile')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'profile' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaUser className={activeTab === 'profile' ? 'text-indigo-500' : 'text-gray-400'} /> Mis Datos</span>{activeTab === 'profile' && <FaArrowRight size={12} />}</button>
                     <button onClick={() => setActiveTab('plans')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'plans' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaBoxOpen className={activeTab === 'plans' ? 'text-indigo-500' : 'text-gray-400'} /> Planes y Módulos</span>{activeTab === 'plans' && <FaArrowRight size={12} />}</button>
                     <button onClick={() => setActiveTab('costs')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'costs' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaStore className={activeTab === 'costs' ? 'text-indigo-500' : 'text-gray-400'} /> Costos Técnicos</span>{activeTab === 'costs' && <FaArrowRight size={12} />}</button>
+                    {user?.role === 'client' && (
+                        <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'payments' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaCreditCard className={activeTab === 'payments' ? 'text-indigo-500' : 'text-gray-400'} /> Mis Pagos</span>{activeTab === 'payments' && <FaArrowRight size={12} />}</button>
+                    )}
+                    <button onClick={() => setActiveTab('activity')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'activity' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaHistory className={activeTab === 'activity' ? 'text-indigo-500' : 'text-gray-400'} /> Mi Actividad</span>{activeTab === 'activity' && <FaArrowRight size={12} />}</button>
                 </nav>
             </div>
             <div className="flex-1 p-6 md:p-10 overflow-y-auto">
                 {activeTab === 'profile' && <ProfileContent />}
                 {activeTab === 'plans' && <PlansContent />}
                 {activeTab === 'costs' && <CostsContent />}
+                {activeTab === 'payments' && <PaymentsContent />}
+                {activeTab === 'activity' && <ActivityContent />}
             </div>
         </div>
     );

@@ -27,10 +27,10 @@ import AdminPlansPage from './pages/AdminPlansPage';
 import AdminConfigPage from './pages/AdminConfigPage'; 
 import AdminModulesPage from './pages/AdminModulesPage'; 
 import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage';
-import AdminChatPage from './pages/AdminChatPage';
 import AdminResourcesPage from './pages/AdminResourcesPage';
 import AdminUserPaymentsPage from './pages/AdminUserPaymentsPage';
 import AdminPromotionsPage from './pages/AdminPromotionsPage';
+import AdminActivityLogsPage from './pages/AdminActivityLogsPage';
 
 // --- AGENT PAGES ---
 import AgentDashboard from './pages/AgentDashboard';
@@ -43,7 +43,6 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientTicketsPage from './pages/ClientMyTicketsPage';
 import ClientTicketDetailPage from './pages/ClientTicketDetailPage';
 import ClientResourcesPage from './pages/ClientResourcesPage';
-import ClientPaymentsPage from './pages/ClientPaymentsPage'; 
 import OffersPage from './pages/OffersPage';
 
 import PrivateRoute from './components/Common/PrivateRoute';
@@ -129,7 +128,7 @@ const App: React.FC = () => {
                             <Route path="/admin/modules" element={<PrivateRoute roles={['admin']}><AdminModulesPage /></PrivateRoute>} />
                             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfigPage /></PrivateRoute>} />
                             <Route path="/admin/problemas" element={<PrivateRoute roles={['admin']}><AdminProblemsPage /></PrivateRoute>} />
-                            <Route path="/admin/chat" element={<PrivateRoute roles={['admin', 'agent']}><AdminChatPage /></PrivateRoute>} />
+                            <Route path="/admin/activity-logs" element={<PrivateRoute roles={['admin']}><AdminActivityLogsPage /></PrivateRoute>} />
                             <Route path="/admin/knowledge-base" element={<PrivateRoute roles={['admin']}><AdminResourcesPage /></PrivateRoute>} />
 
                             {/* --- RUTAS AGENTE --- */}
@@ -137,6 +136,7 @@ const App: React.FC = () => {
                             <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketsPage /></PrivateRoute>} />
                             <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
                             <Route path="/agent/reports" element={<PrivateRoute roles={['agent']}><AgentReportsPage /></PrivateRoute>} />
+                            <Route path="/agent/activity-logs" element={<PrivateRoute roles={['agent']}><AdminActivityLogsPage title="Mi Actividad" /></PrivateRoute>} />
                             
                             {/* Ruta legacy */}
                             <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent']}><ReportsPage /></PrivateRoute>} />
@@ -146,7 +146,6 @@ const App: React.FC = () => {
                             <Route path="/client/tickets" element={<PrivateRoute roles={['client']}><ClientTicketsPage /></PrivateRoute>} />
                             <Route path="/client/tickets/:id" element={<PrivateRoute roles={['client']}><ClientTicketDetailPage /></PrivateRoute>} />
                             <Route path="/client/help" element={<PrivateRoute roles={['client']}><ClientResourcesPage /></PrivateRoute>} />
-                            <Route path="/client/payments" element={<PrivateRoute roles={['client']}><ClientPaymentsPage /></PrivateRoute>} />
                             <Route path="/client/offers" element={<PrivateRoute roles={['client']}><OffersPage /></PrivateRoute>} />
                         </Route>
 

@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import api from '../config/axiosConfig';
-import { FaVideo, FaFileAlt, FaDownload, FaLink, FaSearch } from 'react-icons/fa';
+import api, { API_BASE_URL } from '../config/axiosConfig';
+import { FaVideo, FaFileAlt, FaDownload, FaLink, FaSearch, FaPlay, FaTimes } from 'react-icons/fa';
+
+interface Resource {
+    id: number;
+    title: string;
+    type: string;
+    content: string;
+    category: string;
+}
 
 const ClientResourcesPage: React.FC = () => {
-    const [resources, setResources] = useState<any[]>([]);
+    const [resources, setResources] = useState<Resource[]>([]);
     const [filter, setFilter] = useState('');
+    const [modalResource, setModalResource] = useState<Resource | null>(null);
 
     useEffect(() => {
         api.get('/api/resources').then(res => setResources(res.data.data));
@@ -12,16 +21,22 @@ const ClientResourcesPage: React.FC = () => {
 
     const filtered = resources.filter(r => r.title.toLowerCase().includes(filter.toLowerCase()));
 
-    const getIcon = (type: string) => {
-        switch(type) {
-            case 'video': return <FaVideo className="text-red-500 text-3xl"/>;
-            case 'download': return <FaDownload className="text-green-500 text-3xl"/>;
-            default: return <FaFileAlt className="text-blue-500 text-3xl"/>;
-        }
+    const getResourceUrl = (content: string) => content.startsWith('/') ? `${API_BASE_URL}${content}` : content;
+
+    const getThumbnail = (res: Resource) => {
+        const url = getResourceUrl(res.content);
+        if (res.type === 'image') return url;
+        if (res.type === 'video') return null;
+        return null;
     };
 
-    // Función para corregir URLs relativas
-    const getLink = (url: string) => url.startsWith('/') ? `http://localhost:5050${url}` : url;
+    const handleCardClick = (res: Resource) => {
+        if (res.type === 'video' || res.type === 'image') {
+            setModalResource(res);
+        } else {
+            window.open(getResourceUrl(res.content), '_blank');
+        }
+    };
 
     return (
         <div className="container mx-auto p-6">
@@ -42,23 +57,70 @@ const ClientResourcesPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map(res => (
-                    <a 
-                        key={res.id} 
-                        href={getLink(res.content)} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition flex flex-col items-center text-center group"
-                    >
-                        <div className="bg-gray-50 p-4 rounded-full mb-4 group-hover:bg-indigo-50 transition">
-                            {getIcon(res.type)}
+                {filtered.map(res => {
+                    const thumb = getThumbnail(res);
+                    return (
+                        <div 
+                            key={res.id} 
+                            onClick={() => handleCardClick(res)}
+                            className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition overflow-hidden cursor-pointer group"
+                        >
+                            <div className="aspect-video bg-gray-100 relative overflow-hidden">
+                                {thumb ? (
+                                    <img src={thumb} alt={res.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                        {res.type === 'video' ? (
+                                            <div className="bg-red-500/90 rounded-full p-6 text-white group-hover:scale-110 transition-transform">
+                                                <FaPlay size={32} className="ml-1" />
+                                            </div>
+                                        ) : (
+                                            <FaFileAlt className="text-gray-400 text-5xl" />
+                                        )}
+                                    </div>
+                                )}
+                                {res.type === 'video' && thumb && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
+                                        <div className="bg-red-500 rounded-full p-4 text-white">
+                                            <FaPlay size={24} className="ml-1" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-4">
+                                <h3 className="font-bold text-gray-800 group-hover:text-indigo-600 transition">{res.title}</h3>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mt-1">{res.category}</p>
+                            </div>
                         </div>
-                        <h3 className="font-bold text-gray-800 text-lg mb-2 group-hover:text-indigo-600 transition">{res.title}</h3>
-                        <p className="text-sm text-gray-500 uppercase tracking-wide mb-1">{res.category}</p>
-                        <span className="text-xs text-indigo-500 mt-auto font-semibold">Ver Recurso &rarr;</span>
-                    </a>
-                ))}
+                    );
+                })}
             </div>
+
+            {/* Modal Video/Imagen */}
+            {modalResource && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setModalResource(null)}>
+                    <div className="relative max-w-4xl w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setModalResource(null)} className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 z-10">
+                            <FaTimes size={28} />
+                        </button>
+                        {modalResource.type === 'video' ? (
+                            <video 
+                                src={getResourceUrl(modalResource.content)} 
+                                controls 
+                                autoPlay 
+                                className="w-full rounded-lg shadow-2xl bg-black"
+                            />
+                        ) : (
+                            <img 
+                                src={getResourceUrl(modalResource.content)} 
+                                alt={modalResource.title} 
+                                className="w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                            />
+                        )}
+                        <p className="text-white text-center mt-2 font-medium">{modalResource.title}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

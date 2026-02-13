@@ -10,8 +10,6 @@ const NOTIFICATION_SOUND = '/assets/sounds/notification.mp3';
 interface NotificationContextType {
     notifications: Notification[];
     unreadCount: number;
-    unreadChatCount: number;
-    setUnreadChatCount: React.Dispatch<React.SetStateAction<number>>;
     
     // ✅ Funciones de Mute
     toggleMuteUser: (userId: number) => void;
@@ -39,7 +37,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; socket:
 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [unreadChatCount, setUnreadChatCount] = useState(0);
     
     // ✅ Estado de usuarios silenciados (Persistente)
     const [mutedUsers, setMutedUsers] = useState<number[]>(() => {
@@ -104,28 +101,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; socket:
             setUnreadCount(prev => prev + 1);
         });
 
-        socket.on('support_message_received', (msg: any) => {
-            // Si es mensaje de cliente y NO estoy en el chat
-            if (msg.sender_role === 'client' && window.location.pathname !== '/admin/chat') {
-                // ✅ Verificar MUTE antes de sonar
-                const isMuted = mutedUsers.includes(msg.user_id);
-                
-                if (!isMuted) {
-                    playSound();
-                    toast.info(`💬 ${msg.username || 'Cliente'}: ${msg.message}`, {
-                        position: "top-right",
-                        autoClose: 3000,
-                        onClick: () => window.location.href = '/admin/chat'
-                    });
-                }
-
-                setUnreadChatCount(prev => prev + 1);
-            }
-        });
-
         return () => {
             socket?.off('notification');
-            socket?.off('support_message_received');
             if(socket && (socket as any).offAny) (socket as any).offAny();
         };
     }, [socket, mutedUsers, isAuthenticated]); // Se ejecuta cuando cambia auth o mute
@@ -162,8 +139,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; socket:
         <NotificationContext.Provider value={{
             notifications,
             unreadCount,
-            unreadChatCount,
-            setUnreadChatCount,
             toggleMuteUser,
             isUserMuted,
             fetchNotifications,

@@ -1,5 +1,9 @@
 const pool = require('../config/db');
 const path = require('path');
+const { createActivityLog } = require('../utils/activityLogger');
+
+const STATUS_ES = { open: 'abierto', 'in-progress': 'en progreso', in_progress: 'en progreso', resolved: 'resuelto', closed: 'cerrado', reopened: 'reabierto' };
+const tr = (s) => STATUS_ES[s] || s;
 
 // --- Función Auxiliar para Notificar ---
 const notifyUser = async (io, userId, message, relatedId, relatedType = 'ticket') => {
@@ -39,6 +43,8 @@ const createTicket = async (req, res) => {
         if (req.io) {
             req.io.to('admin').to('agent').emit('dashboard_update', { message: 'Nuevo ticket creado' });
         }
+
+        await createActivityLog(user.id, 'ticket', 'created', `Ticket #${ticketId} creado: "${title || 'Nuevo Ticket'}"`, ticketId, null, { title, status: 'abierto' });
 
         res.status(201).json({ success: true, message: 'Ticket creado', data: { id: ticketId } });
     } catch (error) {
@@ -128,7 +134,11 @@ const getTicketById = async (req, res) => {
 const updateTicketStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        await pool.query('UPDATE Tickets SET status = ? WHERE id = ?', [status, req.params.id]);
+        const ticketId = req.params.id;
+        const [rows] = await pool.query('SELECT status FROM Tickets WHERE id = ?', [ticketId]);
+        const oldStatus = rows[0]?.status;
+        await pool.query('UPDATE Tickets SET status = ? WHERE id = ?', [status, ticketId]);
+        await createActivityLog(req.user.id, 'ticket', 'status_updated', `Estado del ticket #${ticketId} cambiado de "${tr(oldStatus)}" a "${tr(status)}"`, parseInt(ticketId), { status: oldStatus }, { status });
         res.json({ success: true, message: 'Estado actualizado' });
     } catch (e) { res.status(500).json({ message: 'Error' }); }
 };
@@ -141,6 +151,7 @@ const assignTicket = async (req, res) => {
         const agentId = req.user.id; 
         
         await pool.query('UPDATE Tickets SET assigned_to_user_id = ?, status = "in-progress" WHERE id = ?', [agentId, ticketId]);
+        await createActivityLog(agentId, 'ticket', 'assigned', `Agente tomó el ticket #${ticketId}`, parseInt(ticketId), null, { assigned_to: agentId, status: 'in-progress' });
         
         res.json({ success: true, message: 'Has tomado el ticket correctamente.' });
     } catch (error) {
@@ -159,6 +170,7 @@ const reassignTicket = async (req, res) => {
         if (!newAgentId) return res.status(400).json({ message: 'Se requiere el ID del agente.' });
 
         await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, ticketId]);
+        await createActivityLog(req.user.id, 'ticket', 'reassigned', `Ticket #${ticketId} reasignado al agente ID ${newAgentId}`, parseInt(ticketId), null, { assigned_to: newAgentId });
         
         if (req.io) {
             await notifyUser(req.io, newAgentId, `Se te ha asignado el Ticket #${ticketId}`, ticketId);
@@ -175,8 +187,10 @@ const addCommentToTicket = async (req, res) => {
     try {
         const { comment_text, is_internal } = req.body;
         const internal = req.user.role !== 'client' && is_internal ? 1 : 0;
+        const ticketId = req.params.id;
         await pool.query('INSERT INTO comments (ticket_id, user_id, comment_text, is_internal, created_at) VALUES (?, ?, ?, ?, NOW())', 
-            [req.params.id, req.user.id, comment_text, internal]);
+            [ticketId, req.user.id, comment_text, internal]);
+        await createActivityLog(req.user.id, 'ticket', 'comment_added', `Comentario agregado al ticket #${ticketId}`, parseInt(ticketId), null, { preview: (comment_text || '').substring(0, 50) });
         res.json({ success: true, message: 'Comentario agregado' });
     } catch (e) { res.status(500).json({ message: 'Error' }); }
 };
@@ -185,6 +199,7 @@ const addCommentToTicket = async (req, res) => {
 const deleteTicket = async (req, res) => {
     try {
         const id = req.params.id;
+        await createActivityLog(req.user.id, 'ticket', 'deleted', `Ticket #${id} eliminado`, parseInt(id), null, null);
         await pool.query('DELETE FROM comments WHERE ticket_id = ?', [id]);
         await pool.query('DELETE FROM ticket_attachments WHERE ticket_id = ?', [id]);
         await pool.query('DELETE FROM Tickets WHERE id = ?', [id]);

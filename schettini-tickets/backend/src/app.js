@@ -18,8 +18,10 @@ const server = http.createServer(app);
 // Aquí agregamos explícitamente tu URL de Render Frontend
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:5050',
   'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
   'https://sistematicket-cs.onrender.com',
   'https://a0021444.ferozo.com',
   'http://a0021444.ferozo.com'

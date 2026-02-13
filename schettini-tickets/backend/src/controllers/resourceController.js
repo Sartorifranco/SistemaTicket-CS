@@ -12,10 +12,15 @@ const getResources = async (req, res) => {
 const createResource = async (req, res) => {
     try {
         const { title, type, content, category } = req.body;
-        let finalContent = content;
+        let finalContent = content || '';
 
-        // Si subió un archivo, guardamos la ruta
-        if (req.file) {
+        // Para video e image: archivo obligatorio. Para link: content obligatorio.
+        if (type === 'video' || type === 'image') {
+            if (!req.file) {
+                return res.status(400).json({ message: 'Debes subir un archivo para este tipo de recurso' });
+            }
+            finalContent = `/uploads/${req.file.filename}`;
+        } else if (req.file) {
             finalContent = `/uploads/${req.file.filename}`;
         }
 
@@ -25,7 +30,7 @@ const createResource = async (req, res) => {
 
         await pool.query(
             'INSERT INTO knowledge_base (title, type, content, category) VALUES (?, ?, ?, ?)',
-            [title, type, finalContent || '', category || 'General']
+            [title, type, finalContent, category || 'General']
         );
         res.json({ success: true, message: 'Recurso creado correctamente' });
     } catch (error) {

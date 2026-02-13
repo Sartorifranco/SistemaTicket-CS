@@ -28,7 +28,7 @@ const getAdminDashboardData = async (req, res) => {
 
         let recentActivity = [];
         try {
-            const [logs] = await pool.query(`SELECT al.id, al.user_id, al.action as action_type, al.description, al.created_at, u.username FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT 10`);
+            const [logs] = await pool.query(`SELECT al.id, al.user_id, COALESCE(al.action_type, al.action) as action_type, al.description, al.created_at, u.username FROM activity_logs al LEFT JOIN Users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT 10`);
             recentActivity = logs;
         } catch (e) {}
 
