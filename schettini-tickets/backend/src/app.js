@@ -24,7 +24,9 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'https://sistematicket-cs.onrender.com',
   'https://a0021444.ferozo.com',
-  'http://a0021444.ferozo.com'
+  'http://a0021444.ferozo.com',
+  'http://200.58.127.173',
+  'https://200.58.127.173'
 ];
 
 // Si tienes configurada la variable en Render, la sumamos a la lista
