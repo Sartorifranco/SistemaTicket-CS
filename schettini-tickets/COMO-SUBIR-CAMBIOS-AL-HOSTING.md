@@ -44,13 +44,18 @@ Tenés que hacer que el VPS tenga la misma versión que tu PC. Dos formas típic
 **En el VPS (por SSH):**
 
 1. Conectate: `ssh root@200.58.127.173` (o el usuario/IP que uses).
-2. Ejecutá:
+2. Ejecutá (el `git pull` debe hacerse desde la **raíz del repo**, donde está la carpeta `.git`):
    ```bash
-   cd /var/www/tickets/schettini-tickets
+   cd /var/www/tickets
    git pull
+   cd schettini-tickets
    bash scripts/deploy.sh
    ```
-   Con eso el servidor descarga los cambios y hace build + reinicio.
+   O en una sola línea:
+   ```bash
+   cd /var/www/tickets && git pull && cd schettini-tickets && bash scripts/deploy.sh
+   ```
+   El deploy incluye la migración de resource_sections si existe.
 
 #### Opción B: Sin Git (subís archivos por FTP/SFTP)
 

@@ -26,6 +26,13 @@ if [[ "$1" == "--pull" ]]; then
     fi
 fi
 
+# Migración resource_sections (si existe el script)
+if [[ -f "backend/scripts/migrate-resource-sections.js" ]]; then
+    echo ">>> Ejecutando migración resource_sections..."
+    (cd backend && node scripts/migrate-resource-sections.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend
