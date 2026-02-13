@@ -130,16 +130,16 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col">
                 
-                <div className="flex justify-between items-center p-6 border-b bg-gray-50 rounded-t-xl">
-                    <h2 className="text-2xl font-bold text-gray-800">Nuevo Ticket</h2>
+                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-100/80 rounded-t-xl">
+                    <h2 className="text-xl font-bold text-gray-800">Nuevo Ticket</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><FaTimes size={24} /></button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     
                     {/* CLIENTE (SOLO ADMIN/AGENT) */}
                     {(currentUserRole === 'admin' || currentUserRole === 'agent') && (
-                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <div className="border-l-4 border-amber-500 bg-amber-50/60 p-4 rounded-r-lg">
                             <label className="block text-yellow-800 font-bold mb-1 text-sm">Cliente:</label>
                             <select 
                                 name="user_id" 
@@ -157,7 +157,9 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                     )}
 
                     {/* SISTEMA Y EQUIPO */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="border-l-4 border-gray-400 bg-gray-50/50 rounded-r-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Sistema y Equipo</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-gray-700 font-bold mb-1 text-sm">Sistema Afectado</label>
                             <select name="system_id" value={formData.system_id} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none" style={hardStyle} required>
@@ -175,13 +177,16 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                                 {equipment.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                             </select>
                             {isOther(formData.equipment_id, equipment) && (
-                                <input type="text" name="custom_equipment" placeholder="Especifique..." className="mt-2 w-full p-2 border rounded bg-gray-50 text-sm" onChange={handleChange} required />
+                                <input type="text" name="custom_equipment" placeholder="Especifique..." className="mt-2 w-full p-2 border rounded bg-white text-sm" onChange={handleChange} required />
                             )}
+                        </div>
                         </div>
                     </div>
 
                     {/* CATEGORÍA Y PROBLEMA */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="border-l-4 border-gray-400 bg-gray-50/50 rounded-r-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Categoría y Problema</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-gray-700 font-bold mb-1 text-sm">Categoría</label>
                             <select 
@@ -203,11 +208,15 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                                 {filteredProblems.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                             {isOther(formData.specific_problem_id, specificProblems) && (
-                                <input type="text" name="custom_problem" placeholder="Detalle el problema..." className="mt-2 w-full p-2 border rounded bg-gray-50 text-sm" onChange={handleChange} required />
+                                <input type="text" name="custom_problem" placeholder="Detalle el problema..." className="mt-2 w-full p-2 border rounded bg-white text-sm" onChange={handleChange} required />
                             )}
+                        </div>
                         </div>
                     </div>
 
+                    {/* PRIORIDAD Y DESCRIPCIÓN */}
+                    <div className="border-l-4 border-gray-400 bg-gray-50/50 rounded-r-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Detalles</h3>
                     {/* PRIORIDAD */}
                     <div>
                         <label className="block text-gray-700 font-bold mb-1 text-sm">Prioridad</label>
@@ -226,15 +235,16 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                         </label>
                         <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Describa el problema detalladamente..." rows={4} className="w-full p-3 border rounded-lg outline-none resize-none text-sm" style={hardStyle} required />
                     </div>
+                    </div>
 
                     {/* ADJUNTOS */}
-                    <div className="border-t pt-4">
+                    <div className="border-l-4 border-gray-300 bg-gray-50/30 rounded-r-lg p-4">
                         <label className="block text-gray-700 font-bold mb-2 text-sm flex items-center gap-2"><FaImage className="text-gray-500"/> Adjuntar Imágenes (Opcional)</label>
                         <input type="file" multiple className="w-full text-sm text-gray-500" onChange={handleFileChange} accept="image/*,.pdf" />
                         {attachments.length > 0 && <div className="mt-2 text-xs text-gray-600"><strong>Archivos:</strong> {attachments.map(f => f.name).join(', ')}</div>}
                     </div>
                     
-                    <div className="flex justify-end gap-3 pt-2 border-t mt-4">
+                    <div className="flex justify-end gap-3 pt-4 mt-2">
                         <button type="button" onClick={onClose} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition">Cancelar</button>
                         <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition flex items-center gap-2" disabled={loading}>
                             <FaSave /> {loading ? 'Enviando...' : 'Crear Ticket'}
