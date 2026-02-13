@@ -11,14 +11,15 @@ const RegisterPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     
     const [formData, setFormData] = useState({
-        username: '', // Nombre y Apellido
+        full_name: '', // Nombre y apellido (identificación)
+        username: '', // Usuario para login (puede usar usuario o email)
         email: '',
-        phone: '', // Con whatsapp
+        phone: '',
         password: '',
         confirmPassword: '',
         cuit: '',
-        business_name: '', // Razón Social
-        fantasy_name: '' // Nombre Fantasía
+        business_name: '',
+        fantasy_name: ''
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,7 +30,8 @@ const RegisterPage: React.FC = () => {
         e.preventDefault();
 
         // 1. Validaciones
-        if (Object.values(formData).some(val => val.trim() === '')) {
+        const required = ['full_name', 'username', 'email', 'phone', 'password', 'confirmPassword', 'cuit', 'business_name', 'fantasy_name'];
+        if (required.some(key => !formData[key as keyof typeof formData]?.trim())) {
             toast.warning('Todos los campos son obligatorios.');
             return;
         }
@@ -47,6 +49,7 @@ const RegisterPage: React.FC = () => {
         try {
             // 2. Envío al Backend
             await api.post('/api/auth/register', {
+                full_name: formData.full_name,
                 username: formData.username,
                 email: formData.email,
                 phone: formData.phone,
@@ -107,13 +110,23 @@ const RegisterPage: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelStyle}>Nombre y Apellido</label>
+                                    <p className="text-xs text-gray-500 mb-1">Para identificarte (no se usa para iniciar sesión)</p>
                                     <div className="relative">
                                         <FaUser className="absolute left-3 top-3 text-gray-400 text-xs"/>
-                                        <input name="username" type="text" placeholder="Juan Perez" value={formData.username} onChange={handleChange} className={inputStyle} required />
+                                        <input name="full_name" type="text" placeholder="Juan Perez" value={formData.full_name} onChange={handleChange} className={inputStyle} required />
                                     </div>
                                 </div>
                                 <div>
+                                    <label className={labelStyle}>Usuario</label>
+                                    <p className="text-xs text-gray-500 mb-1">Para iniciar sesión (puedes usar usuario o email)</p>
+                                    <div className="relative">
+                                        <FaUser className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                        <input name="username" type="text" placeholder="juanperez" value={formData.username} onChange={handleChange} className={inputStyle} required />
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
                                     <label className={labelStyle}>Email</label>
+                                    <p className="text-xs text-gray-500 mb-1">También puedes iniciar sesión con tu correo</p>
                                     <div className="relative">
                                         <FaEnvelope className="absolute left-3 top-3 text-gray-400 text-xs"/>
                                         <input name="email" type="email" placeholder="juan@mail.com" value={formData.email} onChange={handleChange} className={inputStyle} required />

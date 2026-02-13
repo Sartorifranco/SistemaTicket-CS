@@ -7,6 +7,7 @@ import { TicketData, TicketStatus, User, Attachment, TicketPriority } from '../t
 import { ticketStatusTranslations, ticketPriorityTranslations } from '../utils/traslations';
 import { formatLocalDate } from '../utils/dateFormatter';
 import CommentForm from '../components/Common/CommentForm';
+import SectionCard from '../components/Common/SectionCard';
 
 type DetailedTicketData = TicketData & {
     ticket_category_name?: string;
@@ -136,21 +137,19 @@ const AdminTicketDetailPage: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Columna Izquierda: Detalles y Conversación */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Detalles del Ticket</h2>
+                        <SectionCard title="Detalles del Ticket">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div><strong className="block text-gray-500">Cliente:</strong> {ticket.client_name}</div>
                                 <div><strong className="block text-gray-500">Departamento:</strong> {ticket.ticket_department_name ? `${ticket.ticket_department_name} (${ticket.department_id})` : ticket.department_id}</div>
                                 <div><strong className="block text-gray-500">Categoría:</strong> {ticket.ticket_category_name || 'N/A'}</div>
                                 <div><strong className="block text-gray-500">Creado:</strong> {formatLocalDate(ticket.created_at)}</div>
                             </div>
-                            <h3 className="text-lg font-semibold mt-6 mb-2">Descripción</h3>
+                            <h3 className="text-lg font-semibold mt-4 mb-2">Descripción</h3>
                             <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
-                        </div>
+                        </SectionCard>
 
                         {ticket.attachments && ticket.attachments.length > 0 && (
-                            <div className="bg-white p-6 rounded-lg shadow-md">
-                                <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Archivos Adjuntos</h2>
+                            <SectionCard title="Archivos Adjuntos">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                     {ticket.attachments.map(att => (
                                         <a 
@@ -178,11 +177,10 @@ const AdminTicketDetailPage: React.FC = () => {
                                         </a>
                                     ))}
                                 </div>
-                            </div>
+                            </SectionCard>
                         )}
 
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Conversación</h2>
+                        <SectionCard title="Conversación">
                             <div className="space-y-4 mb-6 max-h-[60vh] overflow-y-auto pr-2">
                                 {ticket.comments?.map(comment => (
                                     <div key={comment.id} className={`p-4 rounded-lg ${comment.is_internal ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
@@ -196,13 +194,12 @@ const AdminTicketDetailPage: React.FC = () => {
                                 ))}
                             </div>
                             {ticket.status !== 'closed' && user && <CommentForm onAddComment={handleAddComment} userRole={user.role} />}
-                        </div>
+                        </SectionCard>
                     </div>
 
                     {/* Columna Derecha: Acciones */}
                     <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4">Estado y Prioridad</h2>
+                        <SectionCard title="Estado y Prioridad">
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Estado Actual</label>
@@ -235,15 +232,13 @@ const AdminTicketDetailPage: React.FC = () => {
                                 </div>
 
                             </div>
-                        </div>
+                        </SectionCard>
 
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4">Agente Asignado</h2>
+                        <SectionCard title="Agente Asignado">
                             <p className="font-semibold text-lg">{ticket.agent_name || 'Sin asignar'}</p>
-                        </div>
+                        </SectionCard>
 
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4">Reasignar Ticket</h2>
+                        <SectionCard title="Reasignar Ticket">
                             <form onSubmit={handleReassignTicket}>
                                 <select name="agentId" className="w-full p-2 border border-gray-300 rounded-md" defaultValue="">
                                     <option value="" disabled>-- Selecciona un agente --</option>
@@ -257,12 +252,11 @@ const AdminTicketDetailPage: React.FC = () => {
                                     Reasignar
                                 </button>
                             </form>
-                        </div>
+                        </SectionCard>
 
                         {/* ✅ AÑADIDO: Botón de Eliminar Ticket (Solo para Admin) */}
                         {user?.role === 'admin' && (
-                            <div className="bg-white p-6 rounded-lg shadow-md border border-red-200">
-                                <h2 className="text-xl font-bold text-red-700 mb-4">Zona de Peligro</h2>
+                            <SectionCard title="Zona de Peligro" variant="danger" className="border-red-200">
                                 <button 
                                     onClick={() => setIsDeleteModalOpen(true)}
                                     className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-md"
@@ -270,7 +264,7 @@ const AdminTicketDetailPage: React.FC = () => {
                                     Eliminar Ticket Permanentemente
                                 </button>
                                 <p className="text-xs text-gray-600 mt-2 text-center">Esta acción no se puede deshacer.</p>
-                            </div>
+                            </SectionCard>
                         )}
                         {/* FIN MODIFICACIÓN */}
 

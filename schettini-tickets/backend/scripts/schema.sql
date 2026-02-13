@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS Departments (
 CREATE TABLE IF NOT EXISTS Users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   username VARCHAR(100) NOT NULL,
+  full_name VARCHAR(200) NULL,
   email VARCHAR(255) NOT NULL,
   password VARCHAR(255) NOT NULL,
   role ENUM('admin','agent','client') NOT NULL DEFAULT 'client',

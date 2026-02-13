@@ -36,6 +36,7 @@ export type UserRole = 'admin' | 'agent' | 'client';
 export interface User {
     id: number;
     username: string;
+    full_name?: string | null;
     email: string;
     role: UserRole;
     department_id: number | null;

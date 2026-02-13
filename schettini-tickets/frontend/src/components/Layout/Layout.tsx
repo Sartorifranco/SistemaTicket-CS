@@ -139,7 +139,7 @@ const Layout: React.FC = () => {
 
                         <div className="flex items-center space-x-4">
                             <div className="hidden sm:flex flex-col items-end">
-                                <span className="text-sm font-bold text-gray-800">{user?.username || 'Usuario'}</span>
+                                <span className="text-sm font-bold text-gray-800">{user?.full_name || user?.username || 'Usuario'}</span>
                                 <span className="text-xs text-gray-500 capitalize">{user?.role === 'admin' ? 'Administrador' : user?.role === 'agent' ? 'Agente' : 'Cliente'}</span>
                             </div>
                             <NotificationBell />

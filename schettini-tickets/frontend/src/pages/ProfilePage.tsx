@@ -6,6 +6,7 @@ import { FaUser, FaBoxOpen, FaStore, FaMoneyBillWave, FaClock, FaCheck, FaArrowR
 import { Plan, SystemSettings, Module, ActivityLog } from '../types';
 import { translateActionType, translateDescription } from '../utils/activityTranslations';
 import ClientPaymentsPage from './ClientPaymentsPage';
+import SectionCard from '../components/Common/SectionCard';
 
 // --- SUB-COMPONENTE: Tarjeta de Plan ---
 const PlanCard: React.FC<{ plan: Plan, currentPlanId?: number, onRequestChange: (itemName: string, type: 'plan'|'module') => void }> = ({ plan, currentPlanId, onRequestChange }) => {
@@ -154,16 +155,14 @@ const ProfilePage: React.FC = () => {
     // --- CONTENIDOS ---
     const ProfileContent = () => (
         <div className="space-y-6 animate-fade-in">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Cuenta</h2>
+            <SectionCard title="Cuenta">
                 <div className="grid grid-cols-2 gap-4">
                     <div><label className="text-xs text-gray-500 font-bold uppercase">Usuario</label><p>{user.username}</p></div>
                     <div><label className="text-xs text-gray-500 font-bold uppercase">Email</label><p>{user.email}</p></div>
                     <div><label className="text-xs text-gray-500 font-bold uppercase">Empresa</label><p>{loadingDetails ? '...' : companyName}</p></div>
                 </div>
-            </div>
-             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Seguridad</h2>
+            </SectionCard>
+            <SectionCard title="Seguridad">
                 <form onSubmit={handleChangePassword} className="max-w-lg space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Contraseña Actual</label>
@@ -185,7 +184,7 @@ const ProfilePage: React.FC = () => {
                         </button>
                     </div>
                 </form>
-            </div>
+            </SectionCard>
         </div>
     );
 
@@ -218,10 +217,7 @@ const ProfilePage: React.FC = () => {
     const PaymentsContent = () => <ClientPaymentsPage />;
 
     const ActivityContent = () => (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800">
-                <FaHistory className="text-indigo-500"/> Mi Actividad
-            </h2>
+        <SectionCard title="Mi Actividad" className="animate-fade-in">
             <p className="text-sm text-gray-500 mb-4">Registro de tus acciones: tickets creados, comentarios agregados, etc.</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 <div>
@@ -254,14 +250,11 @@ const ProfilePage: React.FC = () => {
                     ))}
                 </div>
             )}
-        </div>
+        </SectionCard>
     );
 
     const CostsContent = () => (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
-                <FaMoneyBillWave className="text-green-600"/> Tarifario de Servicios Adicionales
-            </h2>
+        <SectionCard title="Tarifario de Servicios Adicionales" className="animate-fade-in">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="bg-gray-50 p-8 rounded-2xl border border-gray-200 text-center flex flex-col justify-center items-center">
                     <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center shadow-sm text-indigo-600 mb-4"><FaClock size={36} /></div>
@@ -282,7 +275,7 @@ const ProfilePage: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </SectionCard>
     );
 
     return (

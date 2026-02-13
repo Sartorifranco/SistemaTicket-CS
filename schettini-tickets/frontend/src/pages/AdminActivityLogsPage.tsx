@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { ActivityLog } from '../types';
 import { formatLocalDate } from '../utils/dateFormatter';
 import { translateActionType, translateDescription } from '../utils/activityTranslations';
-import { FaFilter, FaSearch } from 'react-icons/fa';
+import { FaSearch } from 'react-icons/fa';
+import SectionCard from '../components/Common/SectionCard';
 
 interface AdminActivityLogsPageProps {
     title?: string;
@@ -60,8 +61,7 @@ const AdminActivityLogsPage: React.FC<AdminActivityLogsPageProps> = ({ title = '
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">{title}</h1>
 
             {/* Filtros */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-                <h3 className="text-sm font-bold text-gray-600 uppercase mb-3 flex items-center gap-2"><FaFilter /> Filtros</h3>
+            <SectionCard title="Filtros" className="mb-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {user?.role === 'admin' && (
                         <div>
@@ -88,9 +88,9 @@ const AdminActivityLogsPage: React.FC<AdminActivityLogsPageProps> = ({ title = '
                 <button onClick={() => fetchLogs()} className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
                     <FaSearch /> Buscar
                 </button>
-            </div>
+            </SectionCard>
 
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+            <SectionCard title="Registros de Actividad">
                 {logs.length === 0 ? (
                     <p className="text-center text-gray-500 py-8">No hay actividad registrada.</p>
                 ) : (
@@ -134,7 +134,7 @@ const AdminActivityLogsPage: React.FC<AdminActivityLogsPageProps> = ({ title = '
                         </div>
                     </>
                 )}
-            </div>
+            </SectionCard>
         </div>
     );
 };

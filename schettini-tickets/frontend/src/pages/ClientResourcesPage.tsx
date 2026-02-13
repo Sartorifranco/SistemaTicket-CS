@@ -21,7 +21,13 @@ const ClientResourcesPage: React.FC = () => {
 
     const filtered = resources.filter(r => r.title.toLowerCase().includes(filter.toLowerCase()));
 
-    const getResourceUrl = (content: string) => content.startsWith('/') ? `${API_BASE_URL}${content}` : content;
+    // Usar /api/uploads para que nginx (proxy) enrute al backend; /uploads directo no está proxeado
+    const getResourceUrl = (content: string) => {
+        if (!content) return content;
+        if (content.startsWith('http')) return content;
+        if (content.startsWith('/uploads')) return `${API_BASE_URL}/api${content}`;
+        return `${API_BASE_URL}${content}`;
+    };
 
     const getThumbnail = (res: Resource) => {
         const url = getResourceUrl(res.content);

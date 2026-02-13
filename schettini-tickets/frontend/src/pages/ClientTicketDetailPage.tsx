@@ -7,6 +7,7 @@ import { ticketStatusTranslations } from '../utils/traslations';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
 import CommentForm from '../components/Common/CommentForm';
+import SectionCard from '../components/Common/SectionCard';
 
 const Badge: React.FC<{ color: string; children: React.ReactNode }> = ({ color, children }) => (
     <span className={`px-3 py-1 text-xs font-semibold rounded-full ${color}`}>
@@ -121,13 +122,11 @@ const ClientTicketDetailPage: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Descripción</h2>
+                <SectionCard title="Descripción" className="lg:col-span-2">
                     <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
-                </div>
+                </SectionCard>
 
-                <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md flex flex-col">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Información</h2>
+                <SectionCard title="Información" className="lg:col-span-1">
                     <div className="space-y-3 text-sm">
                         <div className="flex justify-between">
                             <span className="font-semibold text-gray-600">Estado:</span>
@@ -136,10 +135,9 @@ const ClientTicketDetailPage: React.FC = () => {
                             </Badge>
                         </div>
                     </div>
-                </div>
+                </SectionCard>
 
-                <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Conversación</h2>
+                <SectionCard title="Conversación" className="lg:col-span-3">
                     <div className="space-y-4 mb-6 max-h-[50vh] overflow-y-auto pr-2">
                         {ticket.comments &&
                             ticket.comments
@@ -162,7 +160,7 @@ const ClientTicketDetailPage: React.FC = () => {
                             <p className="text-sm text-gray-500">Para un nuevo problema, por favor crea un nuevo ticket.</p>
                         </div>
                     )}
-                </div>
+                </SectionCard>
             </div>
         </div>
     );

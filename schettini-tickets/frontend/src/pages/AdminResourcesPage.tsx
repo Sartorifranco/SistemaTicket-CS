@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
 import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage } from 'react-icons/fa';
+import SectionCard from '../components/Common/SectionCard';
 
 // Definimos una interfaz para el tipo de recurso
 interface Resource {
@@ -108,8 +109,7 @@ const AdminResourcesPage: React.FC = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Panel de Formulario */}
-                <div className="bg-white p-6 rounded-lg shadow h-fit border border-gray-200">
-                    <h2 className="text-lg font-bold mb-4 text-gray-700">Agregar Nuevo Recurso</h2>
+                <SectionCard title="Agregar Nuevo Recurso" className="h-fit">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Título</label>
@@ -196,11 +196,11 @@ const AdminResourcesPage: React.FC = () => {
                             <FaPlus/> Publicar Recurso
                         </button>
                     </form>
-                </div>
+                </SectionCard>
 
                 {/* Lista de Recursos */}
                 <div className="lg:col-span-2 space-y-4">
-                    <h2 className="text-xl font-bold text-gray-700 border-b pb-2">Recursos Publicados</h2>
+                    <SectionCard title="Recursos Publicados">
                     {resources.length === 0 && (
                         <p className="text-gray-500 text-center py-8">No hay recursos cargados aún.</p>
                     )}
@@ -238,6 +238,7 @@ const AdminResourcesPage: React.FC = () => {
                             </button>
                         </div>
                     ))}
+                    </SectionCard>
                 </div>
             </div>
         </div>

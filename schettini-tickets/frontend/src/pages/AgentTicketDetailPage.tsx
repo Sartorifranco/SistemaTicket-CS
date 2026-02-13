@@ -8,6 +8,7 @@ import { TicketData, Comment as TicketComment, TicketStatus, User, Attachment, T
 import { ticketStatusTranslations, ticketPriorityTranslations } from '../utils/traslations';
 import { formatLocalDate } from '../utils/dateFormatter';
 import CommentForm from '../components/Common/CommentForm';
+import SectionCard from '../components/Common/SectionCard';
 
 // ✅ AÑADIDO: Icono de Archivo Genérico
 const FileIcon: React.FC<{ className?: string }> = ({ className = "w-16 h-16" }) => (
@@ -68,8 +69,8 @@ const AgentTicketDetailPage: React.FC = () => {
             toast.success("¡Ticket reasignado exitosamente!");
             setSelectedAgentId('');
             await fetchAllData(); 
-        } catch (error) {
-            toast.error("Error al reasignar el ticket.");
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Error al reasignar el ticket.");
         } finally {
             setIsReassignModalOpen(false);
         }
@@ -127,8 +128,7 @@ const AgentTicketDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     {/* Sección de Detalles del Ticket */}
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Detalles del Ticket</h2>
+                    <SectionCard title="Detalles del Ticket">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <strong className="block text-sm text-gray-500">Cliente</strong>
@@ -147,12 +147,11 @@ const AgentTicketDetailPage: React.FC = () => {
                                 <p className="whitespace-pre-wrap mt-1 p-3 bg-gray-50 rounded-md border">{ticket.description}</p>
                             </div>
                         </div>
-                    </div>
+                    </SectionCard>
                     
                     {/* Sección de Archivos Adjuntos */}
                     {ticket.attachments && ticket.attachments.length > 0 && (
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Archivos Adjuntos</h2>
+                        <SectionCard title="Archivos Adjuntos">
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 {ticket.attachments.map(att => (
                                     <a 
@@ -180,12 +179,11 @@ const AgentTicketDetailPage: React.FC = () => {
                                     </a>
                                 ))}
                             </div>
-                        </div>
+                        </SectionCard>
                     )}
                     
                     {/* Sección de Conversación */}
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Conversación</h2>
+                    <SectionCard title="Conversación">
                         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                             {ticket.comments && ticket.comments.length > 0 ? (
                                 ticket.comments.map(comment => (
@@ -208,14 +206,12 @@ const AgentTicketDetailPage: React.FC = () => {
                         <div className="mt-4 pt-4 border-t">
                             {user && <CommentForm onAddComment={handleAddComment} userRole={user.role} />}
                         </div>
-                    </div>
+                    </SectionCard>
                 </div>
 
                 {/* Columna Lateral de Acciones */}
                 <div className="lg:col-span-1 space-y-6">
-                    {/* ✅ MODIFICACIÓN: Se separa Estado y Prioridad, y Prioridad ahora es un <select> */}
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Estado y Prioridad</h2>
+                    <SectionCard title="Estado y Prioridad">
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Estado Actual</label>
@@ -240,16 +236,13 @@ const AgentTicketDetailPage: React.FC = () => {
                                 </select>
                             </div>
                         </div>
-                    </div>
-                    {/* FIN MODIFICACIÓN */}
+                    </SectionCard>
                     
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <strong className="block text-sm text-gray-500 mb-2">Agente Asignado</strong>
+                    <SectionCard title="Agente Asignado">
                         <p className="text-lg font-medium">{ticket.agent_name || 'No asignado'}</p>
-                    </div>
+                    </SectionCard>
                     {(user?.role === 'admin' || user?.role === 'agent') && (
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-lg font-semibold text-gray-700 mb-2">Reasignar Ticket</h3>
+                        <SectionCard title="Reasignar Ticket">
                             <div className="flex flex-col gap-3">
                                 <select 
                                     value={selectedAgentId} 
@@ -257,7 +250,7 @@ const AgentTicketDetailPage: React.FC = () => {
                                     className="w-full p-2 border rounded-md bg-white"
                                 >
                                     <option value="">-- Selecciona un agente --</option>
-                                    {agents.map(agent => (
+                                    {(user?.role === 'agent' ? agents.filter((a: User) => a.role === 'agent') : agents).map((agent: User) => (
                                         <option key={agent.id} value={agent.id}>
                                             {agent.first_name && agent.last_name ? `${agent.first_name} ${agent.last_name}` : agent.username}
                                         </option>
@@ -271,7 +264,7 @@ const AgentTicketDetailPage: React.FC = () => {
                                     Reasignar
                                 </button>
                             </div>
-                        </div>
+                        </SectionCard>
                     )}
                 </div>
             </div>

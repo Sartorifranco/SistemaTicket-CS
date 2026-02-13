@@ -62,9 +62,9 @@ const getTickets = async (req, res) => {
 
         let query = `
             SELECT t.*, 
-                   u.username as client_name, 
+                   COALESCE(u.full_name, u.username) as client_name, 
                    u.business_name,
-                   a.username as agent_name,
+                   COALESCE(a.full_name, a.username) as agent_name,
                    d.name as ticket_department_name
             FROM Tickets t
             LEFT JOIN Users u ON t.user_id = u.id
@@ -110,7 +110,7 @@ const getTickets = async (req, res) => {
 const getTicketById = async (req, res) => {
     try {
         const [tickets] = await pool.query(`
-            SELECT t.*, u.username as client_name, u.business_name, a.username as agent_name
+            SELECT t.*, COALESCE(u.full_name, u.username) as client_name, u.business_name, COALESCE(a.full_name, a.username) as agent_name
             FROM Tickets t
             LEFT JOIN Users u ON t.user_id = u.id
             LEFT JOIN Users a ON t.assigned_to_user_id = a.id
@@ -123,7 +123,7 @@ const getTicketById = async (req, res) => {
             return res.status(403).json({ message: 'Acceso denegado' });
         }
 
-        const [comments] = await pool.query('SELECT c.*, u.username FROM comments c JOIN Users u ON c.user_id = u.id WHERE ticket_id = ? ORDER BY created_at ASC', [req.params.id]);
+        const [comments] = await pool.query('SELECT c.*, COALESCE(u.full_name, u.username) as username FROM comments c JOIN Users u ON c.user_id = u.id WHERE ticket_id = ? ORDER BY created_at ASC', [req.params.id]);
         const [attachments] = await pool.query('SELECT * FROM ticket_attachments WHERE ticket_id = ?', [req.params.id]);
 
         res.json({ success: true, data: { ...ticket, comments, attachments } });
@@ -168,6 +168,15 @@ const reassignTicket = async (req, res) => {
         const ticketId = req.params.id;
 
         if (!newAgentId) return res.status(400).json({ message: 'Se requiere el ID del agente.' });
+
+        // Si el usuario es agente, solo puede reasignar a otros agentes (no a admins)
+        if (req.user.role === 'agent') {
+            const [targetUser] = await pool.query('SELECT role FROM Users WHERE id = ?', [newAgentId]);
+            if (targetUser.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+            if (targetUser[0].role === 'admin') {
+                return res.status(403).json({ message: 'Los agentes solo pueden reasignar tickets a otros agentes, no a administradores.' });
+            }
+        }
 
         await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, ticketId]);
         await createActivityLog(req.user.id, 'ticket', 'reassigned', `Ticket #${ticketId} reasignado al agente ID ${newAgentId}`, parseInt(ticketId), null, { assigned_to: newAgentId });

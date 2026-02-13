@@ -6,23 +6,28 @@ const jwt = require('jsonwebtoken');
 const INACTIVITY_LIMIT = 180 * 24 * 60 * 60 * 1000; 
 
 // ✅ REGISTER USER MEJORADO (Auto-creación de Empresa)
+// full_name = Nombre y apellido (identificación). username = Usuario para login (puede usar usuario o email).
 const registerUser = async (req, res) => {
     try {
         const { 
-            username, email, password, phone, cuit, 
+            username, full_name, email, password, phone, cuit, 
             business_name, fantasy_name, 
             role, status, company_id, department_id, plan 
         } = req.body;
 
         // 1. Validaciones
         if (!username || !email || !password) {
-            return res.status(400).json({ message: 'Faltan datos obligatorios (Usuario, Email, Pass).' });
+            return res.status(400).json({ message: 'Faltan datos obligatorios (Usuario, Email, Contraseña).' });
         }
 
-        // 2. Verificar usuario duplicado
-        const [existingUser] = await pool.query('SELECT id FROM Users WHERE email = ?', [email]);
-        if (existingUser.length > 0) {
+        // 2. Verificar usuario duplicado (username y email deben ser únicos)
+        const [existingEmail] = await pool.query('SELECT id FROM Users WHERE email = ?', [email]);
+        if (existingEmail.length > 0) {
             return res.status(400).json({ message: 'El correo ya está registrado.' });
+        }
+        const [existingUsername] = await pool.query('SELECT id FROM Users WHERE username = ?', [username.trim()]);
+        if (existingUsername.length > 0) {
+            return res.status(400).json({ message: 'Ese nombre de usuario ya está en uso.' });
         }
 
         // 3. Hash Password
@@ -72,30 +77,34 @@ const registerUser = async (req, res) => {
             }
         }
 
-        // 5. Insertar Usuario
+        // 5. Insertar Usuario (full_name para identificación, username para login)
+        const finalFullName = (full_name || '').trim() || username;
+        const finalUsername = username.trim();
+
         const sql = `
             INSERT INTO Users (
-                username, email, password, role, is_active, 
+                username, full_name, email, password, role, is_active, 
                 phone, cuit, business_name, fantasy_name, 
                 company_id, department_id, plan, last_login
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
         
-        await pool.query(sql, [
-            username, 
-            email, 
-            hashedPassword, 
-            userRole, 
-            isActive, 
-            finalPhone,     
-            finalCuit,      
-            finalBusiness,  
-            finalFantasy,   
-            finalCompanyId, // ✅ Ahora lleva el ID (existente o nuevo)
-            userDepartment, 
-            userPlan         
-        ]);
+        try {
+            await pool.query(sql, [
+                finalUsername, finalFullName, email, hashedPassword, userRole, isActive,
+                finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan
+            ]);
+        } catch (colErr) {
+            if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('full_name')) {
+                await pool.query(
+                    `INSERT INTO Users (username, email, password, role, is_active, phone, cuit, business_name, fantasy_name, company_id, department_id, plan, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                    [finalUsername, email, hashedPassword, userRole, isActive, finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan]
+                );
+            } else {
+                throw colErr;
+            }
+        }
 
         res.status(201).json({ success: true, message: 'Usuario registrado correctamente.' });
 
@@ -147,7 +156,7 @@ const loginUser = async (req, res) => {
             message: 'Bienvenido',
             token,
             user: {
-                id: user.id, username: user.username, email: user.email,
+                id: user.id, username: user.username, full_name: user.full_name, email: user.email,
                 role: user.role, business_name: user.business_name, plan: user.plan
             },
         });
@@ -160,7 +169,15 @@ const loginUser = async (req, res) => {
 const getMe = async (req, res) => {
     try {
         if (!req.user) return res.status(404).json({ message: 'Usuario no encontrado.' });
-        const [users] = await pool.query('SELECT id, username, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
+        let users;
+        try {
+            [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
+        } catch (colErr) {
+            if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('full_name')) {
+                [users] = await pool.query('SELECT id, username, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
+                if (users[0]) users[0].full_name = users[0].username;
+            } else throw colErr;
+        }
         res.json({ success: true, user: users[0] });
     } catch (error) { res.status(500).json({ message: 'Error.' }); }
 };
