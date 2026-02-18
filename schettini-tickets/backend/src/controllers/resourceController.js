@@ -76,8 +76,14 @@ const updateResource = async (req, res) => {
     try {
         const { id } = req.params;
         const { section_id, system_id } = req.body;
-        const secId = section_id !== undefined && section_id !== '' ? parseInt(section_id) : null;
-        const sysId = system_id !== undefined && system_id !== '' ? parseInt(system_id) : null;
+        // Usar != null para incluir null y undefined; evitar parseInt(null) = NaN
+        const parseId = (v) => {
+            if (v == null || v === '') return null;
+            const n = parseInt(v);
+            return isNaN(n) ? null : n;
+        };
+        const secId = parseId(section_id);
+        const sysId = parseId(system_id);
         try {
             await pool.query(
                 'UPDATE knowledge_base SET section_id = ?, system_id = ? WHERE id = ?',
@@ -91,6 +97,7 @@ const updateResource = async (req, res) => {
         }
         res.json({ success: true, message: 'Recurso actualizado' });
     } catch (error) {
+        console.error('updateResource error:', error);
         res.status(500).json({ success: false, message: 'Error al actualizar' });
     }
 };
