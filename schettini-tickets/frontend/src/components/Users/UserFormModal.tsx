@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../config/axiosConfig';
-import { User, Department, Company, NewUser, UpdateUser } from '../../types';
+import { User, Department, Company, NewUser, UpdateUser, UserRole } from '../../types';
 import { toast } from 'react-toastify';
 
 interface UserFormModalProps {
@@ -20,7 +20,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ isOpen, onClose, onSave, 
         email: initialData?.email || '',
         password: '',
         confirmPassword: '',
-        role: initialData?.role || 'client' as 'admin' | 'agent' | 'client',
+        role: (initialData?.role || 'client') as UserRole,
         department_id: initialData?.department_id || null as number | null,
         company_id: initialData?.company_id || null as number | null,
     });

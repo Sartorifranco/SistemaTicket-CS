@@ -23,6 +23,7 @@ export const ticketPriorityTranslations: Record<TicketPriority, string> = {
 export const userRoleTranslations: Record<UserRole, string> = {
     client: 'Cliente',
     agent: 'Agente',
+    supervisor: 'Supervisor',
     admin: 'Administrador',
 };
 

@@ -5,7 +5,7 @@ import axios from 'axios'; // Asegúrate de que esto es 'axios' y no tu instanci
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { isAxiosErrorTypeGuard, ApiResponseError } from '../../utils/typeGuards';
-import { Department, User } from '../../types';
+import { Department, User, UserRole } from '../../types';
 
 interface UserFormProps {
     isOpen: boolean;
@@ -25,7 +25,7 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, initialData, depar
         email: initialData?.email || '',
         password: '', // Siempre vacío por seguridad al editar
         confirmPassword: '', // Para confirmación en creación
-        role: initialData?.role || 'client' as 'admin' | 'agent' | 'client',
+        role: (initialData?.role || 'client') as UserRole,
         department_id: initialData?.department_id || null as number | null,
     });
 
