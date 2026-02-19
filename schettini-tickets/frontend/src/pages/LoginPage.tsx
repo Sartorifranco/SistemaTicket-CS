@@ -14,7 +14,8 @@ const LoginPage: React.FC = () => {
 
     useEffect(() => {
         if (user) {
-            const roleDashboard = `/${user.role}`;
+            // Supervisor usa el mismo dashboard que agente (/agent)
+            const roleDashboard = user.role === 'supervisor' ? '/agent' : `/${user.role}`;
             navigate(roleDashboard, { replace: true });
         }
     }, [user, navigate]);

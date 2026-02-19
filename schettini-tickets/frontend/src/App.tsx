@@ -37,6 +37,7 @@ import AgentDashboard from './pages/AgentDashboard';
 import AgentTicketsPage from './pages/AgentTicketPage';
 import AgentTicketDetailPage from './pages/AgentTicketDetailPage'; 
 import AgentReportsPage from './pages/AgentReportsPage';
+import AgentTasksPage from './pages/AgentTasksPage';
 
 // --- CLIENT PAGES ---
 import ClientDashboard from './pages/ClientDashboard';
@@ -130,16 +131,19 @@ const App: React.FC = () => {
                             <Route path="/admin/problemas" element={<PrivateRoute roles={['admin']}><AdminProblemsPage /></PrivateRoute>} />
                             <Route path="/admin/activity-logs" element={<PrivateRoute roles={['admin']}><AdminActivityLogsPage /></PrivateRoute>} />
                             <Route path="/admin/knowledge-base" element={<PrivateRoute roles={['admin']}><AdminResourcesPage /></PrivateRoute>} />
+                            <Route path="/admin/tasks" element={<PrivateRoute roles={['admin']}><AgentTasksPage mode="admin" /></PrivateRoute>} />
 
-                            {/* --- RUTAS AGENTE --- */}
-                            <Route path="/agent" element={<PrivateRoute roles={['agent']}><AgentDashboard /></PrivateRoute>} />
-                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent']}><AgentTicketsPage /></PrivateRoute>} />
-                            <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent']}><AgentTicketDetailPage /></PrivateRoute>} />
-                            <Route path="/agent/reports" element={<PrivateRoute roles={['agent']}><AgentReportsPage /></PrivateRoute>} />
-                            <Route path="/agent/activity-logs" element={<PrivateRoute roles={['agent']}><AdminActivityLogsPage title="Mi Actividad" /></PrivateRoute>} />
+                            {/* --- RUTAS AGENTE Y SUPERVISOR --- */}
+                            <Route path="/agent" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentDashboard /></PrivateRoute>} />
+                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentTicketsPage /></PrivateRoute>} />
+                            <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentTicketDetailPage /></PrivateRoute>} />
+                            <Route path="/agent/tasks" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentTasksPage /></PrivateRoute>} />
+                            <Route path="/agent/knowledge-base" element={<PrivateRoute roles={['supervisor']}><AdminResourcesPage /></PrivateRoute>} />
+                            <Route path="/agent/reports" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentReportsPage /></PrivateRoute>} />
+                            <Route path="/agent/activity-logs" element={<PrivateRoute roles={['agent', 'supervisor']}><AdminActivityLogsPage title="Mi Actividad" /></PrivateRoute>} />
                             
                             {/* Ruta legacy */}
-                            <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent']}><ReportsPage /></PrivateRoute>} />
+                            <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><ReportsPage /></PrivateRoute>} />
                             
                             {/* --- RUTAS CLIENTE --- */}
                             <Route path="/client" element={<PrivateRoute roles={['client']}><ClientDashboard /></PrivateRoute>} />

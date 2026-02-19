@@ -62,9 +62,9 @@ const getTickets = async (req, res) => {
 
         let query = `
             SELECT t.*, 
-                   COALESCE(u.full_name, u.username) as client_name, 
+                   u.username as client_name, 
                    u.business_name,
-                   COALESCE(a.full_name, a.username) as agent_name,
+                   a.username as agent_name,
                    d.name as ticket_department_name
             FROM Tickets t
             LEFT JOIN Users u ON t.user_id = u.id
@@ -101,7 +101,7 @@ const getTickets = async (req, res) => {
         res.json({ success: true, data: tickets });
 
     } catch (error) {
-        console.error("Error getTickets:", error);
+        console.error("Error getTickets:", error.message);
         res.status(500).json({ success: false, message: 'Error al obtener tickets' });
     }
 };
@@ -110,7 +110,7 @@ const getTickets = async (req, res) => {
 const getTicketById = async (req, res) => {
     try {
         const [tickets] = await pool.query(`
-            SELECT t.*, COALESCE(u.full_name, u.username) as client_name, u.business_name, COALESCE(a.full_name, a.username) as agent_name
+            SELECT t.*, u.username as client_name, u.business_name, a.username as agent_name
             FROM Tickets t
             LEFT JOIN Users u ON t.user_id = u.id
             LEFT JOIN Users a ON t.assigned_to_user_id = a.id
@@ -123,7 +123,7 @@ const getTicketById = async (req, res) => {
             return res.status(403).json({ message: 'Acceso denegado' });
         }
 
-        const [comments] = await pool.query('SELECT c.*, COALESCE(u.full_name, u.username) as username FROM comments c JOIN Users u ON c.user_id = u.id WHERE ticket_id = ? ORDER BY created_at ASC', [req.params.id]);
+        const [comments] = await pool.query('SELECT c.*, u.username as username FROM comments c JOIN Users u ON c.user_id = u.id WHERE ticket_id = ? ORDER BY created_at ASC', [req.params.id]);
         const [attachments] = await pool.query('SELECT * FROM ticket_attachments WHERE ticket_id = ?', [req.params.id]);
 
         res.json({ success: true, data: { ...ticket, comments, attachments } });
@@ -169,12 +169,16 @@ const reassignTicket = async (req, res) => {
 
         if (!newAgentId) return res.status(400).json({ message: 'Se requiere el ID del agente.' });
 
-        // Si el usuario es agente, solo puede reasignar a otros agentes (no a admins)
-        if (req.user.role === 'agent') {
+        // Restricciones de reasignación: agente y supervisor NO pueden asignar a admin
+        if (req.user.role === 'agent' || req.user.role === 'supervisor') {
             const [targetUser] = await pool.query('SELECT role FROM Users WHERE id = ?', [newAgentId]);
             if (targetUser.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
             if (targetUser[0].role === 'admin') {
-                return res.status(403).json({ message: 'Los agentes solo pueden reasignar tickets a otros agentes, no a administradores.' });
+                return res.status(403).json({ message: 'No se puede reasignar tickets a administradores.' });
+            }
+            // Agente solo puede reasignar a otros agentes; supervisor puede a agentes o supervisores
+            if (req.user.role === 'agent' && targetUser[0].role === 'supervisor') {
+                return res.status(403).json({ message: 'Los agentes no pueden reasignar a supervisores.' });
             }
         }
 

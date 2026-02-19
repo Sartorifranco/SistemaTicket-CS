@@ -23,7 +23,7 @@ const getAdminDashboardData = async (req, res) => {
             SELECT u.id as agentId, u.username as agentName, COUNT(t.id) as assignedTickets
             FROM Users u
             LEFT JOIN Tickets t ON u.id = t.assigned_to_user_id AND t.status IN ('open', 'in_progress', 'in-progress')
-            WHERE u.role = 'agent' AND u.status = 'active' GROUP BY u.id
+            WHERE u.role IN ('agent', 'supervisor') AND u.status = 'active' GROUP BY u.id
         `);
 
         let recentActivity = [];

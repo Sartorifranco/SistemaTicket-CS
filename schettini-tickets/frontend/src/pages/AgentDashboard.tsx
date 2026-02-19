@@ -52,9 +52,10 @@ const AgentDashboard: React.FC = () => {
     }, [user?.id]);
 
     useEffect(() => {
-        if (!authLoading && isAuthenticated && user?.role === 'agent') {
+        const canAccess = user?.role === 'agent' || user?.role === 'supervisor';
+        if (!authLoading && isAuthenticated && canAccess) {
             fetchData();
-        } else if (!authLoading && (!isAuthenticated || user?.role !== 'agent')) {
+        } else if (!authLoading && (!isAuthenticated || !canAccess)) {
             navigate('/login');
         }
     }, [authLoading, isAuthenticated, user, navigate, fetchData]);

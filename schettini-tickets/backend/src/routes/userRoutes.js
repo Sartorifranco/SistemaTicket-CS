@@ -16,16 +16,16 @@ router.use(protect);
 
 // --- RUTAS ESPECÍFICAS (Importante: Deben ir ANTES de /:id) ---
 
-// 1. Obtener lista de agentes (Evita que "agents" se tome como ID)
-router.get('/agents', authorize('admin', 'agent'), getAgents);
+// 1. Obtener lista de agentes/supervisores (Evita que "agents" se tome como ID)
+router.get('/agents', authorize('admin', 'agent', 'supervisor'), getAgents);
 
 // 2. Ruta para obtener tickets activos de un usuario (Dashboard)
-router.get('/:id/active-tickets', authorize('admin', 'agent', 'client'), getUserActiveTickets);
+router.get('/:id/active-tickets', authorize('admin', 'agent', 'supervisor', 'client'), getUserActiveTickets);
 
 
 // --- RUTAS GENERALES ---
 router.route('/')
-    .get(authorize('admin', 'agent'), getUsers)
+    .get(authorize('admin', 'agent', 'supervisor'), getUsers)
     .post(authorize('admin'), createUser);
 
 // --- RUTAS POR ID ---

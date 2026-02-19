@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS Users (
   full_name VARCHAR(200) NULL,
   email VARCHAR(255) NOT NULL,
   password VARCHAR(255) NOT NULL,
-  role ENUM('admin','agent','client') NOT NULL DEFAULT 'client',
+  role ENUM('admin','supervisor','agent','client') NOT NULL DEFAULT 'client',
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   status VARCHAR(20) DEFAULT 'active',
   phone VARCHAR(50),
@@ -296,6 +296,27 @@ CREATE TABLE IF NOT EXISTS locations (
   type VARCHAR(50),
   company_id INT UNSIGNED NULL,
   PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tareas asignadas a agentes/supervisores (Admin y Supervisor pueden asignar)
+CREATE TABLE IF NOT EXISTS agent_tasks (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  assigned_to_user_id INT UNSIGNED NOT NULL,
+  assigned_by_user_id INT UNSIGNED NOT NULL,
+  due_date DATE NULL,
+  due_time TIME NULL,
+  status ENUM('pending','in_progress','completed','cancelled') DEFAULT 'pending',
+  priority VARCHAR(20) DEFAULT 'medium',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+  completed_at DATETIME NULL,
+  PRIMARY KEY (id),
+  KEY idx_assigned_to (assigned_to_user_id),
+  KEY idx_assigned_by (assigned_by_user_id),
+  KEY idx_due_date (due_date),
+  KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Configuración del sistema

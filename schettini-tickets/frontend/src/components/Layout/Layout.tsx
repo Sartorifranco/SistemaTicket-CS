@@ -6,7 +6,7 @@ import api from '../../config/axiosConfig';
 import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaCreditCard, FaTags, FaCrown, FaClock, FaHistory } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaCreditCard, FaTags, FaCrown, FaClock, FaHistory, FaTasks } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -59,6 +59,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Soporte</li>
                         <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
+                        <li><NavLink to="/admin/tasks" className={getLinkClassName}><FaTasks /> Tareas del Equipo</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
@@ -73,7 +74,20 @@ const Layout: React.FC = () => {
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Agente</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
+                        <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>
                         <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
+                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
+                    </>
+                );
+            case 'supervisor':
+                return (
+                    <>
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Supervisor</li>
+                        <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
+                        <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
+                        <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
+                        <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
+                        <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
                         <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
                     </>
                 );
@@ -140,7 +154,7 @@ const Layout: React.FC = () => {
                         <div className="flex items-center space-x-4">
                             <div className="hidden sm:flex flex-col items-end">
                                 <span className="text-sm font-bold text-gray-800">{user?.full_name || user?.username || 'Usuario'}</span>
-                                <span className="text-xs text-gray-500 capitalize">{user?.role === 'admin' ? 'Administrador' : user?.role === 'agent' ? 'Agente' : 'Cliente'}</span>
+                                <span className="text-xs text-gray-500 capitalize">{user?.role === 'admin' ? 'Administrador' : user?.role === 'supervisor' ? 'Supervisor' : user?.role === 'agent' ? 'Agente' : 'Cliente'}</span>
                             </div>
                             <NotificationBell />
                         </div>

@@ -102,6 +102,7 @@ const ticketConfigRoutes = require('./routes/ticketConfigRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const noteRoutes = require('./routes/noteRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
+const taskRoutes = require('./routes/taskRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -126,10 +127,22 @@ app.use('/api/ticket-config', ticketConfigRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Rutas opcionales (try-catch para evitar errores si no existen los archivos)
 try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) { console.log('Ruta admin opcional no cargada'); }
 try { app.use('/api', require('./routes/dataRoutes')); } catch (e) { console.log('Ruta data opcional no cargada'); }
+
+// Manejador de errores global
+app.use((err, req, res, next) => {
+    console.error('❌ [Error]', err.message);
+    if (process.env.NODE_ENV !== 'production') console.error('   Stack:', err.stack);
+    let status = 500;
+    if (res.statusCode >= 400) status = res.statusCode;
+    else if (err.message && (err.message.includes('No autorizado') || err.message.includes('sin token') || err.message.includes('no encontrado') || err.message.includes('desactivada'))) status = 401;
+    else if (err.message && err.message.includes('no autorizado')) status = 403;
+    res.status(status).json({ success: false, message: err.message || 'Error del servidor' });
+});
 
 // --- 6. SOCKET LOGIC ---
 io.on('connection', (socket) => {

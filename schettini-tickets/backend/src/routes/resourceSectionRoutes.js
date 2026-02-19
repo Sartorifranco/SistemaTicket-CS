@@ -8,9 +8,9 @@ router.use(protect);
 // Público para clientes (para mostrar el menú)
 router.get('/', getSections);
 
-// Solo admin
-router.post('/', authorize('admin'), createSection);
-router.put('/:id', authorize('admin'), updateSection);
-router.delete('/:id', authorize('admin'), deleteSection);
+// Admin y Supervisor
+router.post('/', authorize('admin', 'supervisor'), createSection);
+router.put('/:id', authorize('admin', 'supervisor'), updateSection);
+router.delete('/:id', authorize('admin', 'supervisor'), deleteSection);
 
 module.exports = router;

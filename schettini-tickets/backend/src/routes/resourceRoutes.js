@@ -27,9 +27,9 @@ router.use(protect);
 // Esta es la ruta que da el error si tiene authorize('admin')
 router.get('/', getResources);
 
-// ✅ RUTAS DE ADMINISTRADOR (Crear y Borrar)
-router.post('/', authorize('admin'), upload.single('file'), createResource);
-router.put('/:id', authorize('admin'), updateResource);
-router.delete('/:id', authorize('admin'), deleteResource);
+// ✅ RUTAS DE ADMINISTRADOR Y SUPERVISOR (Crear y Borrar)
+router.post('/', authorize('admin', 'supervisor'), upload.single('file'), createResource);
+router.put('/:id', authorize('admin', 'supervisor'), updateResource);
+router.delete('/:id', authorize('admin', 'supervisor'), deleteResource);
 
 module.exports = router;

@@ -40,11 +40,11 @@ router.delete('/:id', deleteTicket);
 // --- RUTAS DE ESTADO Y ASIGNACIÓN (CORREGIDAS) ---
 router.put('/:id/status', updateTicketStatus);
 
-// 1. Tomar Ticket (Auto-asignación) -> Botón "Tomar" del Agente
-router.put('/:id/assign', authorize('admin', 'agent'), assignTicket);
+// 1. Tomar Ticket (Auto-asignación) -> Botón "Tomar" del Agente/Supervisor
+router.put('/:id/assign', authorize('admin', 'agent', 'supervisor'), assignTicket);
 
-// 2. Reasignar Ticket (Delegar) -> Modal de "Reasignar" del Admin/Agente
-router.put('/:id/reassign', authorize('admin', 'agent'), reassignTicket); // ✅ Esta faltaba y daba 404
+// 2. Reasignar Ticket (Delegar) -> Modal de "Reasignar" del Admin/Agente/Supervisor
+router.put('/:id/reassign', authorize('admin', 'agent', 'supervisor'), reassignTicket);
 
 router.post('/:id/comments', addCommentToTicket);
 router.get('/:id/comments', getTicketComments);

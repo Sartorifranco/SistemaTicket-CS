@@ -241,7 +241,7 @@ const AgentTicketDetailPage: React.FC = () => {
                     <SectionCard title="Agente Asignado">
                         <p className="text-lg font-medium">{ticket.agent_name || 'No asignado'}</p>
                     </SectionCard>
-                    {(user?.role === 'admin' || user?.role === 'agent') && (
+                    {(user?.role === 'admin' || user?.role === 'agent' || user?.role === 'supervisor') && (
                         <SectionCard title="Reasignar Ticket">
                             <div className="flex flex-col gap-3">
                                 <select 
@@ -250,9 +250,11 @@ const AgentTicketDetailPage: React.FC = () => {
                                     className="w-full p-2 border rounded-md bg-white"
                                 >
                                     <option value="">-- Selecciona un agente --</option>
-                                    {(user?.role === 'agent' ? agents.filter((a: User) => a.role === 'agent') : agents).map((agent: User) => (
+                                    {(user?.role === 'agent' ? agents.filter((a: User) => a.role === 'agent') : 
+                                      user?.role === 'supervisor' ? agents.filter((a: User) => a.role !== 'admin') : 
+                                      agents).map((agent: User) => (
                                         <option key={agent.id} value={agent.id}>
-                                            {agent.first_name && agent.last_name ? `${agent.first_name} ${agent.last_name}` : agent.username}
+                                            {(agent as User & { full_name?: string }).full_name || agent.username}
                                         </option>
                                     ))}
                                 </select>

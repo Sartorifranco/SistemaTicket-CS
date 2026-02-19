@@ -6,8 +6,8 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 // Proteger todas las rutas
 router.use(protect);
 
-// Permitimos 'admin' Y 'agent'
-router.use(authorize('admin', 'agent'));
+// Permitimos admin, supervisor y agent
+router.use(authorize('admin', 'agent', 'supervisor'));
 
 // GET /api/reports (Reporte completo)
 router.get('/', getReports);

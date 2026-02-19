@@ -20,7 +20,15 @@ const protect = asyncHandler(async (req, res, next) => {
                 throw new Error('Usuario no encontrado');
             }
 
-            req.user = users[0];
+            // Normalizar para evitar Buffer/encoding en MySQL (ENUM puede venir raro)
+            const u = users[0];
+            req.user = {
+                id: Number(u.id),
+                username: String(u.username || ''),
+                email: String(u.email || ''),
+                role: String(u.role || '').toLowerCase().trim(),
+                status: String(u.status || '').toLowerCase().trim()
+            };
 
             if (req.user.status !== 'active') {
                 res.status(401);

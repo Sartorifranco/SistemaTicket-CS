@@ -4,16 +4,18 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { 
     FaEdit, FaTrash, FaUserPlus, FaSearch, FaBuilding, 
-    FaCreditCard, FaUserShield, FaEye, FaCheckCircle, FaTimesCircle, FaEnvelope, FaIdBadge 
+    FaCreditCard, FaUserShield, FaEye, FaCheckCircle, FaTimesCircle, FaEnvelope, FaIdBadge,
+    FaBan, FaChevronDown
 } from 'react-icons/fa';
 
 // Interfaces
 interface User {
     id: number;
     username: string;
+    full_name?: string;
     email: string;
-    role: 'admin' | 'agent' | 'client';
-    status: 'active' | 'inactive'; // Aseguramos que existe status
+    role: 'admin' | 'supervisor' | 'agent' | 'client';
+    status: 'active' | 'inactive';
     company_name?: string;
     department_name?: string;
     company_id?: number;
@@ -51,10 +53,11 @@ const AdminUsersPage: React.FC = () => {
     // Formulario
     const [formData, setFormData] = useState({
         username: '',
+        full_name: '',
         email: '',
         password: '',
         role: 'client',
-        status: 'active', // Agregamos status al formulario
+        status: 'active',
         company_id: '',
         department_id: ''
     });
@@ -92,7 +95,7 @@ const AdminUsersPage: React.FC = () => {
     };
 
     const handleOpenCreate = () => {
-        setFormData({ username: '', email: '', password: '', role: 'client', status: 'active', company_id: '', department_id: '' });
+        setFormData({ username: '', full_name: '', email: '', password: '', role: 'client', status: 'active', company_id: '', department_id: '' });
         setIsEditMode(false);
         setIsModalOpen(true);
     };
@@ -101,6 +104,7 @@ const AdminUsersPage: React.FC = () => {
         if(e) e.stopPropagation();
         setFormData({
             username: user.username,
+            full_name: user.full_name ?? user.username ?? '',
             email: user.email,
             password: '', 
             role: user.role,
@@ -113,20 +117,36 @@ const AdminUsersPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    // ✅ NUEVO: Abrir tarjeta de detalle
     const handleViewDetails = (user: User) => {
+        setDeleteMenuUserId(null);
         setViewUser(user);
     };
 
-    const handleDelete = async (id: number, e: React.MouseEvent) => {
+    const [deleteMenuUserId, setDeleteMenuUserId] = useState<number | null>(null);
+
+    const handleDeactivate = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!window.confirm('¿Estás seguro de eliminar este usuario?')) return;
+        setDeleteMenuUserId(null);
+        if (!window.confirm('¿Desactivar este usuario? No podrá iniciar sesión.')) return;
         try {
             await api.delete(`/api/users/${id}`);
-            toast.success('Usuario eliminado');
+            toast.success('Usuario desactivado');
             fetchData();
         } catch (error) {
-            toast.error('Error al eliminar');
+            toast.error('Error al desactivar');
+        }
+    };
+
+    const handlePermanentDelete = async (id: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setDeleteMenuUserId(null);
+        if (!window.confirm('¿Eliminar PERMANENTEMENTE este usuario? Esta acción no se puede deshacer. Solo es posible si no tiene tickets o comentarios.')) return;
+        try {
+            await api.delete(`/api/users/${id}?permanent=1`);
+            toast.success('Usuario eliminado permanentemente');
+            fetchData();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Error al eliminar');
         }
     };
 
@@ -139,6 +159,7 @@ const AdminUsersPage: React.FC = () => {
         try {
             const payload = {
                 ...formData,
+                full_name: (formData.full_name || '').trim() || null,
                 company_id: formData.company_id ? parseInt(formData.company_id) : null,
                 department_id: formData.department_id ? parseInt(formData.department_id) : null
             };
@@ -160,6 +181,7 @@ const AdminUsersPage: React.FC = () => {
     const safeUsers = Array.isArray(users) ? users : [];
     const filteredUsers = safeUsers.filter(u => 
         (u.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -200,6 +222,7 @@ const AdminUsersPage: React.FC = () => {
                         <thead className="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider">
                             <tr>
                                 <th className="p-5 font-bold">Usuario</th>
+                                <th className="p-5 font-bold">Nombre y apellido</th>
                                 <th className="p-5 font-bold">Estado & Rol</th>
                                 <th className="p-5 font-bold">Empresa</th>
                                 <th className="p-5 font-bold text-center">Acciones</th>
@@ -216,7 +239,7 @@ const AdminUsersPage: React.FC = () => {
                                         <td className="p-5">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                                                    user.role === 'admin' ? 'bg-red-500' : user.role === 'agent' ? 'bg-purple-500' : 'bg-blue-500'
+                                                    user.role === 'admin' ? 'bg-red-500' : user.role === 'supervisor' ? 'bg-amber-500' : user.role === 'agent' ? 'bg-purple-500' : 'bg-blue-500'
                                                 }`}>
                                                     {(user.username || '?').charAt(0).toUpperCase()}
                                                 </div>
@@ -226,7 +249,9 @@ const AdminUsersPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        
+                                        <td className="p-5">
+                                            <span className="text-gray-800 font-medium">{(user.full_name || user.username || '—').trim() || '—'}</span>
+                                        </td>
                                         <td className="p-5">
                                             <div className="flex flex-col gap-1 items-start">
                                                 {/* Badge de Estado */}
@@ -252,9 +277,9 @@ const AdminUsersPage: React.FC = () => {
                                                         {user.company_name || 'Sin Empresa Asignada'}
                                                     </div>
                                                 </div>
-                                            ) : (
+                                            ) : user.role === 'agent' || user.role === 'supervisor' || user.role === 'admin' ? (
                                                 <span className="text-gray-400 text-sm italic">Interno (Schettini)</span>
-                                            )}
+                                            ) : null}
                                         </td>
 
                                         <td className="p-5">
@@ -286,20 +311,35 @@ const AdminUsersPage: React.FC = () => {
                                                     <FaEdit />
                                                 </button>
 
-                                                <button 
-                                                    onClick={(e) => handleDelete(user.id, e)} 
-                                                    className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition border border-red-200" 
-                                                    title="Eliminar"
-                                                >
-                                                    <FaTrash />
-                                                </button>
+                                                <div className="relative">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setDeleteMenuUserId(deleteMenuUserId === user.id ? null : user.id); }} 
+                                                        className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition border border-red-200 flex items-center gap-1" 
+                                                        title="Eliminar / Desactivar"
+                                                    >
+                                                        <FaTrash /><FaChevronDown size={10} />
+                                                    </button>
+                                                    {deleteMenuUserId === user.id && (
+                                                        <div className="absolute right-0 top-full mt-1 py-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[180px]">
+                                                            <button onClick={(e) => handleDeactivate(user.id, e)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 text-amber-600">
+                                                                <FaBan /> Desactivar
+                                                            </button>
+                                                            <button onClick={(e) => handlePermanentDelete(user.id, e)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600">
+                                                                <FaTrash /> Eliminar permanentemente
+                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); setDeleteMenuUserId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-gray-500">
+                                                                Cancelar
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-gray-500">
+                                    <td colSpan={5} className="p-8 text-center text-gray-500">
                                         No se encontraron usuarios.
                                     </td>
                                 </tr>
@@ -316,6 +356,7 @@ const AdminUsersPage: React.FC = () => {
                         {/* Header del Modal */}
                         <div className={`h-24 w-full flex items-center justify-center ${
                             viewUser.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-orange-500' :
+                            viewUser.role === 'supervisor' ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
                             viewUser.role === 'agent' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
                             'bg-gradient-to-r from-blue-500 to-cyan-500'
                         }`}>
@@ -326,20 +367,22 @@ const AdminUsersPage: React.FC = () => {
                         <div className="px-8 pb-8 -mt-12 text-center">
                             <div className="bg-white p-2 rounded-full inline-block shadow-lg">
                                 <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold text-white ${
-                                    viewUser.role === 'admin' ? 'bg-red-500' : viewUser.role === 'agent' ? 'bg-purple-500' : 'bg-blue-500'
+                                    viewUser.role === 'admin' ? 'bg-red-500' : viewUser.role === 'supervisor' ? 'bg-amber-500' : viewUser.role === 'agent' ? 'bg-purple-500' : 'bg-blue-500'
                                 }`}>
-                                    {viewUser.username.charAt(0).toUpperCase()}
+                                    {(viewUser.full_name || viewUser.username || '?').charAt(0).toUpperCase()}
                                 </div>
                             </div>
                             
-                            <h2 className="text-2xl font-bold text-gray-800 mt-3">{viewUser.username}</h2>
-                            <p className="text-gray-500 flex items-center justify-center gap-2">
+                            <h2 className="text-2xl font-bold text-gray-800 mt-3">{((viewUser.full_name || '').trim() || viewUser.username || '').trim() || '—'}</h2>
+                            <p className="text-sm text-gray-500 mt-0.5">Usuario: {viewUser.username}</p>
+                            <p className="text-gray-500 flex items-center justify-center gap-2 mt-2">
                                 <FaEnvelope className="text-gray-400"/> {viewUser.email}
                             </p>
 
                             <div className="flex justify-center gap-3 mt-4">
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                                     viewUser.role === 'admin' ? 'bg-red-100 text-red-700' :
+                                    viewUser.role === 'supervisor' ? 'bg-amber-100 text-amber-700' :
                                     viewUser.role === 'agent' ? 'bg-purple-100 text-purple-700' :
                                     'bg-blue-100 text-blue-700'
                                 }`}>
@@ -406,15 +449,23 @@ const AdminUsersPage: React.FC = () => {
                         
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Completo</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Usuario <span className="text-red-500">*</span></label>
                                 <input 
-                                    type="text" required
+                                    type="text" required placeholder="Usuario para login (ej. agusortega)"
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                     value={formData.username}
                                     onChange={e => setFormData({...formData, username: e.target.value})}
                                 />
                             </div>
-                            
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre y apellido</label>
+                                <input 
+                                    type="text" placeholder="Ej. Agustín Ortega"
+                                    className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    value={formData.full_name}
+                                    onChange={e => setFormData({...formData, full_name: e.target.value})}
+                                />
+                            </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Correo Electrónico</label>
                                 <input 
@@ -449,6 +500,7 @@ const AdminUsersPage: React.FC = () => {
                                     >
                                         <option value="client">Cliente</option>
                                         <option value="agent">Agente</option>
+                                        <option value="supervisor">Supervisor</option>
                                         <option value="admin">Administrador</option>
                                     </select>
                                 </div>
