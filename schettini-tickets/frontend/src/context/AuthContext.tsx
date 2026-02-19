@@ -28,7 +28,7 @@ interface AuthContextType {
     loading: boolean;
     error: string | null;
     socket: SocketType | null; // Usamos nuestro tipo inferido
-    login: (credentials: LoginData) => Promise<boolean>;
+    login: (credentials: LoginData) => Promise<{ success: boolean; message?: string }>;
     register: (userData: any) => Promise<boolean>;
     logout: () => void;
     clearError: () => void;
@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [socket]);
 
     // --- 5. LOGIN ---
-    const login = useCallback(async (credentials: LoginData) => {
+    const login = useCallback(async (credentials: LoginData): Promise<{ success: boolean; message?: string }> => {
         setLoading(true);
         setError(null);
         try {
@@ -142,15 +142,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setIsAuthenticated(true);
     
                 setLoading(false);
-                return true; 
+                return { success: true }; 
             } else {
                 throw new Error('Formato de respuesta inválido.');
             }
         } catch (err: unknown) {
             setLoading(false);
-            const message = isAxiosErrorTypeGuard(err) ? (err.response?.data as ApiResponseError)?.message || 'Error de inicio de sesión.' : 'Error inesperado.';
+            const message = isAxiosErrorTypeGuard(err) ? (err.response?.data as ApiResponseError)?.message || 'Credenciales incorrectas.' : 'Error inesperado.';
             setError(message);
-            return false; 
+            return { success: false, message }; 
         }
     }, []);
 

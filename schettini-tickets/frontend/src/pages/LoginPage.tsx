@@ -8,7 +8,7 @@ const LoginPage: React.FC = () => {
     const [emailOrUser, setEmailOrUser] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login, user } = useAuth();
+    const { login, user, error, clearError } = useAuth();
     const { addNotification } = useNotification();
     const navigate = useNavigate();
 
@@ -22,11 +22,14 @@ const LoginPage: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        clearError?.();
         setLoading(true);
         try {
-            const success = await login({ email: emailOrUser, password }); 
-            if (success) {
+            const result = await login({ email: emailOrUser, password }); 
+            if (result.success) {
                 addNotification('Inicio de sesión exitoso.', 'success');
+            } else {
+                toast.error(result.message || 'Credenciales incorrectas. Revisa usuario/email y contraseña.');
             }
         } catch (err: any) {
             toast.error(err.message || 'Error en el inicio de sesión.');
@@ -50,6 +53,11 @@ const LoginPage: React.FC = () => {
                     </h2>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    {error && (
+                        <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
                     <div className="rounded-md shadow-sm -space-y-px">
                         <div>
                             <label htmlFor="email-or-user" className="sr-only">Correo o usuario</label>
