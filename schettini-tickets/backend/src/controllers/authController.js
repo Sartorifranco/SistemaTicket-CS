@@ -12,8 +12,17 @@ const registerUser = async (req, res) => {
         const { 
             username, full_name, email, password, phone, cuit, 
             business_name, fantasy_name, 
-            role, status, company_id, department_id, plan 
+            role, status, company_id, department_id, plan,
+            accepted_confidentiality_agreement 
         } = req.body;
+
+        // 0. Acuerdo de confidencialidad (solo registro público; admin eximido)
+        const isAdminCreating = req.user && req.user.role === 'admin';
+        if (!isAdminCreating) {
+            if (!accepted_confidentiality_agreement) {
+                return res.status(400).json({ message: 'Debes aceptar el Acuerdo de Confidencialidad para registrarte.' });
+            }
+        }
 
         // 1. Validaciones
         if (!username || !email || !password) {

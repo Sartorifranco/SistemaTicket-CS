@@ -47,6 +47,32 @@ const protect = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Opcional: setea req.user si hay token válido, sin fallar si no hay
+const optionalProtect = asyncHandler(async (req, res, next) => {
+    req.user = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        try {
+            const token = req.headers.authorization.split(' ')[1];
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const [users] = await pool.query(
+                'SELECT id, username, email, role, status FROM Users WHERE id = ?',
+                [decoded.id]
+            );
+            if (users.length > 0) {
+                const u = users[0];
+                req.user = {
+                    id: Number(u.id),
+                    username: String(u.username || ''),
+                    email: String(u.email || ''),
+                    role: String(u.role || '').toLowerCase().trim(),
+                    status: String(u.status || '').toLowerCase().trim()
+                };
+            }
+        } catch (_) { /* ignorar token inválido */ }
+    }
+    next();
+});
+
 const authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user || !roles.includes(req.user.role)) {
@@ -58,4 +84,4 @@ const authorize = (...roles) => {
     };
 };
 
-module.exports = { protect, authenticateToken: protect, authorize };
+module.exports = { protect, optionalProtect, authenticateToken: protect, authorize };

@@ -1,13 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope } from 'react-icons/fa';
+import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature } from 'react-icons/fa';
+
+const DEFAULT_AGREEMENT = `Acuerdo de Confidencialidad
+
+El presente Acuerdo de Confidencialidad establece los términos bajo los cuales la información proporcionada por el usuario será tratada por nuestra empresa.
+
+1. Información Confidencial
+
+Se considerará Información Confidencial toda aquella información técnica, comercial, financiera, operativa o de cualquier otra naturaleza que el usuario proporcione a través de nuestro sitio web, formularios de registro, consultas o cualquier otro medio de contacto.
+
+2. Uso de la Información
+
+La información recopilada será utilizada exclusivamente para fines comerciales, administrativos, técnicos o de contacto vinculados con los servicios y productos ofrecidos por nuestra empresa. No será utilizada con fines distintos a los aquí establecidos.
+
+3. Protección y Resguardo
+
+Nos comprometemos a adoptar las medidas técnicas y organizativas necesarias para proteger la información contra accesos no autorizados, alteración, divulgación o destrucción indebida.
+
+4. No Divulgación
+
+La Información Confidencial no será divulgada a terceros, salvo obligación legal o cuando resultare necesario para la correcta prestación del servicio (por ejemplo, proveedores técnicos o administrativos), quienes estarán sujetos a iguales obligaciones de confidencialidad.
+
+5. Vigencia
+
+Las obligaciones de confidencialidad se mantendrán vigentes aun después de finalizada la relación comercial entre las partes.
+
+6. Aceptación
+
+El registro en nuestro sitio web implica la aceptación expresa de los términos del presente Acuerdo de Confidencialidad.`;
 
 const AdminConfigPage: React.FC = () => {
     const [settings, setSettings] = useState({
         tech_hour_cost: '',
         payment_alias: '',
-        billing_email: '' // ✅ Campo nuevo agregado
+        billing_email: '',
+        confidentiality_agreement: ''
     });
     const [loading, setLoading] = useState(true);
 
@@ -20,7 +49,8 @@ const AdminConfigPage: React.FC = () => {
                 setSettings({
                     tech_hour_cost: res.data.data.tech_hour_cost || '',
                     payment_alias: res.data.data.payment_alias || '',
-                    billing_email: res.data.data.billing_email || '' // ✅ Cargar email
+                    billing_email: res.data.data.billing_email || '',
+                    confidentiality_agreement: res.data.data.confidentiality_agreement || DEFAULT_AGREEMENT
                 });
             } catch (error) {
                 console.error(error);
@@ -105,6 +135,21 @@ const AdminConfigPage: React.FC = () => {
                             placeholder="Ej: admin@tuempresa.com"
                         />
                         <p className="text-xs text-gray-400 mt-1">Este correo aparecerá en la sección "Mis Pagos" para consultas.</p>
+                    </div>
+
+                    {/* ACUERDO DE CONFIDENCIALIDAD */}
+                    <div className="border-t pt-6 mt-6">
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                            <FaFileSignature className="text-purple-600"/> Acuerdo de Confidencialidad
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">Texto que debe aceptar el cliente al registrarse. Editable.</p>
+                        <textarea 
+                            value={settings.confidentiality_agreement} 
+                            onChange={e => setSettings({...settings, confidentiality_agreement: e.target.value})} 
+                            rows={14}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition font-mono text-sm"
+                            placeholder="Acuerdo de Confidencialidad..."
+                        />
                     </div>
 
                     <div className="pt-4 border-t mt-6">

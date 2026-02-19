@@ -1,14 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
 import { ApiResponseError } from '../../types';
 import { isAxiosErrorTypeGuard } from '../../utils/typeGuards';
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaBuilding, FaIdCard, FaStore } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaBuilding, FaIdCard, FaStore, FaFileSignature } from 'react-icons/fa';
+
+const DEFAULT_AGREEMENT = `Acuerdo de Confidencialidad
+
+El presente Acuerdo de Confidencialidad establece los términos bajo los cuales la información proporcionada por el usuario será tratada por nuestra empresa.
+
+1. Información Confidencial
+
+Se considerará Información Confidencial toda aquella información técnica, comercial, financiera, operativa o de cualquier otra naturaleza que el usuario proporcione a través de nuestro sitio web, formularios de registro, consultas o cualquier otro medio de contacto.
+
+2. Uso de la Información
+
+La información recopilada será utilizada exclusivamente para fines comerciales, administrativos, técnicos o de contacto vinculados con los servicios y productos ofrecidos por nuestra empresa. No será utilizada con fines distintos a los aquí establecidos.
+
+3. Protección y Resguardo
+
+Nos comprometemos a adoptar las medidas técnicas y organizativas necesarias para proteger la información contra accesos no autorizados, alteración, divulgación o destrucción indebida.
+
+4. No Divulgación
+
+La Información Confidencial no será divulgada a terceros, salvo obligación legal o cuando resultare necesario para la correcta prestación del servicio (por ejemplo, proveedores técnicos o administrativos), quienes estarán sujetos a iguales obligaciones de confidencialidad.
+
+5. Vigencia
+
+Las obligaciones de confidencialidad se mantendrán vigentes aun después de finalizada la relación comercial entre las partes.
+
+6. Aceptación
+
+El registro en nuestro sitio web implica la aceptación expresa de los términos del presente Acuerdo de Confidencialidad.`;
 
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [agreementText, setAgreementText] = useState(DEFAULT_AGREEMENT);
+    const [acceptedAgreement, setAcceptedAgreement] = useState(false);
     
     const [formData, setFormData] = useState({
         full_name: '', // Nombre y apellido (identificación)
@@ -21,6 +51,15 @@ const RegisterPage: React.FC = () => {
         business_name: '',
         fantasy_name: ''
     });
+
+    useEffect(() => {
+        api.get('/api/config/public')
+            .then(res => {
+                const text = res.data?.data?.confidentiality_agreement?.trim();
+                if (text) setAgreementText(text);
+            })
+            .catch(() => { /* usar default */ });
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -43,6 +82,10 @@ const RegisterPage: React.FC = () => {
             toast.warning('La contraseña debe tener al menos 6 caracteres.');
             return;
         }
+        if (!acceptedAgreement) {
+            toast.warning('Debes leer y aceptar el Acuerdo de Confidencialidad para registrarte.');
+            return;
+        }
 
         setLoading(true);
 
@@ -56,7 +99,8 @@ const RegisterPage: React.FC = () => {
                 password: formData.password,
                 cuit: formData.cuit,
                 business_name: formData.business_name,
-                fantasy_name: formData.fantasy_name
+                fantasy_name: formData.fantasy_name,
+                accepted_confidentiality_agreement: true
             });
 
             toast.success('¡Registro exitoso! Ya puedes iniciar sesión.');
@@ -170,6 +214,23 @@ const RegisterPage: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* ACUERDO DE CONFIDENCIALIDAD */}
+                        <div className="border-t pt-4">
+                            <h3 className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2"><FaFileSignature/> Acuerdo de Confidencialidad</h3>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-48 overflow-y-auto text-xs text-gray-700 mb-3 whitespace-pre-wrap">
+                                {agreementText}
+                            </div>
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={acceptedAgreement}
+                                    onChange={e => setAcceptedAgreement(e.target.checked)}
+                                    className="mt-1 w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">He leído y acepto el Acuerdo de Confidencialidad. Entiendo que el registro implica la aceptación expresa de sus términos.</span>
+                            </label>
+                        </div>
+
                         {/* SECCIÓN SEGURIDAD */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                             <div>
@@ -188,7 +249,7 @@ const RegisterPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <button type="submit" disabled={loading} className={`w-full py-3 rounded-lg font-bold text-white shadow-md transition ${loading ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'}`}>
+                        <button type="submit" disabled={loading || !acceptedAgreement} className={`w-full py-3 rounded-lg font-bold text-white shadow-md transition ${(loading || !acceptedAgreement) ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}>
                             {loading ? 'Registrando...' : 'CREAR CUENTA'}
                         </button>
                     </form>
