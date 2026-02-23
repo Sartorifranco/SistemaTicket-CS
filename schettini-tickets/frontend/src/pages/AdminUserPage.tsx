@@ -174,7 +174,8 @@ const AdminUsersPage: React.FC = () => {
             setIsModalOpen(false);
             fetchData();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Error al guardar');
+            const msg = error.response?.data?.message || error.message || 'Error al guardar';
+            toast.error(msg, { autoClose: 8000 });
         }
     };
 

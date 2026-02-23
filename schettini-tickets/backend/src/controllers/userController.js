@@ -141,8 +141,13 @@ const updateUser = async (req, res) => {
         );
         res.json({ success: true, message: 'Usuario actualizado correctamente' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error al actualizar' });
+        console.error('Error en updateUser:', error);
+        const msg = error.message || 'Error al actualizar';
+        // Si MySQL rechaza el rol (ej. ENUM sin 'supervisor'), informar al admin
+        const hint = (msg.includes('Data truncated') || msg.includes("enum") || msg.includes('role'))
+            ? ' Ejecutá en el VPS: cd schettini-tickets/backend && node scripts/migrate-supervisor-and-tasks.js'
+            : '';
+        res.status(500).json({ message: msg + hint });
     }
 };
 

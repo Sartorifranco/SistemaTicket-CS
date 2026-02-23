@@ -198,17 +198,24 @@ const getAssignableUsers = async (req, res) => {
     try {
         if (!req.user) return res.status(401).json({ success: false, message: 'No autenticado' });
         const role = req.user.role;
-        let sql = `SELECT id, username, email, username as full_name, role FROM Users 
-            WHERE status = 'active' AND role IN (`;
-        if (role === 'admin') {
-            sql += `'supervisor','agent') ORDER BY username ASC`;
-        } else if (role === 'supervisor') {
-            sql += `'agent') ORDER BY username ASC`;
-        } else {
-            return res.status(403).json({ success: false, message: 'Sin permiso' });
-        }
+        const roleFilter = role === 'admin' ? `'supervisor','agent'` : role === 'supervisor' ? `'agent'` : null;
+        if (!roleFilter) return res.status(403).json({ success: false, message: 'Sin permiso' });
 
-        const [rows] = await pool.query(sql);
+        let rows;
+        try {
+            [rows] = await pool.query(
+                `SELECT id, username, email, COALESCE(NULLIF(TRIM(full_name), ''), username) as full_name, role 
+                 FROM Users WHERE status = 'active' AND role IN (${roleFilter}) 
+                 ORDER BY COALESCE(NULLIF(TRIM(full_name), ''), username) ASC`
+            );
+        } catch (colErr) {
+            if (colErr.message?.includes('full_name')) {
+                [rows] = await pool.query(
+                    `SELECT id, username, email, username as full_name, role 
+                     FROM Users WHERE status = 'active' AND role IN (${roleFilter}) ORDER BY username ASC`
+                );
+            } else throw colErr;
+        }
         res.json({ success: true, data: rows });
     } catch (error) {
         console.error('getAssignableUsers error:', error.message);
