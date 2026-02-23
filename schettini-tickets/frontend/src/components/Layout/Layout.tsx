@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
 import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
+import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
 import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaCreditCard, FaTags, FaCrown, FaClock, FaHistory, FaTasks } from 'react-icons/fa';
 
@@ -65,7 +66,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
                         <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config. Global</NavLink></li>
                         <li><NavLink to="/admin/problemas" className={getLinkClassName}>Tipos de Problema</NavLink></li>
-                        <li><NavLink to="/admin/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
+                        <li><NavLink to="/admin/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                     </>
                 );
             case 'agent':
@@ -76,7 +77,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
                         <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>
                         <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
-                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
+                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                     </>
                 );
             case 'supervisor':
@@ -88,7 +89,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
                         <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
                         <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
-                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Log de Actividad</NavLink></li>
+                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                     </>
                 );
             case 'client':
@@ -145,7 +146,7 @@ const Layout: React.FC = () => {
                                 <div className="text-right">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase leading-none">Tu Plan</p>
                                     <p className={`text-sm font-extrabold leading-tight ${isPremium ? 'text-yellow-700' : 'text-gray-600'}`}>
-                                        {String(realTimePlan).toUpperCase()}
+                                        {getPlanLabel(realTimePlan as string)}
                                     </p>
                                 </div>
                             </div>

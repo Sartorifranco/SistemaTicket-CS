@@ -45,7 +45,7 @@ const AgentNotesPage: React.FC = () => {
             {notes.length === 0 ? (
                 <div className="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
                     <p className="text-lg">No tienes notas guardadas.</p>
-                    <p className="text-sm mt-2">Agrega notas desde tu Dashboard principal.</p>
+                    <p className="text-sm mt-2">Agregá notas desde tu panel principal.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

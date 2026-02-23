@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
+import { getPlanLabel } from '../utils/traslations';
 import { useNavigate } from 'react-router-dom';
 import { 
     FaEdit, FaTrash, FaUserPlus, FaSearch, FaBuilding, 
@@ -408,7 +409,7 @@ const AdminUsersPage: React.FC = () => {
                                 <div>
                                     <p className="text-xs text-gray-400 uppercase font-bold">Departamento</p>
                                     <p className="text-sm font-semibold text-gray-700 mt-1">
-                                        {viewUser.department_name || 'General'}
+                                        {viewUser.department_name || 'Sin asignar'}
                                     </p>
                                 </div>
                                 <div>
@@ -421,7 +422,7 @@ const AdminUsersPage: React.FC = () => {
                                     <div>
                                         <p className="text-xs text-gray-400 uppercase font-bold">Plan Actual</p>
                                         <p className="text-sm font-semibold text-indigo-600 mt-1">
-                                            {viewUser.plan || 'Free'}
+                                            {getPlanLabel(viewUser.plan)}
                                         </p>
                                     </div>
                                 )}
@@ -452,7 +453,7 @@ const AdminUsersPage: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Usuario <span className="text-red-500">*</span></label>
                                 <input 
-                                    type="text" required placeholder="Usuario para login (ej. agusortega)"
+                                    type="text" required placeholder="Usuario para inicio de sesión (ej. agusortega)"
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                     value={formData.username}
                                     onChange={e => setFormData({...formData, username: e.target.value})}

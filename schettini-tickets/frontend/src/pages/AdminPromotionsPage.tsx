@@ -60,7 +60,7 @@ const AdminPromotionsPage = () => {
                 <h3 className="font-bold mb-4 flex items-center gap-2"><FaPlus/> Nueva Publicación</h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input 
-                        type="text" placeholder="Título (Ej: 20% Off en Toner)" required
+                        type="text" placeholder="Título (Ej: 20% de descuento en Toner)" required
                         value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
                         className="border p-2 rounded"
                     />
@@ -69,7 +69,7 @@ const AdminPromotionsPage = () => {
                         className="border p-2 rounded"
                     >
                         <option value="offer">Módulo Ofertas (Cuadrado)</option>
-                        <option value="banner">Banner Dashboard (Apaisado)</option>
+                        <option value="banner">Banner del panel (apaisado)</option>
                     </select>
                     <textarea 
                         placeholder="Descripción corta..."
@@ -87,7 +87,7 @@ const AdminPromotionsPage = () => {
                             className="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                         />
                         <label htmlFor="popupCheck" className="text-gray-800 font-bold cursor-pointer select-none">
-                            ⚡ Mostrar como POP-UP al inicio (Ventana emergente)
+                            ⚡ Mostrar como ventana emergente al inicio
                         </label>
                     </div>
 
@@ -119,7 +119,7 @@ const AdminPromotionsPage = () => {
                         </button>
                         {/* Etiqueta Popup */}
                         {(p.is_popup === 1 || p.is_popup === true) && (
-                            <span className="absolute top-2 left-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded shadow">POPUP ACTIVO</span>
+                            <span className="absolute top-2 left-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded shadow">VENTANA EMERGENTE ACTIVA</span>
                         )}
                         <div className="p-4">
                             <div className="flex justify-between items-start">

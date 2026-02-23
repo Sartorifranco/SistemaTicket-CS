@@ -86,7 +86,7 @@ const AgentDashboard: React.FC = () => {
         <div className="container mx-auto p-6 space-y-8 bg-gray-50 min-h-screen">
             <div className="flex justify-between items-center border-b pb-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Dashboard de Agente</h1>
+                    <h1 className="text-3xl font-bold text-gray-800">Panel de Agente</h1>
                     <p className="text-gray-500">Bienvenido, {user?.username}</p>
                 </div>
                 <button onClick={() => navigate('/agent/tickets')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition">

@@ -98,8 +98,8 @@ const AdminUserPaymentsPage: React.FC = () => {
                                 className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition"
                             >
                                 <option value="Free">Plan Gratuito</option>
-                                <option value="Pro">Plan Pro</option>
-                                <option value="Enterprise">Plan Enterprise</option>
+                                <option value="Pro">Plan Profesional</option>
+                                <option value="Enterprise">Plan Empresarial</option>
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

@@ -58,7 +58,7 @@ const ResetPasswordPage: React.FC = () => {
                         Solicitar nuevo enlace
                     </Link>
                     <br />
-                    <Link to="/login" className="text-gray-500 text-sm mt-4 inline-block">Volver al login</Link>
+                    <Link to="/login" className="text-gray-500 text-sm mt-4 inline-block">Volver al inicio de sesión</Link>
                 </div>
             </div>
         );
@@ -69,7 +69,7 @@ const ResetPasswordPage: React.FC = () => {
             <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4">
                 <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl text-center">
                     <h2 className="text-2xl font-bold text-green-600 mb-2">¡Listo!</h2>
-                    <p className="text-gray-600">Tu contraseña fue actualizada. Redirigiendo al login...</p>
+                    <p className="text-gray-600">Tu contraseña fue actualizada. Redirigiendo al inicio de sesión...</p>
                 </div>
             </div>
         );

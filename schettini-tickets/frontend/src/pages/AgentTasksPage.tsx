@@ -160,7 +160,7 @@ const AgentTasksPage: React.FC<AgentTasksPageProps> = ({ mode }) => {
     const days = [...Array(startPad).fill(null), ...daysInMonth];
     const tasksByDate: Record<string, Task[]> = {};
     tasks.filter(t => t.due_date && t.status !== 'cancelled').forEach(t => {
-        const d = t.due_date!;
+        const d = format(new Date(t.due_date!), 'yyyy-MM-dd');
         if (!tasksByDate[d]) tasksByDate[d] = [];
         tasksByDate[d].push(t);
     });

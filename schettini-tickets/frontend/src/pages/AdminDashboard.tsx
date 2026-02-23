@@ -193,7 +193,7 @@ const AdminDashboard: React.FC = () => {
         setIsAgentModalOpen(true);
     };
 
-    if (loading) return <div className="p-8 text-center">Cargando dashboard...</div>;
+    if (loading) return <div className="p-8 text-center">Cargando panel...</div>;
     if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
     if (!metrics) return <div className="p-8 text-center">No se encontraron datos.</div>;
 
@@ -203,7 +203,7 @@ const AdminDashboard: React.FC = () => {
                 
                 {/* ❌ InfoWidget ELIMINADO DE AQUÍ PARA QUE NO SALGA EL BANNER REPETIDO */}
 
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard de Administrador</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Panel de Administrador</h1>
 
                 {/* FILA 1: Métricas Principales */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

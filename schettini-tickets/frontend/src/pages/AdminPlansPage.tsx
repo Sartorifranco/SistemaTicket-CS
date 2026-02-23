@@ -132,7 +132,7 @@ const AdminPlansPage: React.FC = () => {
                                         value={formData.name} 
                                         onChange={e => setFormData({...formData, name: e.target.value})} 
                                         className="w-full pl-9 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                        placeholder="Ej: PLAN GOLD"
+                                        placeholder="Ej: Plan Dorado"
                                         required 
                                     />
                                 </div>
@@ -176,7 +176,7 @@ const AdminPlansPage: React.FC = () => {
                                     value={formData.features} 
                                     onChange={e => setFormData({...formData, features: e.target.value})} 
                                     className="w-full pl-9 p-2 border border-gray-300 rounded h-32 focus:ring-2 focus:ring-indigo-500 outline-none resize-none" 
-                                    placeholder={`- Soporte 24/7\n- Múltiples usuarios`}
+                                    placeholder={`- Soporte las 24 hs\n- Múltiples usuarios`}
                                 />
                             </div>
                         </div>

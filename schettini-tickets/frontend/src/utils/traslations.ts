@@ -27,3 +27,19 @@ export const userRoleTranslations: Record<UserRole, string> = {
     admin: 'Administrador',
 };
 
+// Planes (Free, Pro, Enterprise -> español)
+export const planNameTranslations: Record<string, string> = {
+    Free: 'Gratuito',
+    free: 'Gratuito',
+    Pro: 'Profesional',
+    pro: 'Profesional',
+    Enterprise: 'Empresarial',
+    enterprise: 'Empresarial',
+    Premium: 'Premium',
+    premium: 'Premium',
+};
+export const getPlanLabel = (plan: string | null | undefined): string => {
+    if (!plan) return 'Gratuito';
+    return planNameTranslations[plan] || plan;
+};
+

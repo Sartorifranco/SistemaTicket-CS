@@ -108,7 +108,7 @@ const ClientDashboard: React.FC = () => {
                 {/* ❌ InfoWidget ELIMINADO DE AQUÍ */}
 
                 <div className="mb-8 border-b pb-4 mt-2">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-1">Tu Dashboard</h1>
+                    <h1 className="text-3xl font-bold text-gray-800 mb-1">Tu panel</h1>
                     <p className="text-gray-500 text-lg">Bienvenido de nuevo, <span className="font-semibold text-gray-700">{user?.username}</span>.</p>
                 </div>
 

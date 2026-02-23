@@ -211,7 +211,7 @@ const HelpWidget: React.FC = () => {
                                     <FaCommentDots /> Hablar con un Agente
                                     {unreadCount > 0 && <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 w-3 h-3 rounded-full animate-ping"></span>}
                                 </button>
-                                {isPlanFree && <p className="text-[10px] text-gray-500 mt-2 bg-yellow-50 p-1.5 rounded border border-yellow-100">⏱️ Demora estimada: 24hs (Plan Free)</p>}
+                                {isPlanFree && <p className="text-[10px] text-gray-500 mt-2 bg-yellow-50 p-1.5 rounded border border-yellow-100">⏱️ Demora estimada: 24hs (Plan gratuito)</p>}
                             </div>
                             
                             <div className="space-y-2 mb-4">
