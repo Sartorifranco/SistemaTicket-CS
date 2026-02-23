@@ -153,17 +153,22 @@ const AgentTicketDetailPage: React.FC = () => {
                     {ticket.attachments && ticket.attachments.length > 0 && (
                         <SectionCard title="Archivos Adjuntos">
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                {ticket.attachments.map(att => (
+                                {ticket.attachments.map(att => {
+                                    if (!att) return null;
+                                    const rawPath = (att as { file_path?: string; file_url?: string }).file_path ?? (att as { file_path?: string; file_url?: string }).file_url ?? '';
+                                    if (rawPath == null || rawPath === '') return null;
+                                    const path = String(rawPath).replace(/\\/g, '/');
+                                    return (
                                     <a 
                                         key={att.id}
-                                        href={`/${att.file_path.replace(/\\/g, '/')}`} 
+                                        href={`/${path}`} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         className="border rounded-lg p-2 text-center hover:bg-gray-50 transition-colors group"
                                         title={`Ver: ${att.file_name}`}
                                     >
                                         {att.file_type && att.file_type.startsWith('image/') ? (
-                                            <img src={`/${att.file_path.replace(/\\/g, '/')}`} alt={att.file_name} className="w-full h-24 object-cover rounded-md mb-2"/>
+                                            <img src={`/${path}`} alt={att.file_name || ''} className="w-full h-24 object-cover rounded-md mb-2"/>
                                         ) : att.file_type && att.file_type.startsWith('video/') ? (
                                             <div className="w-full h-24 bg-black rounded-md mb-2 flex items-center justify-center">
                                                 <svg className="w-10 h-10 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -177,7 +182,8 @@ const AgentTicketDetailPage: React.FC = () => {
                                             {att.file_name}
                                         </p>
                                     </a>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </SectionCard>
                     )}

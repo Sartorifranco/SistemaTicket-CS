@@ -4,7 +4,8 @@ import { ReactNode } from "react";
 export interface Attachment {
     id: number;
     file_name: string;
-    file_path: string;
+    file_path?: string;
+    file_url?: string;  // Backend usa file_url, frontend puede usar file_path
     file_type: string | null;
 }
 
