@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
-import { TicketData, Comment as TicketComment, TicketStatus } from '../types';
+import { TicketData, Comment as TicketComment, TicketStatus, Attachment } from '../types';
 import { ticketStatusTranslations } from '../utils/traslations';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
@@ -147,7 +147,7 @@ const ClientTicketDetailPage: React.FC = () => {
                 {ticket.attachments && ticket.attachments.length > 0 && (
                     <SectionCard title="Archivos Adjuntos" className="lg:col-span-3">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {ticket.attachments.map((att: { id: number; file_name: string; file_path?: string; file_url?: string; file_type?: string }) => {
+                            {ticket.attachments.map((att: Attachment) => {
                                 const rawPath = att.file_path ?? att.file_url ?? '';
                                 if (!rawPath) return null;
                                 const fileUrl = getImageUrl(rawPath);
