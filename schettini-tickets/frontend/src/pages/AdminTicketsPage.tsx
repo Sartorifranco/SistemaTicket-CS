@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { TicketData, User, Department, Company, TicketStatus } from '../types';
+import { ticketPriorityTranslations } from '../utils/traslations';
 import TicketFormModal from '../components/Tickets/TicketFormModal';
 import StatusBadge from '../components/Tickets/StatusBadge';
 import { formatLocalDate } from '../utils/dateFormatter';
@@ -260,7 +261,7 @@ const AdminTicketsPage: React.FC = () => {
                                                         ticket.priority === 'high' ? 'bg-orange-100 text-orange-800' :
                                                         'bg-gray-100 text-gray-600'
                                                     }`}>
-                                                        {ticket.priority}
+                                                        {ticketPriorityTranslations[ticket.priority as keyof typeof ticketPriorityTranslations] || ticket.priority}
                                                     </span>
                                                 </div>
                                             </td>

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { TicketData, ActivityLog, AgentMetrics, AgentNote } from '../types';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
+import { ticketPriorityTranslations } from '../utils/traslations';
 
 // --- Componentes Internos ---
 const MetricCard: React.FC<{ title: string; value: number | string; color: string }> = ({ title, value, color }) => (
@@ -120,7 +121,7 @@ const AgentDashboard: React.FC = () => {
                                             ticket.priority === 'urgent' ? 'bg-red-100 text-red-700' : 
                                             ticket.priority === 'high' ? 'bg-orange-100 text-orange-700' : 
                                             'bg-gray-100 text-gray-600'
-                                        }`}>{ticket.priority}</span>
+                                        }`}>{ticketPriorityTranslations[ticket.priority] || ticket.priority}</span>
                                     </div>
                                     <p className="text-xs text-gray-400 mt-1">{ticket.client_name} • {formatLocalDate(ticket.created_at)}</p>
                                 </div>

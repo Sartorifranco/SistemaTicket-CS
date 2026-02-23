@@ -5,6 +5,7 @@ import { getImageUrl, getImageUrlFallback } from '../utils/imageUrl';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { TicketData } from '../types';
+import { ticketStatusTranslations } from '../utils/traslations';
 // 🗑️ InfoWidget ELIMINADO
 
 interface ClientMetrics {
@@ -39,7 +40,7 @@ const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onCl
                                     <div>
                                         <span className="font-bold text-gray-800 block">Ticket #{ticket.id}</span>
                                         <span className="text-sm text-gray-500">{ticket.title}</span>
-                                        <span className="text-xs px-2 py-0.5 rounded ml-2 bg-gray-100 text-gray-800">{ticket.status}</span>
+                                        <span className="text-xs px-2 py-0.5 rounded ml-2 bg-gray-100 text-gray-800">{ticketStatusTranslations[ticket.status as keyof typeof ticketStatusTranslations] || ticket.status}</span>
                                     </div>
                                     <Link to={`/client/tickets/${ticket.id}`} className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium text-sm">Ver Detalle</Link>
                                 </li>
