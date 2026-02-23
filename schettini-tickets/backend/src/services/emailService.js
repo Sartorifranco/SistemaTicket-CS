@@ -72,7 +72,41 @@ const sendWelcomeEmail = async (to, username) => {
     }
 };
 
+const sendPasswordResetEmail = async (to, token, fullName = '') => {
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+
+    const mailOptions = {
+        from: `"Sistema de Tickets Schettini" <${process.env.EMAIL_USER}>`,
+        to: to,
+        subject: 'Recuperación de contraseña',
+        html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Recuperación de contraseña</h2>
+                <p>${fullName ? `Hola ${fullName},` : 'Hola,'}</p>
+                <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta.</p>
+                <p>Hacé clic en el botón para elegir una nueva contraseña:</p>
+                <a href="${resetUrl}" style="background-color: #DC2626; color: white; padding: 12px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 8px; font-weight: bold;">
+                    Restablecer contraseña
+                </a>
+                <p style="margin-top: 20px; font-size: 12px; color: #666;">Si el botón no funciona, copiá y pegá esta URL en tu navegador:</p>
+                <p style="font-size: 12px;"><a href="${resetUrl}">${resetUrl}</a></p>
+                <p style="margin-top: 20px; font-size: 12px;">Este enlace expira en 1 hora.</p>
+                <p style="font-size: 12px;">Si no solicitaste recuperar tu contraseña, ignorá este correo.</p>
+            </div>
+        `,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`[EmailService] Correo de recuperación enviado a ${to}`);
+    } catch (error) {
+        console.error('[EmailService] Error al enviar correo de recuperación:', error);
+        throw error;
+    }
+};
+
 module.exports = {
     sendActivationEmail,
     sendWelcomeEmail,
+    sendPasswordResetEmail,
 };

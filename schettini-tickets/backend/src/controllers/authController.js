@@ -1,6 +1,8 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { sendPasswordResetEmail } = require('../services/emailService');
 
 // 6 Meses en milisegundos
 const INACTIVITY_LIMIT = 180 * 24 * 60 * 60 * 1000; 
@@ -193,4 +195,86 @@ const getMe = async (req, res) => {
 
 const activateAccount = async (req, res) => { res.json({ message: 'OK' }); };
 
-module.exports = { registerUser, loginUser, getMe, activateAccount };
+// --- Recuperación de contraseña ---
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: 'Ingresá tu correo electrónico.' });
+        }
+
+        const [users] = await pool.query('SELECT id, email, full_name, username FROM Users WHERE email = ? AND status = ?', [email.trim(), 'active']);
+        const user = users[0];
+
+        // Siempre respondemos éxito para no revelar si el email existe
+        if (!user) {
+            return res.json({ success: true, message: 'Si ese correo está registrado, recibirás un enlace para restablecer tu contraseña.' });
+        }
+
+        // Generar token único
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+        // Crear tabla si no existe (fallback)
+        try {
+            await pool.query(
+                `INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)`,
+                [user.id, token, expiresAt]
+            );
+        } catch (tableErr) {
+            if (tableErr.message?.includes("doesn't exist")) {
+                return res.status(503).json({ message: 'Función de recuperación no disponible. Contactá al administrador.' });
+            }
+            throw tableErr;
+        }
+
+        // Enviar email
+        try {
+            await sendPasswordResetEmail(user.email, token, user.full_name || user.username);
+        } catch (mailErr) {
+            console.error('Error enviando email de recuperación:', mailErr);
+            return res.status(500).json({ message: 'No se pudo enviar el correo. Verificá la configuración de email del servidor.' });
+        }
+
+        res.json({ success: true, message: 'Si ese correo está registrado, recibirás un enlace para restablecer tu contraseña.' });
+    } catch (error) {
+        console.error('forgotPassword error:', error);
+        res.status(500).json({ message: 'Error en el servidor.' });
+    }
+};
+
+const resetPassword = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+        if (!token || !password) {
+            return res.status(400).json({ message: 'Token y contraseña son obligatorios.' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+        }
+
+        const [rows] = await pool.query(
+            `SELECT prt.*, u.id as user_id FROM password_reset_tokens prt
+             JOIN Users u ON prt.user_id = u.id
+             WHERE prt.token = ? AND prt.used = 0 AND prt.expires_at > NOW()`,
+            [token]
+        );
+
+        if (!rows || rows.length === 0) {
+            return res.status(400).json({ message: 'El enlace expiró o ya fue usado. Solicitá uno nuevo.' });
+        }
+
+        const record = rows[0];
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await pool.query('UPDATE Users SET password = ? WHERE id = ?', [hashedPassword, record.user_id]);
+        await pool.query('UPDATE password_reset_tokens SET used = 1 WHERE id = ?', [record.id]);
+
+        res.json({ success: true, message: 'Contraseña actualizada. Ya podés iniciar sesión.' });
+    } catch (error) {
+        console.error('resetPassword error:', error);
+        res.status(500).json({ message: 'Error en el servidor.' });
+    }
+};
+
+module.exports = { registerUser, loginUser, getMe, activateAccount, forgotPassword, resetPassword };

@@ -11,6 +11,8 @@ import Layout from './components/Layout/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import ActivateAccountPage from './pages/ActivateAccountPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -109,6 +111,8 @@ const App: React.FC = () => {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/activate-account" element={<ActivateAccountPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                         <Route element={<Layout />}>
                             <Route path="/" element={<Navigate to="/profile" replace />} />

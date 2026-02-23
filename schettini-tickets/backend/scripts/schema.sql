@@ -319,6 +319,19 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
   KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tokens para recuperación de contraseña
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  token VARCHAR(255) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  used TINYINT(1) DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_token (token),
+  KEY idx_user_expires (user_id, expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Configuración del sistema
 CREATE TABLE IF NOT EXISTS system_settings (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,

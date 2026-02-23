@@ -101,8 +101,11 @@ const LoginPage: React.FC = () => {
                         </button>
                     </div>
                 </form>
-                <div className="text-sm text-center">
-                    <Link to="/register" className="font-medium text-red-600 hover:text-red-500">
+                <div className="text-sm text-center space-y-2">
+                    <Link to="/forgot-password" className="block font-medium text-red-600 hover:text-red-500">
+                        ¿Olvidaste tu contraseña?
+                    </Link>
+                    <Link to="/register" className="block font-medium text-red-600 hover:text-red-500">
                         ¿No tienes una cuenta? Regístrate aquí
                     </Link>
                 </div>

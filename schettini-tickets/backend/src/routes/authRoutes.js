@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 // Importa las funciones del controlador de autenticación desde el archivo correcto
-const { registerUser, loginUser, getMe, activateAccount } = require('../controllers/authController');
+const { registerUser, loginUser, getMe, activateAccount, forgotPassword, resetPassword } = require('../controllers/authController');
 // Importa el middleware de protección de rutas, ahora como 'authenticateToken'
 const { authenticateToken, optionalProtect } = require('../middleware/authMiddleware');
 
@@ -13,6 +13,8 @@ router.post('/register', optionalProtect, registerUser);
 router.post('/login', loginUser);
 
 router.post('/activate', activateAccount);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Ruta de perfil del usuario logueado (protegida)
 // GET a /api/auth/me para obtener los datos del usuario autenticado

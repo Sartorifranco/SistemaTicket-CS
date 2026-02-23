@@ -33,6 +33,13 @@ if [[ -f "backend/scripts/migrate-resource-sections.js" ]]; then
     echo ""
 fi
 
+# Migración password_reset_tokens (recuperación de contraseña)
+if [[ -f "backend/scripts/migrate-password-reset.js" ]]; then
+    echo ">>> Ejecutando migración password_reset_tokens..."
+    (cd backend && node scripts/migrate-password-reset.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend
