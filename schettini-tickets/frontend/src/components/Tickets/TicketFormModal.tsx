@@ -87,6 +87,13 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         return specificProblems.filter(p => p.category_id === Number(formData.problem_category_id));
     }, [formData.problem_category_id, specificProblems]);
 
+    const problemsWithOthers = useMemo(() => {
+        const base = filteredProblems;
+        const hasOthers = base.some(p => p.name.toLowerCase() === 'otros' || p.name.toLowerCase() === 'otro');
+        if (hasOthers) return base;
+        return [...base, { id: -1, name: 'Otros', category_id: Number(formData.problem_category_id) } as ConfigOption];
+    }, [filteredProblems, formData.problem_category_id]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -174,9 +181,10 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                             <label className="block text-gray-700 font-bold mb-1 text-sm">Equipo Afectado</label>
                             <select name="equipment_id" value={formData.equipment_id} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none" style={hardStyle} required>
                                 <option value="">Seleccione...</option>
+                                <option value="none">Ninguno</option>
                                 {equipment.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                             </select>
-                            {isOther(formData.equipment_id, equipment) && (
+                            {formData.equipment_id && formData.equipment_id !== 'none' && isOther(formData.equipment_id, equipment) && (
                                 <input type="text" name="custom_equipment" placeholder="Especifique..." className="mt-2 w-full p-2 border rounded bg-white text-sm" onChange={handleChange} required />
                             )}
                         </div>
@@ -205,9 +213,9 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                             <label className="block text-gray-700 font-bold mb-1 text-sm">Problema Específico</label>
                             <select name="specific_problem_id" value={formData.specific_problem_id} onChange={handleChange} className="w-full p-2.5 border rounded-lg outline-none disabled:bg-gray-100" style={hardStyle} disabled={!formData.problem_category_id} required>
                                 <option value="">Seleccione...</option>
-                                {filteredProblems.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                {problemsWithOthers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
-                            {isOther(formData.specific_problem_id, specificProblems) && (
+                            {isOther(formData.specific_problem_id, problemsWithOthers) && (
                                 <input type="text" name="custom_problem" placeholder="Detalle el problema..." className="mt-2 w-full p-2 border rounded bg-white text-sm" onChange={handleChange} required />
                             )}
                         </div>

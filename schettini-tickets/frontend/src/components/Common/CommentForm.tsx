@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../../types';
 
 interface CommentFormProps {
@@ -6,10 +6,28 @@ interface CommentFormProps {
     userRole: UserRole;
 }
 
+const MIN_HEIGHT = 72;  // ~3 líneas
+const MAX_HEIGHT = 300;
+
 const CommentForm: React.FC<CommentFormProps> = ({ onAddComment, userRole }) => {
     const [commentText, setCommentText] = useState('');
     const [isInternal, setIsInternal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = '0';
+        const h = Math.min(Math.max(el.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
+        el.style.height = `${h}px`;
+    };
+
+    useEffect(() => { adjustHeight(); }, [commentText]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setCommentText(e.target.value);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,16 +39,19 @@ const CommentForm: React.FC<CommentFormProps> = ({ onAddComment, userRole }) => 
         
         setCommentText('');
         setIsInternal(false);
+        if (textareaRef.current) textareaRef.current.style.height = `${MIN_HEIGHT}px`;
         setIsSubmitting(false);
     };
 
     return (
         <form onSubmit={handleSubmit}>
             <textarea
+                ref={textareaRef}
                 value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
+                onChange={handleChange}
                 placeholder="Escribe tu respuesta..."
-                className="w-full p-3 border rounded-md h-28 focus:ring-2 focus:ring-red-500"
+                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-red-500 resize-none overflow-y-auto"
+                style={{ minHeight: `${MIN_HEIGHT}px` }}
                 required
                 disabled={isSubmitting}
             />

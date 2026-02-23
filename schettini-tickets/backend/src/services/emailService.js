@@ -73,6 +73,16 @@ const sendWelcomeEmail = async (to, username) => {
 };
 
 const sendPasswordResetEmail = async (to, token, fullName = '') => {
+    const missing = [];
+    if (!process.env.EMAIL_HOST) missing.push('EMAIL_HOST');
+    if (!process.env.EMAIL_PORT) missing.push('EMAIL_PORT');
+    if (!process.env.EMAIL_USER) missing.push('EMAIL_USER');
+    if (!process.env.EMAIL_PASS) missing.push('EMAIL_PASS');
+    if (missing.length > 0) {
+        console.error('[EmailService] Faltan variables de entorno:', missing.join(', '));
+        throw new Error(`Configuración de email incompleta. Faltan: ${missing.join(', ')}. Ver backend/CONFIGURAR-EMAIL.md`);
+    }
+
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
 
     const mailOptions = {

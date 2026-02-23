@@ -6,6 +6,7 @@ import { TicketData, Comment as TicketComment, TicketStatus } from '../types';
 import { ticketStatusTranslations } from '../utils/traslations';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
+import { getImageUrl } from '../utils/imageUrl';
 import CommentForm from '../components/Common/CommentForm';
 import SectionCard from '../components/Common/SectionCard';
 
@@ -13,6 +14,12 @@ const Badge: React.FC<{ color: string; children: React.ReactNode }> = ({ color, 
     <span className={`px-3 py-1 text-xs font-semibold rounded-full ${color}`}>
         {children}
     </span>
+);
+
+const FileIcon: React.FC<{ className?: string }> = ({ className = "w-16 h-16" }) => (
+    <svg className={`${className} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
 );
 
 const ClientTicketDetailPage: React.FC = () => {
@@ -136,6 +143,44 @@ const ClientTicketDetailPage: React.FC = () => {
                         </div>
                     </div>
                 </SectionCard>
+
+                {ticket.attachments && ticket.attachments.length > 0 && (
+                    <SectionCard title="Archivos Adjuntos" className="lg:col-span-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {ticket.attachments.map((att: { id: number; file_name: string; file_path?: string; file_url?: string; file_type?: string }) => {
+                                const rawPath = att.file_path ?? att.file_url ?? '';
+                                if (!rawPath) return null;
+                                const fileUrl = getImageUrl(rawPath);
+                                const isImage = att.file_type?.startsWith('image/');
+                                const isVideo = att.file_type?.startsWith('video/');
+                                return (
+                                    <a key={att.id} href={fileUrl} target="_blank" rel="noopener noreferrer"
+                                        className="border rounded-lg p-2 text-center hover:bg-gray-50 transition-colors block">
+                                        {isImage ? (
+                                            <img src={fileUrl} alt="" className="w-full h-24 object-cover rounded-md mb-2"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                    const ph = e.currentTarget.nextElementSibling as HTMLElement;
+                                                    if (ph) ph.classList.remove('hidden');
+                                                }} />
+                                        ) : null}
+                                        {isImage && (
+                                            <div className="hidden w-full h-24 bg-gray-100 rounded-md mb-2 flex items-center justify-center">
+                                                <FileIcon className="w-10 h-10 shrink-0" />
+                                            </div>
+                                        )}
+                                        {isVideo ? (
+                                            <div className="w-full h-24 bg-black rounded-md mb-2 flex items-center justify-center">
+                                                <svg className="w-10 h-10 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
+                                            </div>
+                                        ) : !isImage ? <FileIcon className="w-full h-24" /> : null}
+                                        <p className="text-sm text-gray-700 truncate">{att.file_name}</p>
+                                    </a>
+                                );
+                            })}
+                        </div>
+                    </SectionCard>
+                )}
 
                 <SectionCard title="Conversación" className="lg:col-span-3">
                     <div className="space-y-4 mb-6 max-h-[50vh] overflow-y-auto pr-2">

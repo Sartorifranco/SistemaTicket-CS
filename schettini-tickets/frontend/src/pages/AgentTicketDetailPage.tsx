@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { TicketData, Comment as TicketComment, TicketStatus, User, Attachment, TicketPriority } from '../types';
 import { ticketStatusTranslations, ticketPriorityTranslations } from '../utils/traslations';
 import { formatLocalDate } from '../utils/dateFormatter';
+import { getImageUrl } from '../utils/imageUrl';
 import CommentForm from '../components/Common/CommentForm';
 import SectionCard from '../components/Common/SectionCard';
 
@@ -157,27 +158,43 @@ const AgentTicketDetailPage: React.FC = () => {
                                     if (!att) return null;
                                     const rawPath = (att as { file_path?: string; file_url?: string }).file_path ?? (att as { file_path?: string; file_url?: string }).file_url ?? '';
                                     if (rawPath == null || rawPath === '') return null;
-                                    const path = String(rawPath).replace(/\\/g, '/');
+                                    const fileUrl = getImageUrl(rawPath);
+                                    const isImage = att.file_type?.startsWith('image/');
+                                    const isVideo = att.file_type?.startsWith('video/');
                                     return (
                                     <a 
                                         key={att.id}
-                                        href={`/${path}`} 
+                                        href={fileUrl} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="border rounded-lg p-2 text-center hover:bg-gray-50 transition-colors group"
+                                        className="border rounded-lg p-2 text-center hover:bg-gray-50 transition-colors group block"
                                         title={`Ver: ${att.file_name}`}
                                     >
-                                        {att.file_type && att.file_type.startsWith('image/') ? (
-                                            <img src={`/${path}`} alt={att.file_name || ''} className="w-full h-24 object-cover rounded-md mb-2"/>
-                                        ) : att.file_type && att.file_type.startsWith('video/') ? (
-                                            <div className="w-full h-24 bg-black rounded-md mb-2 flex items-center justify-center">
-                                                <svg className="w-10 h-10 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
-                                                </svg>
+                                        {isImage ? (
+                                            <img 
+                                                src={fileUrl} 
+                                                alt="" 
+                                                className="w-full h-24 object-cover rounded-md mb-2"
+                                                onError={(e) => {
+                                                    const img = e.currentTarget;
+                                                    img.style.display = 'none';
+                                                    const placeholder = img.nextElementSibling as HTMLElement;
+                                                    if (placeholder) placeholder.classList.remove('hidden');
+                                                }}
+                                            />
+                                        ) : null}
+                                        {isImage && (
+                                            <div className="hidden w-full h-24 bg-gray-100 rounded-md mb-2 flex items-center justify-center">
+                                                <FileIcon className="w-10 h-10 shrink-0" />
                                             </div>
-                                        ) : (
-                                            <FileIcon className="w-full h-24" />
                                         )}
+                                        {isVideo ? (
+                                            <div className="w-full h-24 bg-black rounded-md mb-2 flex items-center justify-center">
+                                                <svg className="w-10 h-10 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
+                                            </div>
+                                        ) : !isImage ? (
+                                            <FileIcon className="w-full h-24" />
+                                        ) : null}
                                         <p className="text-sm text-gray-700 truncate group-hover:underline">
                                             {att.file_name}
                                         </p>
