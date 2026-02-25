@@ -26,13 +26,18 @@ import AdminTicketDetailPage from './pages/AdminTicketDetailPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminProblemsPage from './pages/AdminProblemsPage'; 
 import AdminPlansPage from './pages/AdminPlansPage';
-import AdminConfigPage from './pages/AdminConfigPage'; 
+import AdminConfigPage from './pages/AdminConfigPage';
+import AdminCompanySettingsPage from './pages/AdminCompanySettingsPage'; 
 import AdminModulesPage from './pages/AdminModulesPage'; 
 import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage';
 import AdminResourcesPage from './pages/AdminResourcesPage';
 import AdminUserPaymentsPage from './pages/AdminUserPaymentsPage';
 import AdminPromotionsPage from './pages/AdminPromotionsPage';
 import AdminActivityLogsPage from './pages/AdminActivityLogsPage';
+import QuoterPage from './pages/QuoterPage';
+import RepairOrdersListPage from './pages/RepairOrdersListPage';
+import NewRepairOrderPage from './pages/NewRepairOrderPage';
+import ManageRepairOrderPage from './pages/ManageRepairOrderPage';
 
 // --- AGENT PAGES ---
 import AgentDashboard from './pages/AgentDashboard';
@@ -46,6 +51,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientTicketsPage from './pages/ClientMyTicketsPage';
 import ClientTicketDetailPage from './pages/ClientTicketDetailPage';
 import ClientResourcesPage from './pages/ClientResourcesPage';
+import ClientRepairsPage from './pages/ClientRepairsPage';
 import OffersPage from './pages/OffersPage';
 
 import PrivateRoute from './components/Common/PrivateRoute';
@@ -132,19 +138,28 @@ const App: React.FC = () => {
                             <Route path="/admin/plans" element={<PrivateRoute roles={['admin']}><AdminPlansPage /></PrivateRoute>} />
                             <Route path="/admin/modules" element={<PrivateRoute roles={['admin']}><AdminModulesPage /></PrivateRoute>} />
                             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfigPage /></PrivateRoute>} />
+                            <Route path="/admin/company-settings" element={<PrivateRoute roles={['admin']}><AdminCompanySettingsPage /></PrivateRoute>} />
                             <Route path="/admin/problemas" element={<PrivateRoute roles={['admin']}><AdminProblemsPage /></PrivateRoute>} />
                             <Route path="/admin/activity-logs" element={<PrivateRoute roles={['admin']}><AdminActivityLogsPage /></PrivateRoute>} />
                             <Route path="/admin/knowledge-base" element={<PrivateRoute roles={['admin']}><AdminResourcesPage /></PrivateRoute>} />
+                            <Route path="/admin/cotizador" element={<PrivateRoute roles={['admin']}><QuoterPage /></PrivateRoute>} />
+                            <Route path="/admin/repair-orders" element={<PrivateRoute roles={['admin']}><RepairOrdersListPage /></PrivateRoute>} />
+                            <Route path="/admin/repair-orders/new" element={<PrivateRoute roles={['admin']}><NewRepairOrderPage /></PrivateRoute>} />
+                            <Route path="/admin/repair-orders/:id" element={<PrivateRoute roles={['admin']}><ManageRepairOrderPage /></PrivateRoute>} />
                             <Route path="/admin/tasks" element={<PrivateRoute roles={['admin']}><AgentTasksPage mode="admin" /></PrivateRoute>} />
 
                             {/* --- RUTAS AGENTE Y SUPERVISOR --- */}
                             <Route path="/agent" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentDashboard /></PrivateRoute>} />
-                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentTicketsPage /></PrivateRoute>} />
-                            <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentTicketDetailPage /></PrivateRoute>} />
-                            <Route path="/agent/tasks" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentTasksPage /></PrivateRoute>} />
+                            <Route path="/agent/tickets" element={<PrivateRoute roles={['agent', 'supervisor']} permission="tickets_view"><AgentTicketsPage /></PrivateRoute>} />
+                            <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent', 'supervisor']} permission="tickets_view"><AgentTicketDetailPage /></PrivateRoute>} />
+                            <Route path="/agent/tasks" element={<PrivateRoute roles={['agent', 'supervisor']} permission="tickets_view"><AgentTasksPage /></PrivateRoute>} />
                             <Route path="/agent/knowledge-base" element={<PrivateRoute roles={['supervisor']}><AdminResourcesPage /></PrivateRoute>} />
-                            <Route path="/agent/reports" element={<PrivateRoute roles={['agent', 'supervisor']}><AgentReportsPage /></PrivateRoute>} />
-                            <Route path="/agent/activity-logs" element={<PrivateRoute roles={['agent', 'supervisor']}><AdminActivityLogsPage title="Mi Actividad" /></PrivateRoute>} />
+                            <Route path="/agent/reports" element={<PrivateRoute roles={['agent', 'supervisor']} permission="reports_view"><AgentReportsPage /></PrivateRoute>} />
+                            <Route path="/agent/cotizador" element={<PrivateRoute roles={['agent', 'supervisor']} permission="quoter_access"><QuoterPage /></PrivateRoute>} />
+                            <Route path="/agent/repair-orders" element={<PrivateRoute roles={['agent', 'supervisor']} permission="repairs_view"><RepairOrdersListPage /></PrivateRoute>} />
+                            <Route path="/agent/repair-orders/new" element={<PrivateRoute roles={['agent', 'supervisor']} permission="repairs_view"><NewRepairOrderPage /></PrivateRoute>} />
+                            <Route path="/agent/repair-orders/:id" element={<PrivateRoute roles={['agent', 'supervisor']} permission="repairs_view"><ManageRepairOrderPage /></PrivateRoute>} />
+                            <Route path="/agent/activity-logs" element={<PrivateRoute roles={['agent', 'supervisor']} permission="tickets_view"><AdminActivityLogsPage title="Mi Actividad" /></PrivateRoute>} />
                             
                             {/* Ruta legacy */}
                             <Route path="/reports" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><ReportsPage /></PrivateRoute>} />
@@ -153,6 +168,7 @@ const App: React.FC = () => {
                             <Route path="/client" element={<PrivateRoute roles={['client']}><ClientDashboard /></PrivateRoute>} />
                             <Route path="/client/tickets" element={<PrivateRoute roles={['client']}><ClientTicketsPage /></PrivateRoute>} />
                             <Route path="/client/tickets/:id" element={<PrivateRoute roles={['client']}><ClientTicketDetailPage /></PrivateRoute>} />
+                            <Route path="/client/repairs" element={<PrivateRoute roles={['client']}><ClientRepairsPage /></PrivateRoute>} />
                             <Route path="/client/help" element={<PrivateRoute roles={['client']}><ClientResourcesPage /></PrivateRoute>} />
                             <Route path="/client/offers" element={<PrivateRoute roles={['client']}><OffersPage /></PrivateRoute>} />
                         </Route>

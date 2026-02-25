@@ -1,6 +1,42 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
+const NEW_PERMISSIONS = ['tickets_view', 'tickets_reply', 'tickets_delete', 'repairs_view', 'repairs_create', 'repairs_edit', 'quoter_access', 'reports_view'];
+
+const migrateOldPermissions = (arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return ['tickets_view', 'tickets_reply'];
+    const migrated = [];
+    for (const p of arr) {
+        if (NEW_PERMISSIONS.includes(p)) migrated.push(p);
+        else if (p === 'tickets') { migrated.push('tickets_view', 'tickets_reply'); }
+        else if (p === 'repair_orders') { migrated.push('repairs_view', 'repairs_create', 'repairs_edit'); }
+        else if (p === 'cotizador') { migrated.push('quoter_access'); }
+    }
+    return migrated.length ? [...new Set(migrated)] : ['tickets_view', 'tickets_reply'];
+};
+
+const parsePermissions = (val) => {
+    if (!val) return ['tickets_view', 'tickets_reply'];
+    let arr = [];
+    if (Array.isArray(val)) arr = val;
+    else if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            arr = Array.isArray(parsed) ? parsed : val.split(',').map(s => s.trim()).filter(Boolean);
+        } catch {
+            arr = val.split(',').map(s => s.trim()).filter(Boolean);
+        }
+    }
+    if (arr.length === 0) return ['tickets_view', 'tickets_reply'];
+    return migrateOldPermissions(arr);
+};
+
+const serializePermissions = (arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return '["tickets_view","tickets_reply"]';
+    const valid = arr.filter(p => NEW_PERMISSIONS.includes(p));
+    return JSON.stringify(valid.length ? valid : ['tickets_view', 'tickets_reply']);
+};
+
 // --- Obtener todos los usuarios (Con info de Empresa, Depto y Plan) ---
 const getUsers = async (req, res) => {
     try {
@@ -9,6 +45,7 @@ const getUsers = async (req, res) => {
             [users] = await pool.query(`
                 SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
                     u.plan, u.phone, u.cuit, u.company_id, u.department_id,
+                    u.permissions,
                     u.business_name as business_name_text,
                     c.name as company_name_linked, d.name as department_name
                 FROM Users u
@@ -21,6 +58,7 @@ const getUsers = async (req, res) => {
                 [users] = await pool.query(`
                     SELECT u.id, u.username, u.username as full_name, u.email, u.role, u.status, u.is_active,
                         u.plan, u.phone, u.cuit, u.company_id, u.department_id,
+                        u.permissions,
                         u.business_name as business_name_text,
                         c.name as company_name_linked, d.name as department_name
                     FROM Users u
@@ -38,8 +76,8 @@ const getUsers = async (req, res) => {
         const formattedUsers = users.map(user => ({
             ...user,
             business_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada',
-            // Mantenemos compatibilidad si el front espera 'company_name'
-            company_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada'
+            company_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada',
+            permissions: parsePermissions(user.permissions)
         }));
 
         res.json({ success: true, data: formattedUsers });
@@ -60,7 +98,8 @@ const getUserById = async (req, res) => {
         `, [req.params.id]);
         
         if (users.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
-        res.json({ success: true, user: users[0] });
+        const u = users[0];
+        res.json({ success: true, user: { ...u, permissions: parsePermissions(u.permissions) } });
     } catch (error) {
         res.status(500).json({ message: 'Error del servidor' });
     }
@@ -113,7 +152,7 @@ const createUser = async (req, res) => {
 // --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
-        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name } = req.body;
+        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions } = req.body;
         const userId = req.params.id;
 
         // Lógica corregida: Si 'status' no viene, asumimos 'active'
@@ -125,19 +164,29 @@ const updateUser = async (req, res) => {
         const finalDepartmentId = (department_id && department_id !== '' && department_id !== '0') ? department_id : null;
 
         const finalFullName = (full_name || '').trim() || null;
+        const finalPermissions = (role === 'agent' || role === 'supervisor') && Array.isArray(permissions)
+            ? serializePermissions(permissions)
+            : null;
+
+        const updates = [
+            'username = ?', 'full_name = ?', 'email = ?', 'role = ?', 'status = ?', 'is_active = ?',
+            'department_id = ?', 'company_id = ?', 'plan = ?',
+            'phone = ?', 'cuit = ?', 'business_name = ?', 'fantasy_name = ?'
+        ];
+        const values = [
+            username, finalFullName, email, role, newStatus, isActive,
+            finalDepartmentId, finalCompanyId, plan || 'Free',
+            phone || '', cuit || '', business_name || '', fantasy_name || ''
+        ];
+        if (finalPermissions !== null) {
+            updates.push('permissions = ?');
+            values.push(finalPermissions);
+        }
+        values.push(userId);
 
         await pool.query(
-            `UPDATE Users SET 
-                username = ?, full_name = ?, email = ?, role = ?, status = ?, is_active = ?, 
-                department_id = ?, company_id = ?, plan = ?, 
-                phone = ?, cuit = ?, business_name = ?, fantasy_name = ?
-             WHERE id = ?`,
-            [
-                username, finalFullName, email, role, newStatus, isActive,
-                finalDepartmentId, finalCompanyId, plan || 'Free',
-                phone || '', cuit || '', business_name || '', fantasy_name || '',
-                userId
-            ]
+            `UPDATE Users SET ${updates.join(', ')} WHERE id = ?`,
+            values
         );
         res.json({ success: true, message: 'Usuario actualizado correctamente' });
     } catch (error) {
@@ -218,6 +267,29 @@ const getAgents = async (req, res) => {
     }
 };
 
+/** Permisos que otorgan acceso al módulo Taller (para Técnico Asignado) */
+const TALLER_PERMISSIONS = ['repairs_view', 'repairs_edit', 'repairs_create', 'repair_orders'];
+
+// --- Técnicos (agentes con permiso de taller, excluye admin) ---
+const getTechnicians = async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT id, username, email, role, COALESCE(full_name, username) as full_name, permissions
+            FROM Users 
+            WHERE role = 'agent' AND status = 'active'
+            ORDER BY username ASC
+        `);
+        const technicians = rows.filter((u) => {
+            const perms = parsePermissions(u.permissions);
+            return perms.some((p) => TALLER_PERMISSIONS.includes(p));
+        }).map(({ permissions, ...u }) => u);
+        res.json({ success: true, data: technicians });
+    } catch (error) {
+        console.error('getTechnicians error:', error.message);
+        res.status(500).json({ success: false, message: 'Error al obtener técnicos' });
+    }
+};
+
 module.exports = {
-    getUsers, getUserById, createUser, updateUser, deleteUser, getUserActiveTickets, getAgents
+    getUsers, getUserById, createUser, updateUser, deleteUser, getUserActiveTickets, getAgents, getTechnicians
 };

@@ -7,7 +7,7 @@ import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
 import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaCreditCard, FaTags, FaCrown, FaClock, FaHistory, FaTasks } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -61,7 +61,11 @@ const Layout: React.FC = () => {
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Soporte</li>
                         <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
                         <li><NavLink to="/admin/tasks" className={getLinkClassName}><FaTasks /> Tareas del Equipo</NavLink></li>
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Área Técnica</li>
+                        <li><NavLink to="/admin/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>
+                        <li><NavLink to="/admin/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
+                        <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Mi Empresa</NavLink></li>
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
                         <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config. Global</NavLink></li>
@@ -69,29 +73,65 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                     </>
                 );
-            case 'agent':
+            case 'agent': {
+                const perms = user.permissions || [];
+                const hasTickets = perms.includes('tickets_view') || perms.includes('tickets');
+                const hasRepairs = perms.includes('repairs_view') || perms.includes('repair_orders');
+                const hasCotizador = perms.includes('quoter_access') || perms.includes('cotizador');
+                const hasReports = perms.includes('reports_view');
+                const hasAreaTecnica = hasRepairs || hasCotizador;
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Agente</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
-                        <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
-                        <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>
-                        <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
-                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                        {hasTickets && (
+                            <>
+                                <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
+                                <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>
+                                {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
+                                <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                            </>
+                        )}
+                        {hasAreaTecnica && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Área Técnica</li>
+                                {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
+                                {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
+                            </>
+                        )}
                     </>
                 );
-            case 'supervisor':
+            }
+            case 'supervisor': {
+                const perms = user.permissions || [];
+                const hasTickets = perms.includes('tickets_view') || perms.includes('tickets') || perms.length === 0;
+                const hasRepairs = perms.includes('repairs_view') || perms.includes('repair_orders');
+                const hasCotizador = perms.includes('quoter_access') || perms.includes('cotizador');
+                const hasReports = perms.includes('reports_view');
+                const hasAreaTecnica = hasRepairs || hasCotizador;
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Supervisor</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
-                        <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
-                        <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
-                        <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>
-                        <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
-                        <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                        {hasTickets && (
+                            <>
+                                <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
+                                <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
+                                {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
+                                <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
+                                <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                            </>
+                        )}
+                        {hasAreaTecnica && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Área Técnica</li>
+                                {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
+                                {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
+                            </>
+                        )}
                     </>
                 );
+            }
             case 'client':
                 return (
                     <>
@@ -99,6 +139,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/client" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/client/offers" className={getLinkClassName}><FaTags /> Ofertas y Beneficios</NavLink></li>
                         <li><NavLink to="/client/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
+                        <li><NavLink to="/client/repairs" className={getLinkClassName}><FaTools /> Mis Reparaciones</NavLink></li>
                         <li><NavLink to="/client/help" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
                         <li><NavLink to="/profile" className={getLinkClassName}><FaUsers /> Mi Perfil</NavLink></li>
                     </>

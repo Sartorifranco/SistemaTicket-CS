@@ -66,7 +66,9 @@ export interface User {
     phone?: string;           // Teléfono / WhatsApp
     cuit?: string;            // CUIT / RUT
     last_login?: string;      // Para calcular inactividad
-    
+
+    // Permisos granulares (solo para agent/supervisor): tickets, repair_orders, cotizador
+    permissions?: string[];
 }
 
 // ====================================================================

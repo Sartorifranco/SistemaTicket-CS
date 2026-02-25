@@ -84,4 +84,39 @@ const authorize = (...roles) => {
     };
 };
 
-module.exports = { protect, optionalProtect, authenticateToken: protect, authorize };
+/** Admin siempre; agent/supervisor solo con permiso reports_view */
+const authorizeReports = asyncHandler(async (req, res, next) => {
+    if (!req.user) {
+        res.status(403);
+        throw new Error('No autorizado');
+    }
+    if (req.user.role === 'admin') return next();
+    if (req.user.role === 'agent' || req.user.role === 'supervisor') {
+        const [rows] = await pool.query(
+            'SELECT permissions FROM Users WHERE id = ? AND status = ?',
+            [req.user.id, 'active']
+        );
+        if (rows.length === 0) {
+            res.status(403);
+            throw new Error('Usuario no encontrado o inactivo');
+        }
+        let perms = [];
+        try {
+            const val = rows[0].permissions;
+            if (val) {
+                const arr = typeof val === 'string' ? JSON.parse(val) : val;
+                perms = Array.isArray(arr) ? arr : [];
+            }
+        } catch (_) {}
+        const hasView = perms.includes('reports_view');
+        if (!hasView) {
+            res.status(403);
+            throw new Error('No tienes permiso para ver reportes');
+        }
+        return next();
+    }
+    res.status(403);
+    throw new Error('Rol no autorizado para reportes');
+});
+
+module.exports = { protect, optionalProtect, authenticateToken: protect, authorize, authorizeReports };

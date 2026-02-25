@@ -1,5 +1,185 @@
 const pool = require('../config/db');
 
+// --- Dashboard de Reportes (Taller + Tickets) ---
+const getDashboard = async (req, res) => {
+    try {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+
+        const [
+            [kpiRecaudado],
+            [kpiCalle],
+            [kpiEquipos],
+            [statusRows],
+            [techRows],
+            [trendRows],
+            // --- Tickets ---
+            [ticketsCreadosMes],
+            [ticketsAbiertos],
+            [ticketsCerradosMes],
+            [ticketsByStatusRows],
+            [ticketsByAgentRows]
+        ] = await Promise.all([
+            // --- WORKSHOP ---
+            // 1. Total recaudado este mes (entregado, mes actual)
+            pool.query(`
+                SELECT COALESCE(SUM(total_cost), 0) as total
+                FROM repair_orders
+                WHERE status = 'entregado'
+                  AND YEAR(COALESCE(delivered_date, updated_at, created_at)) = ?
+                  AND MONTH(COALESCE(delivered_date, updated_at, created_at)) = ?
+            `, [currentYear, currentMonth]),
+            // 2. Dinero en la calle (listo: total_cost - deposit_paid)
+            pool.query(`
+                SELECT COALESCE(SUM(COALESCE(total_cost, 0) - COALESCE(deposit_paid, 0)), 0) as total
+                FROM repair_orders
+                WHERE status = 'listo'
+            `),
+            // 3. Equipos en taller (no entregado ni entregado_sin_reparacion)
+            pool.query(`
+                SELECT COUNT(*) as total
+                FROM repair_orders
+                WHERE status NOT IN ('entregado', 'entregado_sin_reparacion')
+            `),
+            // 4. Distribución por estado
+            pool.query(`
+                SELECT status, COUNT(*) as count
+                FROM repair_orders
+                GROUP BY status
+                ORDER BY count DESC
+            `),
+            // 5. Rendimiento por técnico (mes actual: entregados + labor_cost)
+            pool.query(`
+                SELECT
+                    ro.technician_id,
+                    COALESCE(u.full_name, u.username) as technician_name,
+                    COUNT(*) as equipos_entregados,
+                    COALESCE(SUM(ro.labor_cost), 0) as total_mano_obra
+                FROM repair_orders ro
+                LEFT JOIN Users u ON ro.technician_id = u.id
+                WHERE ro.status = 'entregado'
+                  AND YEAR(COALESCE(ro.delivered_date, ro.updated_at, ro.created_at)) = ?
+                  AND MONTH(COALESCE(ro.delivered_date, ro.updated_at, ro.created_at)) = ?
+                GROUP BY ro.technician_id, u.full_name, u.username
+                ORDER BY equipos_entregados DESC
+            `, [currentYear, currentMonth]),
+            // 6. Tendencia financiera últimos 6 meses
+            pool.query(`
+                SELECT
+                    YEAR(COALESCE(delivered_date, updated_at, created_at)) as year,
+                    MONTH(COALESCE(delivered_date, updated_at, created_at)) as month,
+                    COALESCE(SUM(total_cost), 0) as total
+                FROM repair_orders
+                WHERE status = 'entregado'
+                  AND COALESCE(delivered_date, updated_at, created_at) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
+                GROUP BY year, month
+                ORDER BY year ASC, month ASC
+            `),
+            // --- TICKETS ---
+            // 7. Total tickets creados este mes
+            pool.query(`
+                SELECT COUNT(*) as total
+                FROM Tickets
+                WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?
+            `, [currentYear, currentMonth]),
+            // 8. Tickets abiertos (status 'open')
+            pool.query(`
+                SELECT COUNT(*) as total
+                FROM Tickets
+                WHERE status = 'open'
+            `),
+            // 9. Tickets cerrados este mes (resolved/closed con closed_at en mes actual)
+            pool.query(`
+                SELECT COUNT(*) as total
+                FROM Tickets
+                WHERE status IN ('resolved', 'closed')
+                  AND closed_at IS NOT NULL
+                  AND YEAR(closed_at) = ? AND MONTH(closed_at) = ?
+            `, [currentYear, currentMonth]),
+            // 10. Distribución de tickets por estado
+            pool.query(`
+                SELECT status, COUNT(*) as count
+                FROM Tickets
+                GROUP BY status
+                ORDER BY count DESC
+            `),
+            // 11. Tickets resueltos/cerrados por agente (quién atiende más)
+            pool.query(`
+                SELECT
+                    t.assigned_to_user_id as agent_id,
+                    COALESCE(u.full_name, u.username) as agent_name,
+                    COUNT(*) as tickets_resueltos
+                FROM Tickets t
+                LEFT JOIN Users u ON t.assigned_to_user_id = u.id
+                WHERE t.status IN ('resolved', 'closed')
+                GROUP BY t.assigned_to_user_id, u.full_name, u.username
+                ORDER BY tickets_resueltos DESC
+            `)
+        ]);
+
+        // --- Workshop ---
+        const statusDistribution = (statusRows || []).map((r) => ({
+            status: r.status,
+            count: Number(r.count)
+        }));
+
+        const technicianPerformance = (techRows || []).map((r) => ({
+            technicianId: r.technician_id,
+            technicianName: r.technician_name || 'Sin asignar',
+            equiposEntregados: Number(r.equipos_entregados),
+            totalManoObra: parseFloat(r.total_mano_obra) || 0
+        }));
+
+        const financialTrend = (trendRows || []).map((r) => ({
+            year: Number(r.year),
+            month: Number(r.month),
+            total: parseFloat(r.total) || 0,
+            label: `${r.month}/${r.year}`
+        }));
+
+        // --- Tickets ---
+        const ticketsByStatus = (ticketsByStatusRows || []).map((r) => ({
+            status: r.status,
+            count: Number(r.count)
+        }));
+
+        const ticketsByAgent = (ticketsByAgentRows || []).map((r) => ({
+            agentId: r.agent_id,
+            agentName: r.agent_name || 'Sin asignar',
+            ticketsResueltos: Number(r.tickets_resueltos)
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                workshop: {
+                    kpis: {
+                        totalRecaudadoMes: parseFloat(kpiRecaudado?.[0]?.total || 0),
+                        dineroEnLaCalle: parseFloat(kpiCalle?.[0]?.total || 0),
+                        equiposEnTaller: Number(kpiEquipos?.[0]?.total || 0)
+                    },
+                    statusDistribution,
+                    technicianPerformance,
+                    financialTrend
+                },
+                tickets: {
+                    kpis: {
+                        totalCreadosMes: Number(ticketsCreadosMes?.[0]?.total || 0),
+                        ticketsAbiertos: Number(ticketsAbiertos?.[0]?.total || 0),
+                        ticketsCerradosMes: Number(ticketsCerradosMes?.[0]?.total || 0)
+                    },
+                    ticketsByStatus,
+                    ticketsByAgent
+                }
+            }
+        });
+    } catch (error) {
+        console.error('❌ [Reportes Dashboard] Error:', error);
+        res.status(500).json({ success: false, message: 'Error al cargar el dashboard de reportes' });
+    }
+};
+
 // --- Obtener Reportes Avanzados (OPTIMIZADO: Paralelo + Logs) ---
 const getReports = async (req, res) => {
     
@@ -84,4 +264,4 @@ const getResolutionMetrics = async (req, res) => {
     }
 };
 
-module.exports = { getReports, getResolutionMetrics };
+module.exports = { getDashboard, getReports, getResolutionMetrics };

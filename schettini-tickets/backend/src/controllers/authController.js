@@ -1,5 +1,30 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
+
+const NEW_PERMISSIONS = ['tickets_view', 'tickets_reply', 'tickets_delete', 'repairs_view', 'repairs_create', 'repairs_edit', 'quoter_access', 'reports_view'];
+const migrateOldPermissions = (arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return ['tickets_view', 'tickets_reply'];
+    const migrated = [];
+    for (const p of arr) {
+        if (NEW_PERMISSIONS.includes(p)) migrated.push(p);
+        else if (p === 'tickets') { migrated.push('tickets_view', 'tickets_reply'); }
+        else if (p === 'repair_orders') { migrated.push('repairs_view', 'repairs_create', 'repairs_edit'); }
+        else if (p === 'cotizador') { migrated.push('quoter_access'); }
+    }
+    return migrated.length ? [...new Set(migrated)] : ['tickets_view', 'tickets_reply'];
+};
+const parsePermissions = (val) => {
+    if (!val) return ['tickets_view', 'tickets_reply'];
+    let arr = [];
+    if (Array.isArray(val)) arr = val;
+    else if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            arr = Array.isArray(parsed) ? parsed : val.split(',').map(s => s.trim()).filter(Boolean);
+        } catch { arr = val.split(',').map(s => s.trim()).filter(Boolean); }
+    }
+    return arr.length ? migrateOldPermissions(arr) : ['tickets_view', 'tickets_reply'];
+};
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendPasswordResetEmail } = require('../services/emailService');
@@ -15,7 +40,8 @@ const registerUser = async (req, res) => {
             username, full_name, email, password, phone, cuit, 
             business_name, fantasy_name, 
             role, status, company_id, department_id, plan,
-            accepted_confidentiality_agreement 
+            accepted_confidentiality_agreement,
+            permissions 
         } = req.body;
 
         // 0. Acuerdo de confidencialidad (solo registro público; admin eximido)
@@ -92,20 +118,30 @@ const registerUser = async (req, res) => {
         const finalFullName = (full_name || '').trim() || username;
         const finalUsername = username.trim();
 
+        const permsVal = (userRole === 'agent' || userRole === 'supervisor') && Array.isArray(permissions) && permissions.length > 0
+            ? JSON.stringify(permissions.filter(p => NEW_PERMISSIONS.includes(p)))
+            : (userRole === 'agent' || userRole === 'supervisor') ? '["tickets_view","tickets_reply"]' : null;
+
+        const hasPermissions = permsVal !== null;
         const sql = `
             INSERT INTO Users (
                 username, full_name, email, password, role, is_active, 
                 phone, cuit, business_name, fantasy_name, 
                 company_id, department_id, plan, last_login
+                ${hasPermissions ? ', permissions' : ''}
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
+                ${hasPermissions ? ', ?' : ''}
+            )
         `;
+        const insertValues = [
+            finalUsername, finalFullName, email, hashedPassword, userRole, isActive,
+            finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan
+        ];
+        if (hasPermissions) insertValues.push(permsVal);
         
         try {
-            await pool.query(sql, [
-                finalUsername, finalFullName, email, hashedPassword, userRole, isActive,
-                finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan
-            ]);
+            await pool.query(sql, insertValues);
         } catch (colErr) {
             if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('full_name')) {
                 await pool.query(
@@ -162,13 +198,15 @@ const loginUser = async (req, res) => {
             { expiresIn: '7d' }
         );
 
+        const perms = parsePermissions(user.permissions);
         res.json({
             success: true,
             message: 'Bienvenido',
             token,
             user: {
                 id: user.id, username: user.username, full_name: user.full_name, email: user.email,
-                role: user.role, business_name: user.business_name, plan: user.plan
+                role: user.role, business_name: user.business_name, plan: user.plan,
+                permissions: perms
             },
         });
     } catch (error) {
@@ -182,14 +220,20 @@ const getMe = async (req, res) => {
         if (!req.user) return res.status(404).json({ message: 'Usuario no encontrado.' });
         let users;
         try {
-            [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
+            [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions FROM Users WHERE id = ?', [req.user.id]);
         } catch (colErr) {
-            if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('full_name')) {
-                [users] = await pool.query('SELECT id, username, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
-                if (users[0]) users[0].full_name = users[0].username;
+            if (colErr.code === 'ER_BAD_FIELD_ERROR') {
+                if (colErr.sqlMessage?.includes('full_name')) {
+                    [users] = await pool.query('SELECT id, username, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions FROM Users WHERE id = ?', [req.user.id]);
+                    if (users[0]) users[0].full_name = users[0].username;
+                } else if (colErr.sqlMessage?.includes('permissions')) {
+                    [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
+                } else throw colErr;
             } else throw colErr;
         }
-        res.json({ success: true, user: users[0] });
+        const u = users[0];
+        if (!u) return res.status(404).json({ message: 'Usuario no encontrado.' });
+        res.json({ success: true, user: { ...u, permissions: parsePermissions(u.permissions) } });
     } catch (error) { res.status(500).json({ message: 'Error.' }); }
 };
 

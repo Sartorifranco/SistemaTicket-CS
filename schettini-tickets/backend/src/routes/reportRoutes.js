@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getReports, getResolutionMetrics } = require('../controllers/reportController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { getDashboard, getReports, getResolutionMetrics } = require('../controllers/reportController');
+const { protect, authorize, authorizeReports } = require('../middleware/authMiddleware');
 
 // Proteger todas las rutas
 router.use(protect);
 
-// Permitimos admin, supervisor y agent
+// GET /api/reports/dashboard - Solo admin o agent/supervisor con reports_view
+router.get('/dashboard', authorizeReports, getDashboard);
+
+// Rutas existentes: admin, supervisor y agent (sin permiso granular)
 router.use(authorize('admin', 'agent', 'supervisor'));
 
 // GET /api/reports (Reporte completo)

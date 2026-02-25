@@ -5,29 +5,46 @@ import { useAuth } from '../../context/AuthContext';
 interface PrivateRouteProps {
     children: React.ReactElement;
     roles?: string[];
+    permission?: string;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles }) => {
+/** Permisos granulares requeridos por ruta. Compatible con nombres legacy. */
+const LEGACY_PERMISSION_MAP: Record<string, string> = {
+    tickets_view: 'tickets',
+    repairs_view: 'repair_orders',
+    quoter_access: 'cotizador',
+};
+
+function hasRequiredPermission(userPerms: string[] | undefined, required: string): boolean {
+    const perms = userPerms || [];
+    if (perms.includes(required)) return true;
+    const legacy = LEGACY_PERMISSION_MAP[required];
+    return legacy ? perms.includes(legacy) : false;
+}
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles, permission }) => {
     const { isAuthenticated, user, loading } = useAuth();
     const location = useLocation();
 
-    // Mientras se verifica la autenticación, se muestra una pantalla de carga.
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Cargando...</div>;
     }
 
-    // Si no está autenticado, se redirige a la página de login.
     if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Si la ruta requiere roles específicos y el usuario no tiene el rol adecuado,
-    // se muestra un mensaje de acceso denegado.
     if (roles && roles.length > 0 && user && !roles.includes(user.role)) {
         return <div className="p-8 text-center text-red-500">No tienes permiso para acceder a esta página.</div>;
     }
 
-    // Si pasa todas las validaciones, se renderiza la página solicitada.
+    if (permission && (user?.role === 'agent' || user?.role === 'supervisor')) {
+        const perms = user.permissions || [];
+        if (!hasRequiredPermission(perms, permission)) {
+            return <div className="p-8 text-center text-red-500">No tienes permiso para acceder a esta página.</div>;
+        }
+    }
+
     return children;
 };
 

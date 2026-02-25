@@ -6,10 +6,10 @@ import { useNavigate } from 'react-router-dom';
 import { 
     FaEdit, FaTrash, FaUserPlus, FaSearch, FaBuilding, 
     FaCreditCard, FaUserShield, FaEye, FaCheckCircle, FaTimesCircle, FaEnvelope, FaIdBadge,
-    FaBan, FaChevronDown
+    FaBan, FaChevronDown, FaTicketAlt, FaWrench, FaCalculator, FaChartBar
 } from 'react-icons/fa';
+import { PERMISSION_GROUPS, migrateOldPermissions, DEFAULT_AGENT_PERMISSIONS } from '../utils/permissions';
 
-// Interfaces
 interface User {
     id: number;
     username: string;
@@ -22,6 +22,7 @@ interface User {
     company_id?: number;
     department_id?: number;
     plan?: string;
+    permissions?: string[];
 }
 
 interface Company {
@@ -52,7 +53,13 @@ const AdminUsersPage: React.FC = () => {
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
     // Formulario
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        username: string; full_name: string; email: string; password: string;
+        role: 'admin' | 'supervisor' | 'agent' | 'client';
+        status: 'active' | 'inactive';
+        company_id: string; department_id: string;
+        permissions: string[];
+    }>({
         username: '',
         full_name: '',
         email: '',
@@ -60,7 +67,8 @@ const AdminUsersPage: React.FC = () => {
         role: 'client',
         status: 'active',
         company_id: '',
-        department_id: ''
+        department_id: '',
+        permissions: DEFAULT_AGENT_PERMISSIONS,
     });
 
     const fetchData = async () => {
@@ -96,13 +104,15 @@ const AdminUsersPage: React.FC = () => {
     };
 
     const handleOpenCreate = () => {
-        setFormData({ username: '', full_name: '', email: '', password: '', role: 'client', status: 'active', company_id: '', department_id: '' });
+        setFormData({ username: '', full_name: '', email: '', password: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS });
         setIsEditMode(false);
         setIsModalOpen(true);
     };
 
     const handleOpenEdit = (user: User, e?: React.MouseEvent) => {
         if(e) e.stopPropagation();
+        const raw = Array.isArray(user.permissions) ? user.permissions : [];
+        const perms = raw.length > 0 ? migrateOldPermissions(raw) : (user.role === 'agent' || user.role === 'supervisor' ? DEFAULT_AGENT_PERMISSIONS : []);
         setFormData({
             username: user.username,
             full_name: user.full_name ?? user.username ?? '',
@@ -111,7 +121,8 @@ const AdminUsersPage: React.FC = () => {
             role: user.role,
             status: user.status || 'active',
             company_id: user.company_id ? user.company_id.toString() : '',
-            department_id: user.department_id ? user.department_id.toString() : ''
+            department_id: user.department_id ? user.department_id.toString() : '',
+            permissions: perms,
         });
         setCurrentUserId(user.id);
         setIsEditMode(true);
@@ -162,8 +173,10 @@ const AdminUsersPage: React.FC = () => {
                 ...formData,
                 full_name: (formData.full_name || '').trim() || null,
                 company_id: formData.company_id ? parseInt(formData.company_id) : null,
-                department_id: formData.department_id ? parseInt(formData.department_id) : null
+                department_id: formData.department_id ? parseInt(formData.department_id) : null,
+                permissions: (formData.role === 'agent' || formData.role === 'supervisor') ? formData.permissions : undefined,
             };
+            if (payload.permissions === undefined) delete (payload as Record<string, unknown>).permissions;
 
             if (isEditMode && currentUserId) {
                 await api.put(`/api/users/${currentUserId}`, payload);
@@ -441,8 +454,8 @@ const AdminUsersPage: React.FC = () => {
 
             {/* MODAL CREAR / EDITAR */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative">
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative my-8">
                         <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
                         
                         <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
@@ -498,7 +511,12 @@ const AdminUsersPage: React.FC = () => {
                                     <select 
                                         className="w-full border border-gray-300 p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={formData.role}
-                                        onChange={e => setFormData({...formData, role: e.target.value as any})}
+                                        onChange={e => {
+                                            const newRole = e.target.value as 'admin'|'supervisor'|'agent'|'client';
+                                            const perms = (newRole === 'agent' || newRole === 'supervisor') && (!formData.permissions?.length)
+                                                ? DEFAULT_AGENT_PERMISSIONS : (formData.permissions?.length ? formData.permissions : []);
+                                            setFormData({...formData, role: newRole, permissions: perms});
+                                        }}
                                     >
                                         <option value="client">Cliente</option>
                                         <option value="agent">Agente</option>
@@ -551,6 +569,41 @@ const AdminUsersPage: React.FC = () => {
                                     ))}
                                 </select>
                             </div>
+
+                            {(formData.role === 'agent' || formData.role === 'supervisor') && (
+                                <div className="border-t pt-4 mt-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-3">Permisos de Acceso (Solo para Agentes)</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {PERMISSION_GROUPS.map((group) => (
+                                            <div key={group.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 hover:bg-gray-50 transition">
+                                                <div className="flex items-center gap-2 mb-3 font-semibold text-gray-800">
+                                                    <span className="text-lg">{group.icon}</span>
+                                                    <span>{group.title}</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {group.perms.map(({ key, label }) => (
+                                                        <label key={key} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={formData.permissions.includes(key)}
+                                                                onChange={e => {
+                                                                    if (e.target.checked) {
+                                                                        setFormData({ ...formData, permissions: [...formData.permissions, key] });
+                                                                    } else {
+                                                                        setFormData({ ...formData, permissions: formData.permissions.filter(p => p !== key) });
+                                                                    }
+                                                                }}
+                                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                            />
+                                                            <span className="text-gray-700">{label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex gap-4 mt-8 pt-4 border-t">
                                 <button 

@@ -1,478 +1,418 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
-import { useAuth } from '../context/AuthContext';
-import { ApiResponseError, TicketData, User, Company, Department, TicketCategory } from '../types';
-import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
-import { Bar, Pie, Line, getElementAtEvent } from 'react-chartjs-2';
-import 'chart.js/auto'; 
-import type { Chart, ChartData } from 'chart.js'; 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
-import { ticketStatusTranslations, ticketPriorityTranslations } from '../utils/traslations';
 import { toast } from 'react-toastify';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, XAxis as AreaXAxis, YAxis as AreaYAxis, CartesianGrid as AreaGrid
+} from 'recharts';
+import { FaChartLine, FaMoneyBillWave, FaTools, FaBoxOpen, FaTicketAlt, FaInbox, FaCheckCircle } from 'react-icons/fa';
 
-// --- Interfaces ---
-interface ReportData {
-    ticketsByStatus: { status: string; count: number }[];
-    ticketsByPriority: { priority: string; count: number }[];
-    ticketsByDepartment: { departmentName: string; count: number; departmentId: number }[]; 
-    agentPerformance: { agentName: string; assignedTickets: number; closedTickets: number, agentId: number }[];
-    agentResolutionTimes: { agentName: string; resolvedTickets: number; avgResolutionTimeHours: number | null, agentId: number }[];
-    ticketsByCategory: { categoryName: string; count: number; categoryId: number }[]; 
-    topClients: { clientName: string; count: number, clientId: number }[];
-    ticketsByHour: { hour: number; count: number }[];
-}
-
-interface FilterOptions {
-    agents: User[];
-    clients: User[];
-    companies: Company[];
-    departments: Department[];
-    categories: TicketCategory[];
-}
-
-// --- Componente Modal de Detalles ---
-const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onClose: () => void; loading: boolean }> = ({ title, items, onClose, loading }) => {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
-                <h2 className="text-2xl font-bold mb-4">{title}</h2>
-                <div className="max-h-96 overflow-y-auto border-t border-b py-2">
-                    {loading ? (
-                        <p className="text-center text-gray-500 py-4">Cargando...</p>
-                    ) : items.length > 0 ? (
-                        <ul className="space-y-2">
-                            {items.map((ticket) => (
-                                <li key={ticket.id} className="p-2 border-b flex justify-between items-center">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">#{ticket.id} - {ticket.title}</span>
-                                        <span className="text-xs text-gray-500">{ticket.client_name || 'Sin cliente'}</span>
-                                    </div>
-                                    <span className="text-sm px-2 py-1 rounded bg-gray-100 text-gray-700">
-                                        {ticketStatusTranslations[ticket.status as keyof typeof ticketStatusTranslations] || ticket.status}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-gray-500 py-4">No hay tickets para mostrar.</p>
-                    )}
-                </div>
-                <button onClick={onClose} className="mt-6 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded w-full">Cerrar</button>
-            </div>
-        </div>
-    );
+const WORKSHOP_STATUS_LABELS: Record<string, string> = {
+  ingresado: 'Ingresado',
+  cotizado: 'Cotizado',
+  aceptado: 'Aceptado',
+  no_aceptado: 'No Aceptado',
+  en_espera: 'En Espera',
+  sin_reparacion: 'Sin Reparación',
+  listo: 'Listo',
+  entregado: 'Entregado',
+  entregado_sin_reparacion: 'Entregado sin Reparación',
 };
 
-// --- Página Principal ---
+const TICKET_STATUS_LABELS: Record<string, string> = {
+  open: 'Abierto',
+  'in-progress': 'En Proceso',
+  resolved: 'Resuelto',
+  closed: 'Cerrado',
+  pending: 'Pendiente',
+};
+
+interface DashboardData {
+  workshop: {
+    kpis: {
+      totalRecaudadoMes: number;
+      dineroEnLaCalle: number;
+      equiposEnTaller: number;
+    };
+    statusDistribution: { status: string; count: number }[];
+    technicianPerformance: {
+      technicianId: number | null;
+      technicianName: string;
+      equiposEntregados: number;
+      totalManoObra: number;
+    }[];
+    financialTrend: { year: number; month: number; total: number; label: string }[];
+  };
+  tickets: {
+    kpis: {
+      totalCreadosMes: number;
+      ticketsAbiertos: number;
+      ticketsCerradosMes: number;
+    };
+    ticketsByStatus: { status: string; count: number }[];
+    ticketsByAgent: { agentId: number | null; agentName: string; ticketsResueltos: number }[];
+  };
+}
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#84CC16'];
+
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+
+type TabId = 'workshop' | 'tickets';
+
+const TABS: { id: TabId; label: string; pdfTitle: string }[] = [
+  { id: 'workshop', label: '🛠️ Taller y Facturación', pdfTitle: 'Taller y Facturación' },
+  { id: 'tickets', label: '🎫 Tickets de Soporte', pdfTitle: 'Tickets de Soporte' },
+];
+
 const AdminReportsPage: React.FC = () => {
-    const { user } = useAuth();
-    const [reportData, setReportData] = useState<ReportData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [isDownloading, setIsDownloading] = useState(false);
-    
-    const [filters, setFilters] = useState({
-        startDate: '2020-01-01',
-        endDate: new Date().toISOString().split('T')[0],
-        agentId: '',
-        companyId: '',
-        departmentId: '',
-        categoryId: '',
-        clientId: ''
-    });
-    
-    const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-        agents: [],
-        clients: [],
-        companies: [],
-        departments: [],
-        categories: []
-    });
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('workshop');
 
-    // Estados para el modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalContent, setModalContent] = useState<{ title: string; items: TicketData[] }>({ title: '', items: [] });
-    const [modalLoading, setModalLoading] = useState(false);
-
-    // Referencias para los gráficos
-    const reportContainerRef = useRef<HTMLDivElement>(null);
-    const statusChartRef = useRef<Chart<'pie'>>(null);
-    const priorityChartRef = useRef<Chart<'bar'>>(null);
-    const departmentChartRef = useRef<Chart<'bar'>>(null);
-    const categoryChartRef = useRef<Chart<'bar'>>(null);
-    const hourChartRef = useRef<Chart<'line'>>(null);
-    const agentChartRef = useRef<Chart<'bar'>>(null);
-
-    // 1. Cargar opciones para filtros
-    useEffect(() => {
-        const fetchFilterData = async () => {
-            try {
-                const [agentsRes, clientsRes, companiesRes, departmentsRes, categoriesRes] = await Promise.all([
-                    api.get('/api/users/agents'),
-                    api.get('/api/users?role=client'), 
-                    api.get('/api/companies'),
-                    api.get('/api/departments'),
-                    api.get('/api/tickets/categories')
-                ]);
-                setFilterOptions({
-                    agents: agentsRes.data.data || [],
-                    clients: clientsRes.data.data || [],
-                    companies: companiesRes.data.data || [],
-                    departments: departmentsRes.data.data || [],
-                    categories: categoriesRes.data.data || []
-                });
-            } catch (error) {
-                console.error(error);
-                toast.error("No se pudo cargar la data para los filtros.");
-            }
-        };
-        if (user?.role === 'admin') {
-            fetchFilterData();
-        }
-    }, [user]);
-
-    // 2. Cargar datos del reporte
-    const fetchReportData = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const params = new URLSearchParams();
-            params.append('startDate', filters.startDate);
-            params.append('endDate', filters.endDate);
-            if (filters.agentId) params.append('agentId', filters.agentId);
-            if (filters.companyId) params.append('companyId', filters.companyId);
-            if (filters.departmentId) params.append('departmentId', filters.departmentId);
-            if (filters.categoryId) params.append('categoryId', filters.categoryId);
-            if (filters.clientId) params.append('clientId', filters.clientId);
-            
-            const res = await api.get(`/api/reports?${params.toString()}`);
-            setReportData(res.data.data);
-        } catch (err) {
-            const message = isAxiosErrorTypeGuard(err) ? (err.response?.data as ApiResponseError)?.message || 'Error al cargar los reportes.' : 'Error inesperado.';
-            setError(message);
-        } finally {
-            setLoading(false);
-        }
-    }, [filters]);
-
-    useEffect(() => {
-        if (user?.role === 'admin') {
-            fetchReportData();
-        }
-    }, [user, fetchReportData]);
-
-    // 3. Mostrar tickets filtrados (Drill-down)
-    const showFilteredTickets = async (title: string, modalFilters: Record<string, string | string[]>) => {
-        setModalLoading(true);
-        setIsModalOpen(true);
-        setModalContent({ title: `Cargando: ${title}...`, items: [] });
-
-        try {
-            const params = new URLSearchParams();
-            // Filtros globales actuales
-            params.append('startDate', filters.startDate);
-            params.append('endDate', filters.endDate);
-            if (filters.agentId) params.append('agentId', filters.agentId);
-            if (filters.companyId) params.append('companyId', filters.companyId);
-            
-            // Filtros específicos del click
-            Object.entries(modalFilters).forEach(([key, value]) => {
-                if (Array.isArray(value)) {
-                    value.forEach(v => params.append(key, v));
-                } else {
-                    params.append(key, value);
-                }
-            });
-
-            const response = await api.get(`/api/tickets?${params.toString()}`);
-            setModalContent({ title: `Tickets: ${title}`, items: response.data.data || [] });
-        } catch (error) {
-            toast.error('No se pudo cargar la lista de tickets.');
-            setIsModalOpen(false);
-        } finally {
-            setModalLoading(false);
-        }
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await api.get<{ success: boolean; data: DashboardData }>('/api/reports/dashboard');
+        setData(res.data.data);
+      } catch (err: unknown) {
+        const msg =
+          err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response
+            ? (err.response.data as { message?: string })?.message
+            : 'Error al cargar el dashboard';
+        setError(msg || 'Error al cargar el dashboard');
+        toast.error(msg);
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    // 4. Manejador de Click en Gráficos
-    // CORRECCIÓN: Usamos 'any' en el ref para evitar conflictos de tipos entre Pie/Bar/Line
-    const handleChartClick = (
-        ref: any, 
-        event: React.MouseEvent<HTMLCanvasElement>, 
-        type: 'status' | 'priority' | 'department' | 'agentPerformance' | 'category' | 'client' | 'hour'
-    ) => {
-        if (!ref.current || !reportData) return;
-        const element = getElementAtEvent(ref.current, event);
-        if (!element.length) return;
+    fetchDashboard();
+  }, []);
 
-        const { index } = element[0];
-        let modalFilters: Record<string, string> = {};
-        let title = '';
-
-        if (type === 'status') {
-            const item = reportData.ticketsByStatus[index];
-            modalFilters = { status: item.status };
-            title = ticketStatusTranslations[item.status as keyof typeof ticketStatusTranslations] || item.status;
-        } else if (type === 'priority') {
-            const item = reportData.ticketsByPriority[index];
-            modalFilters = { priority: item.priority };
-            title = ticketPriorityTranslations[item.priority as keyof typeof ticketPriorityTranslations] || item.priority;
-        } else if (type === 'department') {
-            const item = reportData.ticketsByDepartment[index];
-            modalFilters = { departmentId: String(item.departmentId) };
-            title = item.departmentName;
-        } else if (type === 'category') {
-            const item = reportData.ticketsByCategory[index];
-            modalFilters = { categoryId: String(item.categoryId) };
-            title = item.categoryName;
-        } else if (type === 'client') {
-            const item = reportData.topClients[index];
-            modalFilters = { clientId: String(item.clientId) }; 
-            title = `Cliente: ${item.clientName}`;
-        } else if (type === 'agentPerformance') {
-             const item = reportData.agentPerformance[index];
-             modalFilters = { assigned_to_user_id: String(item.agentId) }; // Corrección: usé assigned_to_user_id para filtrar tickets de agente
-             title = `Agente: ${item.agentName}`;
-        }
-        
-        if (Object.keys(modalFilters).length > 0) {
-            showFilteredTickets(title, modalFilters);
-        }
-    };
-
-    const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    };
-
-    const handleGenerateReport = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchReportData();
-    };
-
-    const handleDownloadPdf = async () => {
-        if (!reportData || !reportContainerRef.current) return;
-        setIsDownloading(true);
-        toast.info("Generando PDF...");
-        try {
-            const doc = new jsPDF('p', 'mm', 'a4');
-            doc.setFontSize(18);
-            doc.text('Reporte General - Schettini Tickets', 14, 22);
-            doc.setFontSize(11);
-            
-            const agentName = filters.agentId ? filterOptions.agents.find(a => a.id === parseInt(filters.agentId, 10)) : null;
-            let subtitle = `Periodo: ${filters.startDate} al ${filters.endDate}`;
-            if (agentName) subtitle += ` | Agente: ${agentName.first_name || ''} ${agentName.last_name || agentName.username}`;
-            doc.text(subtitle, 14, 30);
-            
-            autoTable(doc, {
-                startY: 40,
-                head: [['Estado', 'Cantidad']],
-                body: reportData.ticketsByStatus.map(item => [
-                    ticketStatusTranslations[item.status as keyof typeof ticketStatusTranslations] || item.status, 
-                    item.count
-                ]),
-            });
-
-            autoTable(doc, {
-                head: [['Agente', 'Resueltos', 'Tiempo Promedio']],
-                body: reportData.agentResolutionTimes.map(item => [
-                    item.agentName, 
-                    item.resolvedTickets, 
-                    item.avgResolutionTimeHours !== null ? `${item.avgResolutionTimeHours.toFixed(2)} hs` : 'N/A'
-                ]),
-            });
-
-            autoTable(doc, {
-                head: [['Problemática', 'Tickets']],
-                body: reportData.ticketsByCategory.map(item => [item.categoryName, item.count]),
-            });
-
-            // Captura de gráficos
-            const canvas = await html2canvas(reportContainerRef.current, { scale: 1.5 });
-            const imgData = canvas.toDataURL('image/png');
-            doc.addPage();
-            doc.text('Gráficos del Reporte', 14, 22);
-            const pdfWidth = doc.internal.pageSize.getWidth() - 28;
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            doc.addImage(imgData, 'PNG', 14, 30, pdfWidth, pdfHeight);
-
-            doc.save(`reporte-${filters.endDate}.pdf`);
-            toast.success("PDF descargado.");
-        } catch (err) {
-            toast.error("Error al generar PDF.");
-            console.error(err);
-        } finally {
-            setIsDownloading(false);
-        }
-    };
-
-    if (loading) return <div className="p-8 text-center animate-pulse">Cargando datos del reporte...</div>;
-    if (error) return <div className="p-8 text-center text-red-500 font-bold">{error}</div>;
-    if (!reportData) return <div className="p-8 text-center">No hay datos disponibles para este rango.</div>;
-
-    // --- Configuración de Datos para Gráficos ---
-    const chartOptionsBase = { responsive: true, maintainAspectRatio: false };
-
-    const statusChartData: ChartData<'pie'> = {
-        labels: reportData.ticketsByStatus.map(item => ticketStatusTranslations[item.status as keyof typeof ticketStatusTranslations] || item.status),
-        datasets: [{ data: reportData.ticketsByStatus.map(item => item.count), backgroundColor: ['#3B82F6', '#6B7280', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444'] }],
-    };
-    const priorityChartData: ChartData<'bar'> = {
-        labels: reportData.ticketsByPriority.map(item => ticketPriorityTranslations[item.priority as keyof typeof ticketPriorityTranslations] || item.priority),
-        datasets: [{ label: 'Tickets', data: reportData.ticketsByPriority.map(item => item.count), backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#DC2626'] }],
-    };
-    const departmentChartData: ChartData<'bar'> = {
-        labels: reportData.ticketsByDepartment.map(item => item.departmentName),
-        datasets: [{ label: 'Tickets', data: reportData.ticketsByDepartment.map(item => item.count), backgroundColor: '#14B8A6' }],
-    };
-    const categoryChartData: ChartData<'bar'> = {
-        labels: reportData.ticketsByCategory.map(item => item.categoryName),
-        datasets: [{ label: 'Tickets', data: reportData.ticketsByCategory.map(item => item.count), backgroundColor: '#8B5CF6' }],
-    };
-
-    const ticketsByHourData = Array(24).fill(0);
-    reportData.ticketsByHour.forEach(item => { ticketsByHourData[item.hour] = item.count; });
-    
-    const hourChartData: ChartData<'line'> = {
-        labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
-        datasets: [{
-            label: 'Actividad por Hora',
-            data: ticketsByHourData,
-            fill: true,
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            borderColor: 'rgba(59, 130, 246, 1)',
-            tension: 0.3
-        }],
-    };
-
-    const agentChartData: ChartData<'bar'> = {
-        labels: reportData.agentPerformance.map(item => item.agentName), 
-        datasets: [
-            { label: 'Asignados', data: reportData.agentPerformance.map(item => item.assignedTickets), backgroundColor: '#10B981' },
-            { label: 'Cerrados', data: reportData.agentPerformance.map(item => item.closedTickets), backgroundColor: '#6366F1' },
-        ],
-    };
-
+  if (loading) {
     return (
-        <>
-            <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Reportes Avanzados</h1>
-                    <button onClick={handleDownloadPdf} disabled={isDownloading} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg self-start sm:self-center">
-                        {isDownloading ? 'Generando...' : 'Descargar PDF'}
-                    </button>
-                </div>
-                
-                {/* Filtros */}
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-                    <form onSubmit={handleGenerateReport} className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Desde</label>
-                                <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="mt-1 block w-full p-2 border rounded-md"/>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Hasta</label>
-                                <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="mt-1 block w-full p-2 border rounded-md"/>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Agente</label>
-                                <select name="agentId" value={filters.agentId} onChange={handleFilterChange} className="mt-1 block w-full p-2 border rounded-md bg-white">
-                                    <option value="">Todos</option>
-                                    {filterOptions.agents.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Cliente</label>
-                                <select name="clientId" value={filters.clientId} onChange={handleFilterChange} className="mt-1 block w-full p-2 border rounded-md bg-white">
-                                    <option value="">Todos</option>
-                                    {filterOptions.clients.map(c => <option key={c.id} value={c.id}>{c.username}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex justify-end">
-                            <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
-                                {loading ? 'Cargando...' : 'Actualizar Reporte'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Dashboard Visual */}
-                <div className="space-y-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition">
-                            <h2 className="text-xl font-bold text-gray-700 mb-4 text-center">Estado</h2>
-                            <div className="h-64">
-                                <Pie ref={statusChartRef} data={statusChartData} options={chartOptionsBase} onClick={(e) => handleChartClick(statusChartRef, e, 'status')} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition">
-                            <h2 className="text-xl font-bold text-gray-700 mb-4 text-center">Prioridad</h2>
-                            <div className="h-64">
-                                <Bar ref={priorityChartRef} data={priorityChartData} options={{...chartOptionsBase, plugins: { legend: { display: false }}}} onClick={(e) => handleChartClick(priorityChartRef, e, 'priority')} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition">
-                            <h2 className="text-xl font-bold text-gray-700 mb-4 text-center">Departamentos</h2>
-                            <div className="h-64">
-                                <Bar ref={departmentChartRef} data={departmentChartData} options={{...chartOptionsBase, plugins: { legend: { display: false }}}} onClick={(e) => handleChartClick(departmentChartRef, e, 'department')} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold text-gray-700 mb-4 text-center">Actividad por Hora</h2>
-                        <div className="h-64">
-                            <Line ref={hourChartRef} data={hourChartData} options={{...chartOptionsBase, plugins: { legend: { display: false }}}} />
-                        </div>
-                    </div>
-
-                    <div ref={reportContainerRef} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition">
-                            <h2 className="text-xl font-bold text-gray-700 mb-4 text-center">Top Problemáticas</h2>
-                            <div className="h-80">
-                                <Bar ref={categoryChartRef} data={categoryChartData} options={{...chartOptionsBase, indexAxis: 'y', plugins: { legend: { display: false }}}} onClick={(e) => handleChartClick(categoryChartRef, e, 'category')} />
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition">
-                            <h2 className="text-xl font-bold text-gray-700 mb-4 text-center">Performance Agentes</h2>
-                            <div className="h-80">
-                                <Bar ref={agentChartRef} data={agentChartData} options={chartOptionsBase} onClick={(e) => handleChartClick(agentChartRef, e, 'agentPerformance')} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <h2 className="text-xl font-semibold p-6 border-b">Top 10 Clientes (Tickets Creados)</h2>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cantidad</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {reportData.topClients.map(client => (
-                                        <tr key={client.clientId} className="hover:bg-gray-50 cursor-pointer" onClick={() => showFilteredTickets(`Cliente: ${client.clientName}`, { clientId: String(client.clientId) })}>
-                                            <td className="px-6 py-4 font-medium text-gray-900">{client.clientName}</td>
-                                            <td className="px-6 py-4 text-center text-gray-700 font-bold">{client.count}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            {isModalOpen && <DetailsModal title={modalContent.title} items={modalContent.items} onClose={() => setIsModalOpen(false)} loading={modalLoading} />}
-        </>
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4" />
+        <p className="text-gray-500 font-medium">Cargando reportes...</p>
+      </div>
     );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-600 font-medium">{error || 'No hay datos disponibles.'}</p>
+      </div>
+    );
+  }
+
+  const workshop = data.workshop;
+  const tickets = data.tickets;
+
+  const pieData = workshop.statusDistribution.map((d) => ({
+    name: WORKSHOP_STATUS_LABELS[d.status] || d.status,
+    value: d.count,
+  }));
+
+  const ticketPieData = tickets.ticketsByStatus.map((d) => ({
+    name: TICKET_STATUS_LABELS[d.status] || d.status,
+    value: d.count,
+  }));
+
+  const ticketBarData = tickets.ticketsByAgent.map((a) => ({
+    name: a.agentName.length > 10 ? a.agentName.slice(0, 8) + '…' : a.agentName,
+    fullName: a.agentName,
+    resueltos: a.ticketsResueltos,
+  }));
+
+  const barData = workshop.technicianPerformance.map((t) => ({
+    name: t.technicianName.length > 12 ? t.technicianName.slice(0, 10) + '…' : t.technicianName,
+    fullName: t.technicianName,
+    equiposEntregados: t.equiposEntregados,
+    facturacion: t.totalManoObra,
+  }));
+
+  const exportDashboardToPDF = async () => {
+    const el = document.getElementById('dashboard-content');
+    if (!el) {
+      toast.error('No se encontró el contenido a exportar.');
+      return;
+    }
+    toast.info('Generando PDF...');
+    try {
+      const canvas = await html2canvas(el, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      const title = `Reporte de Casa Schettini - ${TABS.find((t) => t.id === activeTab)?.pdfTitle || 'Dashboard'}`;
+      const dateStr = new Date().toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      doc.setFontSize(16);
+      doc.text(title, margin, 15);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(dateStr, margin, 22);
+      doc.setTextColor(0, 0, 0);
+      const imgW = pageW - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const maxH = pageH - margin - 30;
+      const finalH = imgH > maxH ? maxH : imgH;
+      const finalW = (canvas.width * finalH) / canvas.height;
+      const x = (pageW - finalW) / 2;
+      doc.addImage(imgData, 'PNG', x, 28, finalW, finalH);
+      const filename = `Reporte_Schettini_${new Date().toISOString().slice(0, 10)}.pdf`;
+      doc.save(filename);
+      toast.success('PDF descargado correctamente.');
+    } catch (err) {
+      console.error('Error al exportar PDF:', err);
+      toast.error('Error al generar el PDF.');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <FaChartLine className="text-2xl text-indigo-600" />
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard de Reportes</h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={exportDashboardToPDF}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition-colors"
+          >
+            📄 Exportar a PDF
+          </button>
+          {/* Tabs */}
+          <div className="flex rounded-lg bg-gray-100 p-1 border border-gray-200">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tab: Taller y Facturación */}
+      {activeTab === 'workshop' && (
+        <div id="dashboard-content" className="space-y-8">
+          {/* KPI Cards - Taller */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <div className="bg-white rounded-xl shadow-md border-l-4 border-green-500 p-5 md:p-6 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <FaMoneyBillWave className="text-xl text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Ingresos del Mes</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800 truncate">
+                  {formatCurrency(workshop.kpis.totalRecaudadoMes)}
+                </p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-md border-l-4 border-amber-500 p-5 md:p-6 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                <FaBoxOpen className="text-xl text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Dinero a Cobrar / En la Calle</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800 truncate">
+                  {formatCurrency(workshop.kpis.dineroEnLaCalle)}
+                </p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-md border-l-4 border-blue-500 p-5 md:p-6 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <FaTools className="text-xl text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Equipos en Taller</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800">{workshop.kpis.equiposEnTaller}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Gráficos Taller */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">Distribución por Estado</h2>
+              <div className="h-64 md:h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {pieData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => [v, 'Órdenes']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">Ingresos - Últimos 6 Meses</h2>
+              <div className="h-64 md:h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={workshop.financialTrend}>
+                    <AreaGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <AreaXAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <AreaYAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => [formatCurrency(v), 'Ingresos']} />
+                    <Area
+                      type="monotone"
+                      dataKey="total"
+                      stroke="#6366f1"
+                      fill="#6366f1"
+                      fillOpacity={0.4}
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">Rendimiento por Técnico (Mes Actual)</h2>
+            <div className="h-72 md:h-80 w-full min-h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} margin={{ top: 20, right: 30, left: 20, bottom: barData.length > 4 ? 80 : 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    angle={barData.length > 4 ? -25 : 0}
+                    textAnchor={barData.length > 4 ? 'end' : 'middle'}
+                  />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [name === 'equiposEntregados' ? v : formatCurrency(v), name]}
+                    labelFormatter={(_: unknown, payload: { payload?: { fullName?: string } }[]) => payload?.[0]?.payload?.fullName ?? ''}
+                  />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="equiposEntregados" name="Equipos Reparados" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="facturacion" name="Facturación (Mano de Obra)" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Tickets de Soporte */}
+      {activeTab === 'tickets' && (
+        <div id="dashboard-content" className="space-y-8">
+          {/* KPI Cards - Tickets */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <div className="bg-white rounded-xl shadow-md border-l-4 border-indigo-500 p-5 md:p-6 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                <FaTicketAlt className="text-xl text-indigo-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Tickets del Mes</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800">{tickets.kpis.totalCreadosMes}</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-md border-l-4 border-red-500 p-5 md:p-6 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <FaInbox className="text-xl text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Tickets Abiertos</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800">{tickets.kpis.ticketsAbiertos}</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-md border-l-4 border-green-500 p-5 md:p-6 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <FaCheckCircle className="text-xl text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Tickets Resueltos</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800">{tickets.kpis.ticketsCerradosMes}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Gráficos Tickets */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">Tickets por Estado</h2>
+              <div className="h-64 md:h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={ticketPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {ticketPieData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => [v, 'Tickets']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">Top Agentes - Tickets Resueltos</h2>
+              <div className="h-64 md:h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={ticketBarData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v: number) => [v, 'Resueltos']} labelFormatter={(_: unknown, p: { payload?: { fullName?: string } }[]) => p?.[0]?.payload?.fullName ?? ''} />
+                    <Bar dataKey="resueltos" name="Tickets Resueltos" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default AdminReportsPage;

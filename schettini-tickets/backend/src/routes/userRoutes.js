@@ -7,7 +7,8 @@ const {
     updateUser, 
     deleteUser, 
     getUserActiveTickets,
-    getAgents // <--- Importado
+    getAgents,
+    getTechnicians
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -19,7 +20,10 @@ router.use(protect);
 // 1. Obtener lista de agentes/supervisores (Evita que "agents" se tome como ID)
 router.get('/agents', authorize('admin', 'agent', 'supervisor'), getAgents);
 
-// 2. Ruta para obtener tickets activos de un usuario (Dashboard)
+// 2. Técnicos asignables a órdenes de reparación (solo agent con permiso taller, excluye admin)
+router.get('/technicians', authorize('admin', 'agent', 'supervisor'), getTechnicians);
+
+// 3. Ruta para obtener tickets activos de un usuario (Dashboard)
 router.get('/:id/active-tickets', authorize('admin', 'agent', 'supervisor', 'client'), getUserActiveTickets);
 
 
