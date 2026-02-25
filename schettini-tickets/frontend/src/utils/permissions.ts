@@ -69,7 +69,7 @@ export function migrateOldPermissions(perms: string[]): string[] {
       migrated.push('quoter_access');
     }
   }
-  return migrated.length ? [...new Set(migrated)] : ['tickets_view', 'tickets_reply'];
+  return migrated.length ? Array.from(new Set(migrated)) : ['tickets_view', 'tickets_reply'];
 }
 
 /** Verifica si el usuario tiene un permiso (o alguno de la lista para vista de módulo) */
