@@ -1,6 +1,8 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 
-// URL del backend: en local usa localhost:5050; en producción usa REACT_APP_API_URL o la misma URL del sitio (VPS mismo servidor).
+// URL del backend: en local usa localhost:5050; en producción DEBE usar REACT_APP_API_URL (ej. https://api.sch-soporte.com.ar).
+// Si no está definida en producción, se usa window.location.origin y las imágenes/adjuntos fallan cuando frontend y backend están en dominios distintos.
+// Nota: Si migrás a Vite, usar import.meta.env.VITE_API_URL.
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 export const API_BASE_URL = isLocal
     ? 'http://localhost:5050'

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { FaArrowLeft, FaCheck, FaTimes, FaSave, FaCalendarAlt, FaCreditCard, FaFileInvoice, FaFileDownload } from 'react-icons/fa';
 
@@ -180,7 +181,7 @@ const AdminUserPaymentsPage: React.FC = () => {
                                         <td className="p-4 text-sm text-gray-600 capitalize">{pay.method}</td>
                                         <td className="p-4">
                                             {pay.receipt_url ? (
-                                                <a href={`http://${window.location.hostname}:5050${pay.receipt_url}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-xs font-bold bg-indigo-50 px-2 py-1 rounded w-fit">
+                                                <a href={getImageUrl(pay.receipt_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-xs font-bold bg-indigo-50 px-2 py-1 rounded w-fit">
                                                     <FaFileDownload/> Ver Archivo
                                                 </a>
                                             ) : <span className="text-gray-400 text-xs">-</span>}

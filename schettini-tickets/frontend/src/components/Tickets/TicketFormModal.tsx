@@ -30,10 +30,10 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
     const [categories, setCategories] = useState<ConfigOption[]>([]);
     const [specificProblems, setSpecificProblems] = useState<ConfigOption[]>([]);
 
-    // Formulario (SIN TITULO)
+    // Formulario
     const [formData, setFormData] = useState({
         user_id: undefined as number | undefined,
-        // title: '', // ELIMINADO: Se genera en backend
+        title: '',
         system_id: '',
         custom_system: '',
         equipment_id: '',
@@ -71,6 +71,7 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
             // Reset
             setFormData({
                 user_id: undefined,
+                title: '',
                 system_id: '', custom_system: '',
                 equipment_id: '', custom_equipment: '',
                 problem_category_id: '',
@@ -114,6 +115,9 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         if ((currentUserRole === 'admin' || currentUserRole === 'agent') && !formData.user_id) {
             return toast.warn("Selecciona el cliente afectado.");
         }
+        if (!formData.title.trim()) {
+            return toast.warn("Ingresa un título para el ticket.");
+        }
         if (!formData.description.trim()) {
             return toast.warn("Describe el problema.");
         }
@@ -144,6 +148,20 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     
+                    {/* TÍTULO */}
+                    <div className="border-l-4 border-blue-500 bg-blue-50/60 p-4 rounded-r-lg">
+                        <label className="block text-blue-800 font-bold mb-1 text-sm">Título del ticket</label>
+                        <input
+                            type="text"
+                            name="title"
+                            value={formData.title}
+                            onChange={handleChange}
+                            placeholder="Ej: No funciona la impresora / Error en pantalla"
+                            className="w-full p-2.5 border border-blue-200 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                            required
+                        />
+                    </div>
+
                     {/* CLIENTE (SOLO ADMIN/AGENT) */}
                     {(currentUserRole === 'admin' || currentUserRole === 'agent') && (
                         <div className="border-l-4 border-amber-500 bg-amber-50/60 p-4 rounded-r-lg">

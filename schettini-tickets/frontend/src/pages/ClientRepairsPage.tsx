@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { FaWrench, FaEye, FaTimes } from 'react-icons/fa';
 
 interface RepairOrder {
@@ -179,7 +180,7 @@ const ClientRepairsPage: React.FC = () => {
                         {selectedOrder.photos.map((p) => (
                           <div key={p.id}>
                             <img
-                              src={p.photo_url.startsWith('http') ? p.photo_url : `${API_BASE_URL}${p.photo_url}`}
+                              src={getImageUrl(p.photo_url)}
                               alt={p.perspective_label}
                               className="w-full aspect-square object-cover rounded-lg border"
                             />

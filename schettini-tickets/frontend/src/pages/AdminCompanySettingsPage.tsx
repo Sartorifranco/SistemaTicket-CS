@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage } from 'react-icons/fa';
 
@@ -52,7 +53,7 @@ const AdminCompanySettingsPage: React.FC = () => {
           primary_color: data.primary_color ?? '#000000',
         });
         if (data.logo_url) {
-          setLogoPreview(`${API_BASE_URL}${data.logo_url}`);
+          setLogoPreview(getImageUrl(data.logo_url));
         }
       } catch (error) {
         console.error(error);
@@ -73,7 +74,7 @@ const AdminCompanySettingsPage: React.FC = () => {
       reader.readAsDataURL(file);
     } else {
       setLogoFile(null);
-      setLogoPreview(formData.logo_url ? `${API_BASE_URL}${formData.logo_url}` : null);
+      setLogoPreview(formData.logo_url ? getImageUrl(formData.logo_url) : null);
     }
   };
 
@@ -102,7 +103,7 @@ const AdminCompanySettingsPage: React.FC = () => {
       const updated = res.data.data || res.data;
       if (updated) {
         setFormData((prev) => ({ ...prev, logo_url: updated.logo_url ?? prev.logo_url }));
-        setLogoPreview(updated.logo_url ? `${API_BASE_URL}${updated.logo_url}` : null);
+        setLogoPreview(updated.logo_url ? getImageUrl(updated.logo_url) : null);
       }
       if (logoInputRef.current) logoInputRef.current.value = '';
     } catch (error: unknown) {

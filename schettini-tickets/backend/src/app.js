@@ -61,10 +61,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir archivos estáticos (imágenes subidas)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-// Ruta alternativa bajo /api para cuando frontend y backend usan mismo origen (proxy)
-app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
+// Servir archivos estáticos (imágenes, adjuntos de tickets, fotos de taller)
+// __dirname = backend/src → ../uploads = backend/uploads (raíz del backend)
+const uploadsPath = path.join(__dirname, '..', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+app.use('/api/uploads', express.static(uploadsPath));
 
 // --- 3. SOCKET.IO ---
 const io = new Server(server, {

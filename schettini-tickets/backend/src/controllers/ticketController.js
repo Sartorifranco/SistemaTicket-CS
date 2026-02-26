@@ -23,14 +23,17 @@ const notifyUser = async (io, userId, message, relatedId, relatedType = 'ticket'
 // --- Crear Ticket ---
 const createTicket = async (req, res) => {
     try {
-        const { description, priority, department_id, title } = req.body;
+        const { description, priority, department_id, title, user_id } = req.body;
         const user = req.user;
         const files = req.files || [];
+        // Admin/agente puede crear ticket en nombre de un cliente; si no, usa el usuario logueado
+        const effectiveUserId = (user.role === 'admin' || user.role === 'agent') && user_id
+            ? parseInt(user_id, 10) : user.id;
 
         const [result] = await pool.query(
             `INSERT INTO Tickets (user_id, title, description, priority, status, department_id, created_at) 
              VALUES (?, ?, ?, ?, 'open', ?, NOW())`,
-            [user.id, title || 'Nuevo Ticket', description, priority || 'medium', department_id || null]
+            [effectiveUserId, (title || '').trim() || 'Nuevo Ticket', description, priority || 'medium', department_id || null]
         );
         const ticketId = result.insertId;
 
@@ -44,7 +47,8 @@ const createTicket = async (req, res) => {
             req.io.to('admin').to('agent').emit('dashboard_update', { message: 'Nuevo ticket creado' });
         }
 
-        await createActivityLog(user.id, 'ticket', 'created', `Ticket #${ticketId} creado: "${title || 'Nuevo Ticket'}"`, ticketId, null, { title, status: 'abierto' });
+        const finalTitle = (title || '').trim() || 'Nuevo Ticket';
+        await createActivityLog(user.id, 'ticket', 'created', `Ticket #${ticketId} creado: "${finalTitle}"`, ticketId, null, { title: finalTitle, status: 'abierto' });
 
         res.status(201).json({ success: true, message: 'Ticket creado', data: { id: ticketId } });
     } catch (error) {
@@ -91,7 +95,16 @@ const getTickets = async (req, res) => {
             }
         }
 
-        if (status) { query += ' AND t.status = ?'; params.push(status); }
+        if (status) {
+            const statuses = Array.isArray(status) ? status : [status];
+            if (statuses.length === 1) {
+                query += ' AND t.status = ?';
+                params.push(statuses[0]);
+            } else if (statuses.length > 1) {
+                query += ' AND t.status IN (' + statuses.map(() => '?').join(',') + ')';
+                params.push(...statuses);
+            }
+        }
         if (priority) { query += ' AND t.priority = ?'; params.push(priority); }
         if (agentId) { query += ' AND t.assigned_to_user_id = ?'; params.push(agentId); }
         

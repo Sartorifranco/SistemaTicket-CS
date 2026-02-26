@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { ActivityLog, ApiResponseError, TicketData, User } from '../types';
+import { ActivityLog, ApiResponseError, TicketData } from '../types';
 import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
 import { formatLocalDate } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
@@ -30,29 +30,6 @@ interface DashboardMetrics {
         assignedTickets: number;
     }[];
 }
-
-// --- Componente Modal de Detalles ---
-const DetailsModal: React.FC<{ title: string; items: any[]; onClose: () => void; renderItem: (item: any, index?: number) => React.ReactNode; loading: boolean }> = ({ title, items, onClose, renderItem, loading }) => {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
-                <h2 className="text-2xl font-bold mb-4 border-b pb-2">{title}</h2>
-                <div className="max-h-96 overflow-y-auto">
-                    {loading ? (
-                        <p className="text-center text-gray-500 py-4">Cargando...</p>
-                    ) : items.length > 0 ? (
-                        <ul className="divide-y divide-gray-200">
-                            {items.map((item, index) => renderItem(item, index))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-gray-500 py-4">No hay elementos para mostrar.</p>
-                    )}
-                </div>
-                <button onClick={onClose} className="mt-6 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded w-full">Cerrar</button>
-            </div>
-        </div>
-    );
-};
 
 // --- Modal de Tickets de Agente ---
 const AgentTicketsModal: React.FC<{ agent: { agentId: number, agentName: string } | null, onClose: () => void }> = ({ agent, onClose }) => {
@@ -104,15 +81,13 @@ const AgentTicketsModal: React.FC<{ agent: { agentId: number, agentName: string 
 const AdminDashboard: React.FC = () => {
     const { user } = useAuth();
     const { socket } = useNotification();
+    const navigate = useNavigate();
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
     // Estados Modales
-    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
-    const [modalContent, setModalContent] = useState<{ title: string; items: any[]; renderItem: (item: any, index?: number) => React.ReactNode } | null>(null);
-    const [modalLoading, setModalLoading] = useState(false);
     const [selectedAgent, setSelectedAgent] = useState<{ agentId: number, agentName: string } | null>(null);
 
     const fetchMetrics = useCallback(async (isInitialLoad = false) => {
@@ -141,50 +116,13 @@ const AdminDashboard: React.FC = () => {
         }
     }, [socket, fetchMetrics]);
 
-    const handleCardClick = async (type: 'total' | 'active' | 'users') => {
-        setModalLoading(true);
-        setIsDetailsModalOpen(true);
-    
-        let title = '';
-        let items: any[] = [];
-        let renderItem: (item: any, index?: number) => React.ReactNode = () => null;
-    
-        try {
-            if (type === 'users') {
-                title = 'Todos los Usuarios';
-                const response = await api.get('/api/users');
-                items = response.data.data;
-                renderItem = (user: User) => (
-                    <li key={user.id} className="p-3 hover:bg-gray-50">{user.username} - ({user.role})</li>
-                );
-            } else {
-                const params = new URLSearchParams();
-                if (type === 'active') {
-                    title = 'Tickets Activos';
-                    params.append('status', 'open');
-                    params.append('status', 'in-progress');
-                } else {
-                    title = 'Todos los Tickets';
-                }
-    
-                const response = await api.get(`/api/tickets?${params.toString()}`);
-                items = response.data.data;
-                renderItem = (ticket: TicketData) => (
-                      <li key={ticket.id} className="p-3 hover:bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <span className="font-semibold">#{ticket.id} - {ticket.title}</span>
-                            <span className="text-gray-500 ml-2">({ticket.client_name})</span>
-                        </div>
-                        <Link to={`/admin/tickets/${ticket.id}`} className="text-red-600 hover:underline">Ver</Link>
-                    </li>
-                );
-            }
-            setModalContent({ title, items, renderItem });
-        } catch (error) {
-            toast.error('No se pudo cargar la información detallada.');
-            setIsDetailsModalOpen(false);
-        } finally {
-            setModalLoading(false);
+    const handleCardClick = (type: 'total' | 'active' | 'users') => {
+        if (type === 'users') {
+            navigate('/admin/users');
+        } else if (type === 'active') {
+            navigate('/admin/tickets?status=active');
+        } else {
+            navigate('/admin/tickets');
         }
     };
 
@@ -275,7 +213,6 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             {isAgentModalOpen && <AgentTicketsModal agent={selectedAgent} onClose={() => setIsAgentModalOpen(false)} />}
-            {isDetailsModalOpen && <DetailsModal title={modalContent?.title || ''} items={modalContent?.items || []} onClose={() => setIsDetailsModalOpen(false)} renderItem={modalContent?.renderItem || (() => null)} loading={modalLoading} />}
         </>
     );
 };

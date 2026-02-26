@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
 import { FaWhatsapp, FaSave, FaTimes, FaFilePdf } from 'react-icons/fa';
@@ -29,7 +30,7 @@ function hexToRgb(hex: string): [number, number, number] {
 
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
   try {
-    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    const fullUrl = getImageUrl(url);
     const res = await fetch(fullUrl, { mode: 'cors' });
     if (!res.ok) return null;
     const blob = await res.blob();
@@ -609,7 +610,7 @@ const ManageRepairOrderPage: React.FC = () => {
             {order.photos.map((p) => (
               <div key={p.id} className="space-y-1">
                 <img
-                  src={p.photo_url.startsWith('http') ? p.photo_url : `${API_BASE_URL}${p.photo_url}`}
+                  src={getImageUrl(p.photo_url)}
                   alt={p.perspective_label}
                   className="w-full aspect-square object-cover rounded-lg border"
                 />

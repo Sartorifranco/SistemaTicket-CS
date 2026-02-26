@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,7 @@ interface FilterData {
 
 const AdminTicketsPage: React.FC = () => {
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
     
     // --- ESTADOS DE DATOS ---
     const [tickets, setTickets] = useState<TicketData[]>([]);
@@ -28,12 +29,13 @@ const AdminTicketsPage: React.FC = () => {
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
 
-    // Estados para los filtros
+    // Estados para los filtros (status puede venir de URL ?status=active)
+    const urlStatus = searchParams.get('status');
     const [filterData, setFilterData] = useState<FilterData>({ companies: [], agents: [] });
     const [filters, setFilters] = useState({
         companyId: '',
         agentId: '',
-        status: '',
+        status: urlStatus || '',
         priority: '',
         startDate: '',
         endDate: '',
@@ -91,8 +93,12 @@ const AdminTicketsPage: React.FC = () => {
                 }
             }
 
-            // 3. Filtro por Estado
-            if (filters.status && ticket.status !== filters.status) return false;
+            // 3. Filtro por Estado (active = open + in-progress)
+            if (filters.status) {
+                if (filters.status === 'active') {
+                    if (ticket.status !== 'open' && ticket.status !== 'in-progress') return false;
+                } else if (ticket.status !== filters.status) return false;
+            }
 
             // 4. Filtro por Prioridad
             if (filters.priority && ticket.priority !== filters.priority) return false;
@@ -188,6 +194,7 @@ const AdminTicketsPage: React.FC = () => {
                         
                         <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full p-2 border rounded-md text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-200 outline-none">
                             <option value="">Todos los Estados</option>
+                            <option value="active">Activos (Abierto + En Progreso)</option>
                             <option value="open">Abierto</option>
                             <option value="in-progress">En Progreso</option>
                             <option value="resolved">Resuelto</option>

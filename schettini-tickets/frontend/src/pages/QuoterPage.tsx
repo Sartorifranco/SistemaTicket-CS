@@ -4,7 +4,8 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SectionCard from '../components/Common/SectionCard';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { FaFileExcel, FaSearch, FaPlus, FaTrash, FaCopy, FaWhatsapp, FaFilePdf, FaTimes } from 'react-icons/fa';
 
 interface CompanySettings {
@@ -42,7 +43,7 @@ function hexToRgb(hex: string): [number, number, number] {
 
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
   try {
-    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    const fullUrl = getImageUrl(url);
     const res = await fetch(fullUrl, { mode: 'cors' });
     if (!res.ok) return null;
     const blob = await res.blob();

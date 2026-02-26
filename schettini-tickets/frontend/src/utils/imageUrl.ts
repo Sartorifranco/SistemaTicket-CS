@@ -1,21 +1,25 @@
 import { API_BASE_URL } from '../config/axiosConfig';
 
 /**
- * Construye la URL completa para imágenes subidas.
- * Intenta primero la ruta directa /uploads, y en onError se puede probar /api/uploads.
+ * Construye la URL completa para imágenes y adjuntos.
+ * Usa API_BASE_URL + /api + path para que las peticiones vayan al backend
+ * (evita 404 cuando frontend y backend comparten dominio y solo /api/* se proxea).
  */
 export function getImageUrl(imageUrl: string | null | undefined): string {
-  if (!imageUrl) return '';
-  if (imageUrl.startsWith('http')) return imageUrl;
-  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  if (!imageUrl || typeof imageUrl !== 'string') return '';
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+  const base = (API_BASE_URL || '').replace(/\/$/, '');
+  const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  return `${base}/api${path}`;
 }
 
 /**
- * URL alternativa para cuando /uploads no está proxeado (usa /api/uploads)
+ * URL alternativa sin /api (para backends que sirven /uploads en raíz).
  */
 export function getImageUrlFallback(imageUrl: string | null | undefined): string {
-  if (!imageUrl) return '';
+  if (!imageUrl || typeof imageUrl !== 'string') return '';
   if (imageUrl.startsWith('http')) return imageUrl;
+  const base = (API_BASE_URL || '').replace(/\/$/, '');
   const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-  return `${API_BASE_URL}/api${path}`;
+  return `${base}${path}`;
 }

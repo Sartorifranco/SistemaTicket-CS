@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle } from 'react-icons/fa';
 
 interface Resource {
@@ -54,13 +55,7 @@ const ClientResourcesPage: React.FC = () => {
     const getResourceCountBySection = (sectionId: number) => 
         resources.filter(r => r.section_id === sectionId).length;
 
-    const getResourceUrl = (content: string) => {
-        if (!content) return content;
-        if (content.startsWith('http')) return content;
-        if (content.startsWith('/uploads')) return `${API_BASE_URL}/api${content}`;
-        if (content.startsWith('/')) return `${API_BASE_URL}/api${content}`;
-        return `${API_BASE_URL}${content}`;
-    };
+    const getResourceUrl = (content: string) => getImageUrl(content) || content;
 
     const getThumbnail = (res: Resource) => {
         const url = getResourceUrl(res.content);

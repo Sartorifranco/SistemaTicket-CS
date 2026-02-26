@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { FaFileInvoiceDollar, FaHistory, FaCloudUploadAlt, FaEdit, FaCheckCircle, FaClock, FaTimesCircle, FaEnvelope } from 'react-icons/fa';
@@ -217,7 +218,7 @@ const ClientPaymentsPage: React.FC = () => {
                                         <td className="p-4">{getStatusBadge(pay.status)}</td>
                                         <td className="p-4">
                                             {pay.receipt_url && (
-                                                <a href={`http://${window.location.hostname}:5050${pay.receipt_url}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline text-xs font-bold">Ver Recibo</a>
+                                                <a href={getImageUrl(pay.receipt_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs font-bold">Ver Recibo</a>
                                             )}
                                         </td>
                                     </tr>

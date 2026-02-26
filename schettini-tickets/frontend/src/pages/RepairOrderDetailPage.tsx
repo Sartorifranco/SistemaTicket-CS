@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 
 interface RepairOrder {
@@ -125,7 +126,7 @@ const RepairOrderDetailPage: React.FC = () => {
             {order.photos.map((p) => (
               <div key={p.id} className="space-y-1">
                 <img
-                  src={p.photo_url.startsWith('http') ? p.photo_url : `${API_BASE_URL}${p.photo_url}`}
+                  src={getImageUrl(p.photo_url)}
                   alt={p.perspective_label}
                   className="w-full aspect-square object-cover rounded-lg border"
                 />
