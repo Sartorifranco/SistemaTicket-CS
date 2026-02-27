@@ -4,10 +4,18 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { FaWrench, FaEye, FaTimes } from 'react-icons/fa';
 
+interface RepairOrderItem {
+  equipment_type?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  reported_fault?: string | null;
+}
+
 interface RepairOrder {
   id: number;
   order_number: string;
-  entry_date?: string;
+  entry_date?: string | null;
   status: string;
   equipment_type?: string;
   model?: string;
@@ -22,6 +30,7 @@ interface RepairOrder {
   technical_report?: string | null;
   created_at?: string;
   photos?: { id: number; photo_url: string; perspective_label: string }[];
+  items?: RepairOrderItem[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -33,13 +42,14 @@ const STATUS_LABELS: Record<string, string> = {
   sin_reparacion: 'Sin Reparación',
   listo: 'Listo',
   entregado: 'Entregado',
-  entregado_sin_reparacion: 'Entregado sin Reparación'
+  entregado_sin_reparacion: 'Entregado sin Reparación',
+  abandonado: 'Abandonado/Reciclaje'
 };
 
 const getStatusColor = (status: string): string => {
   if (['listo', 'entregado', 'entregado_sin_reparacion'].includes(status)) return 'bg-green-100 text-green-800 border-green-200';
   if (['ingresado', 'cotizado', 'no_aceptado', 'en_espera', 'sin_reparacion'].includes(status)) return 'bg-red-100 text-red-800 border-red-200';
-  return 'bg-amber-100 text-amber-800 border-amber-200'; // aceptado = en reparación
+  return 'bg-amber-100 text-amber-800 border-amber-200';
 };
 
 const ClientRepairsPage: React.FC = () => {
@@ -75,13 +85,20 @@ const ClientRepairsPage: React.FC = () => {
       .finally(() => setDetailLoading(false));
   };
 
-  const formatDate = (d?: string | null) =>
-    d ? new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const formatDateTime = (d?: string | null) =>
+    d ? new Date(d).toLocaleString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
   const formatCurrency = (n?: number | null) =>
     n != null ? `$${Number(n).toLocaleString('es-AR')}` : '—';
 
-  const equipmentLabel = (o: RepairOrder) => [o.equipment_type, o.model].filter(Boolean).join(' ') || 'Sin especificar';
+  const equipmentLabel = (o: RepairOrder) => {
+    if (o.items && o.items.length > 0) {
+      return o.items.map((it, i) => [it.equipment_type, it.brand, it.model].filter(Boolean).join(' ') || `Equipo ${i + 1}`).join('; ') || 'Sin especificar';
+    }
+    return [o.equipment_type, o.model].filter(Boolean).join(' ') || 'Sin especificar';
+  };
+
+  const isQuoted = (status: string) => ['cotizado', 'aceptado', 'en_espera', 'listo', 'entregado', 'entregado_sin_reparacion', 'no_aceptado', 'sin_reparacion'].includes(status);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -102,24 +119,30 @@ const ClientRepairsPage: React.FC = () => {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-lg shadow border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-4"
+              className="bg-white rounded-lg shadow border border-gray-200 p-4 hover:border-indigo-200 transition-colors"
             >
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-800">{order.order_number}</p>
-                <p className="text-sm text-gray-600">{equipmentLabel(order)}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className={`px-2.5 py-1 rounded-md text-sm font-medium border ${getStatusColor(order.status)}`}
-                >
-                  {STATUS_LABELS[order.status] || order.status}
-                </span>
-                <button
-                  onClick={() => openDetail(order)}
-                  className="flex items-center gap-1 px-3 py-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium"
-                >
-                  <FaEye /> Ver Detalle
-                </button>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-800">{order.order_number}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">{equipmentLabel(order)}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    <span className="font-medium">Fecha y hora:</span> {formatDateTime(order.entry_date || order.created_at)}
+                  </p>
+                  {order.reported_fault && (
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">Falla: {order.reported_fault}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className={`px-2.5 py-1 rounded-md text-sm font-medium border ${getStatusColor(order.status)}`}>
+                    {STATUS_LABELS[order.status] || order.status}
+                  </span>
+                  <button
+                    onClick={() => openDetail(order)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium"
+                  >
+                    <FaEye /> Ver Detalle
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -129,8 +152,8 @@ const ClientRepairsPage: React.FC = () => {
       {/* Modal de detalle */}
       {(selectedOrder || detailLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
               <h2 className="text-xl font-bold text-gray-800">
                 {selectedOrder?.order_number || 'Cargando...'}
               </h2>
@@ -149,12 +172,24 @@ const ClientRepairsPage: React.FC = () => {
               ) : selectedOrder ? (
                 <>
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Fecha de entrada</p>
-                    <p>{formatDate(selectedOrder.entry_date || selectedOrder.created_at)}</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Fecha y hora de entrada</p>
+                    <p>{formatDateTime(selectedOrder.entry_date || selectedOrder.created_at)}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Falla declarada</p>
-                    <p className="whitespace-pre-wrap">{selectedOrder.reported_fault || '—'}</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Equipos ingresados</p>
+                    {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                      <ul className="mt-1 space-y-2">
+                        {selectedOrder.items.map((it, idx) => (
+                          <li key={idx} className="text-sm p-2 bg-gray-50 rounded border border-gray-100">
+                            <span className="font-medium">{it.equipment_type || 'Equipo'} {it.brand && `/ ${it.brand}`} {it.model && `/ ${it.model}`}</span>
+                            {it.serial_number && <span className="text-gray-500"> — Serie: {it.serial_number}</span>}
+                            {it.reported_fault && <p className="text-gray-600 mt-1">Falla: {it.reported_fault}</p>}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{selectedOrder.reported_fault || '—'}</p>
+                    )}
                   </div>
                   {selectedOrder.technical_report && (
                     <div>
@@ -162,23 +197,13 @@ const ClientRepairsPage: React.FC = () => {
                       <p className="whitespace-pre-wrap">{selectedOrder.technical_report}</p>
                     </div>
                   )}
-                  <div className="border-t pt-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Costos</p>
-                    <div className="space-y-1 text-sm">
-                      <p className="flex justify-between"><span>Mano de obra:</span> {formatCurrency(selectedOrder.labor_cost)}</p>
-                      <p className="flex justify-between"><span>Repuestos:</span> {formatCurrency(selectedOrder.spare_parts_cost)}</p>
-                      <p className="flex justify-between"><span>Total:</span> <strong>{formatCurrency(selectedOrder.total_cost)}</strong></p>
-                      {selectedOrder.deposit_paid != null && selectedOrder.deposit_paid > 0 && (
-                        <p className="flex justify-between"><span>Seña:</span> {formatCurrency(selectedOrder.deposit_paid)}</p>
-                      )}
-                    </div>
-                  </div>
+
                   {selectedOrder.photos && selectedOrder.photos.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Fotos</p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Fotos del equipo al ingreso</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {selectedOrder.photos.map((p) => (
-                          <div key={p.id}>
+                          <div key={p.id} className="space-y-1">
                             <img
                               src={getImageUrl(p.photo_url)}
                               alt={p.perspective_label}
@@ -187,6 +212,25 @@ const ClientRepairsPage: React.FC = () => {
                             <p className="text-xs text-gray-500">{p.perspective_label}</p>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isQuoted(selectedOrder.status) && (
+                    <div className="border-t pt-4">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Estado financiero</p>
+                      <div className="space-y-1 text-sm bg-gray-50 p-4 rounded-lg">
+                        <p className="flex justify-between"><span>Mano de obra:</span> {formatCurrency(selectedOrder.labor_cost)}</p>
+                        <p className="flex justify-between"><span>Repuestos:</span> {formatCurrency(selectedOrder.spare_parts_cost)}</p>
+                        <p className="flex justify-between font-bold"><span>Total:</span> {formatCurrency(selectedOrder.total_cost)}</p>
+                        {selectedOrder.deposit_paid != null && selectedOrder.deposit_paid > 0 && (
+                          <p className="flex justify-between"><span>Seña abonada:</span> {formatCurrency(selectedOrder.deposit_paid)}</p>
+                        )}
+                        {selectedOrder.total_cost != null && selectedOrder.deposit_paid != null && (
+                          <p className="flex justify-between text-indigo-700 font-medium mt-2">
+                            <span>Saldo:</span> {formatCurrency(selectedOrder.total_cost - selectedOrder.deposit_paid)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}

@@ -189,8 +189,8 @@ const RepairOrdersListPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    api.get<{ success: boolean; data: { id: number; username: string; business_name?: string }[] }>('/api/users').then((res) => {
-      const list = (res.data.data || []).filter((u: { role?: string }) => u.role === 'client');
+    api.get<{ success: boolean; data: { id: number; username: string; business_name?: string; role?: string }[] }>('/api/users').then((res) => {
+      const list = (res.data.data || []).filter((u) => u.role === 'client');
       setClients(list);
     }).catch(() => {});
   }, []);

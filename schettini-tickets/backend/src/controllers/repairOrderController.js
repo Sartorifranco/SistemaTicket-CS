@@ -151,7 +151,7 @@ const getMyRepairOrders = async (req, res) => {
     const data = rows.map(r => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
-      return { ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number };
+      return { ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault };
     });
     res.json({ success: true, data });
   } catch (error) {
@@ -199,7 +199,7 @@ const getRepairOrderById = async (req, res) => {
       [id]
     );
     const first = items[0] || {};
-    const data = { ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number };
+    const data = { ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault };
     if (userRole === 'client') {
       delete data.internal_notes;
     }

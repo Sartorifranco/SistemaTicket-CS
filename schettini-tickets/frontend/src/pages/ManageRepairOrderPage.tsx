@@ -22,6 +22,7 @@ interface CompanySettings {
   usd_exchange_rate?: number | null;
   default_iva_percent?: number | null;
   list_price_surcharge_percent?: number | null;
+  legal_footer_text?: string | null;
 }
 
 interface SparePartItem {
@@ -72,6 +73,14 @@ interface TechnicianOption {
   role: string;
 }
 
+interface RepairOrderItem {
+  equipment_type?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  reported_fault?: string | null;
+}
+
 interface RepairOrder {
   id: number;
   order_number: string;
@@ -87,6 +96,7 @@ interface RepairOrder {
   model?: string;
   serial_number?: string;
   reported_fault?: string;
+  items?: RepairOrderItem[];
   included_accessories?: string;
   is_warranty: number;
   labor_cost?: number | null;
@@ -423,22 +433,45 @@ const ManageRepairOrderPage: React.FC = () => {
     doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}`, margin, y);
     y += 10;
 
-    const tableData: (string | number)[][] = [
+    const baseTableData: (string | number)[][] = [
       ['Cliente', order.client_name || order.client_business_name || '—'],
-      ['Equipo', form.equipmentType || order.equipment_type || '—'],
-      ['Modelo', form.model || order.model || '—'],
-      ['Nº Serie', form.serialNumber || order.serial_number || '—'],
       ['Estado', STATUS_LABELS[form.status || order.status] || '—'],
-      ['Falla reportada', (form.reportedFault || order.reported_fault || '—').slice(0, 80) + ((form.reportedFault || order.reported_fault || '').length > 80 ? '...' : '')],
       ['Informe técnico', (form.technicalReport || order.technical_report || '—').slice(0, 80) + ((form.technicalReport || order.technical_report || '').length > 80 ? '...' : '')],
     ];
     autoTable(doc, {
       startY: y,
       head: [['Dato', 'Valor']],
-      body: tableData,
+      body: baseTableData,
       theme: 'grid',
       headStyles: { fillColor: [r, g, b], textColor: 255 },
       styles: { fontSize: 9 },
+    });
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+
+    const items = order.items && order.items.length > 0
+      ? order.items
+      : [{
+          equipment_type: form.equipmentType || order.equipment_type || '—',
+          brand: null as string | null,
+          model: form.model || order.model || '—',
+          serial_number: form.serialNumber || order.serial_number || '—',
+          reported_fault: form.reportedFault || order.reported_fault || '—',
+        }];
+    const equiposBody = items.map((it, idx) => [
+      idx + 1,
+      (it.equipment_type || '—').toString().slice(0, 25),
+      (it.brand || '—').toString().slice(0, 18),
+      (it.model || '—').toString().slice(0, 25),
+      (it.serial_number || '—').toString().slice(0, 20),
+      (it.reported_fault || '—').toString().slice(0, 50) + ((it.reported_fault || '').length > 50 ? '...' : ''),
+    ]);
+    autoTable(doc, {
+      startY: y,
+      head: [['#', 'Tipo', 'Marca', 'Modelo', 'Nº Serie', 'Falla']],
+      body: equiposBody,
+      theme: 'grid',
+      headStyles: { fillColor: [r, g, b], textColor: 255 },
+      styles: { fontSize: 8 },
     });
 
     y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
@@ -467,6 +500,29 @@ const ManageRepairOrderPage: React.FC = () => {
     doc.setFontSize(7);
     doc.setTextColor(100, 100, 100);
     doc.text(cs.quote_footer_text?.trim() || 'Comprobante válido como referencia. Sujeto a condiciones del servicio.', margin, y);
+
+    const legalText = (cs.legal_footer_text ?? '').trim();
+    if (legalText) {
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const lineHeight = 4;
+      const maxWidth = pageW - 2 * margin;
+      y += 12;
+      doc.setFontSize(6);
+      doc.setTextColor(70, 70, 70);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Términos y condiciones legales', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(legalText, maxWidth);
+      for (const line of lines) {
+        if (y + lineHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      }
+    }
 
     doc.save(`Comprobante-Orden-${order.order_number}.pdf`);
     toast.success('Comprobante descargado correctamente.');
