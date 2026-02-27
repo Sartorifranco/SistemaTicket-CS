@@ -107,6 +107,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const repairOrderRoutes = require('./routes/repairOrderRoutes');
 const companySettingsRoutes = require('./routes/companySettingsRoutes');
 const ticketCategoriesRoutes = require('./routes/ticketCategoriesRoutes');
+const systemOptionsRoutes = require('./routes/systemOptionsRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -135,6 +136,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/repair-orders', repairOrderRoutes);
 app.use('/api/settings/company', companySettingsRoutes);
 app.use('/api/settings/ticket-categories', ticketCategoriesRoutes);
+app.use('/api/settings/system-options', systemOptionsRoutes);
 
 // Rutas opcionales (try-catch para evitar errores si no existen los archivos)
 try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) { console.log('Ruta admin opcional no cargada'); }

@@ -108,7 +108,7 @@ const getUserById = async (req, res) => {
 // --- Crear usuario (Admin) ---
 const createUser = async (req, res) => {
     try {
-        const { username, email, password, role, department_id, company_id, plan, phone, cuit, business_name, fantasy_name } = req.body;
+        const { username, email, password, role, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, iva_condition, address, city, province, zip_code } = req.body;
 
         const [existing] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ message: 'El usuario ya existe' });
@@ -125,8 +125,9 @@ const createUser = async (req, res) => {
                 username, email, password, role, 
                 department_id, company_id, plan, 
                 phone, cuit, business_name, fantasy_name, 
+                iva_condition, address, city, province, zip_code,
                 is_active, status, last_login, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW(), NOW())`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW(), NOW())`,
             [
                 username, 
                 email, 
@@ -138,7 +139,12 @@ const createUser = async (req, res) => {
                 phone || '',
                 cuit || '',
                 business_name || '',
-                fantasy_name || ''
+                fantasy_name || '',
+                (iva_condition || '').trim() || null,
+                (address || '').trim() || null,
+                (city || '').trim() || null,
+                (province || '').trim() || null,
+                (zip_code || '').trim() || null
             ]
         );
 
@@ -152,7 +158,7 @@ const createUser = async (req, res) => {
 // --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
-        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions } = req.body;
+        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, iva_condition, address, city, province, zip_code } = req.body;
         const userId = req.params.id;
 
         // Lógica corregida: Si 'status' no viene, asumimos 'active'
@@ -171,12 +177,14 @@ const updateUser = async (req, res) => {
         const updates = [
             'username = ?', 'full_name = ?', 'email = ?', 'role = ?', 'status = ?', 'is_active = ?',
             'department_id = ?', 'company_id = ?', 'plan = ?',
-            'phone = ?', 'cuit = ?', 'business_name = ?', 'fantasy_name = ?'
+            'phone = ?', 'cuit = ?', 'business_name = ?', 'fantasy_name = ?',
+            'iva_condition = ?', 'address = ?', 'city = ?', 'province = ?', 'zip_code = ?'
         ];
         const values = [
             username, finalFullName, email, role, newStatus, isActive,
             finalDepartmentId, finalCompanyId, plan || 'Free',
-            phone || '', cuit || '', business_name || '', fantasy_name || ''
+            phone || '', cuit || '', business_name || '', fantasy_name || '',
+            (iva_condition || '').trim() || null, (address || '').trim() || null, (city || '').trim() || null, (province || '').trim() || null, (zip_code || '').trim() || null
         ];
         if (finalPermissions !== null) {
             updates.push('permissions = ?');

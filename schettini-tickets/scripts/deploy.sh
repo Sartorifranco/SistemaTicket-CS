@@ -47,6 +47,13 @@ if [[ -f "backend/scripts/add-ticket-categories.js" ]]; then
     echo ""
 fi
 
+# Refactor Órdenes de Taller (system_options, repair_order_items, Users, company_settings)
+if [[ -f "backend/scripts/migrate-repair-orders-advanced.js" ]]; then
+    echo ">>> Ejecutando migración repair-orders-advanced..."
+    (cd backend && node scripts/migrate-repair-orders-advanced.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

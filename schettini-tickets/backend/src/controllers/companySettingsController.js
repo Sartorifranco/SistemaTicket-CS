@@ -33,6 +33,16 @@ const updateCompanySettings = async (req, res) => {
       : 0;
     const quoteFooterText = (body.quote_footer_text ?? '').trim() || null;
     const primaryColor = (body.primary_color ?? '#000000').trim() || '#000000';
+    const usdExchangeRate = body.usd_exchange_rate != null && body.usd_exchange_rate !== ''
+      ? parseFloat(body.usd_exchange_rate)
+      : null;
+    const listPriceSurchargePercent = body.list_price_surcharge_percent != null && body.list_price_surcharge_percent !== ''
+      ? parseFloat(body.list_price_surcharge_percent)
+      : null;
+    const defaultIvaPercent = body.default_iva_percent != null && body.default_iva_percent !== ''
+      ? parseFloat(body.default_iva_percent)
+      : null;
+    const legalFooterText = (body.legal_footer_text ?? '').trim() || null;
 
     let logoUrl = null;
     if (file && file.filename) {
@@ -42,9 +52,10 @@ const updateCompanySettings = async (req, res) => {
     const updates = [
       'company_name = ?', 'address = ?', 'phone = ?', 'email = ?', 'website = ?',
       'tax_percentage = ?', 'quote_footer_text = ?', 'primary_color = ?',
+      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'legal_footer_text = ?',
       'updated_at = NOW()'
     ];
-    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor];
+    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, legalFooterText];
 
     if (logoUrl !== null) {
       updates.splice(5, 0, 'logo_url = ?');

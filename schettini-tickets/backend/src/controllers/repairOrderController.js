@@ -66,7 +66,24 @@ const getRepairOrders = async (req, res) => {
     query += ' ORDER BY ro.created_at DESC';
 
     const [rows] = await pool.query(query, params);
-    res.json({ success: true, data: rows });
+    const ids = rows.map(r => r.id);
+    const itemsMap = {};
+    if (ids.length > 0) {
+      const [items] = await pool.query(
+        'SELECT * FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
+        [ids]
+      );
+      items.forEach(it => {
+        if (!itemsMap[it.repair_order_id]) itemsMap[it.repair_order_id] = [];
+        itemsMap[it.repair_order_id].push(it);
+      });
+    }
+    const data = rows.map(r => {
+      const items = itemsMap[r.id] || [];
+      const first = items[0] || {};
+      return { ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number };
+    });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Error getRepairOrders:', error);
   }
@@ -79,8 +96,7 @@ const getMyRepairOrders = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Acceso denegado' });
     }
     const [rows] = await pool.query(
-      `SELECT ro.id, ro.order_number, ro.entry_date, ro.status, ro.equipment_type, ro.model,
-        ro.serial_number, ro.reported_fault, ro.included_accessories, ro.is_warranty,
+      `SELECT ro.id, ro.order_number, ro.entry_date, ro.status,
         ro.labor_cost, ro.spare_parts_cost, ro.total_cost, ro.deposit_paid,
         ro.technical_report, ro.created_at,
         ro.accepted_date, ro.promised_date, ro.delivered_date, ro.warranty_expiration_date,
@@ -90,7 +106,24 @@ const getMyRepairOrders = async (req, res) => {
        ORDER BY ro.created_at DESC`,
       [req.user.id]
     );
-    res.json({ success: true, data: rows });
+    const ids = rows.map(r => r.id);
+    const itemsMap = {};
+    if (ids.length > 0) {
+      const [items] = await pool.query(
+        'SELECT * FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
+        [ids]
+      );
+      items.forEach(it => {
+        if (!itemsMap[it.repair_order_id]) itemsMap[it.repair_order_id] = [];
+        itemsMap[it.repair_order_id].push(it);
+      });
+    }
+    const data = rows.map(r => {
+      const items = itemsMap[r.id] || [];
+      const first = items[0] || {};
+      return { ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number };
+    });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Error getMyRepairOrders:', error);
     res.status(500).json({ success: false, message: 'Error al obtener órdenes' });
@@ -131,8 +164,12 @@ const getRepairOrderById = async (req, res) => {
       'SELECT id, photo_url, perspective_label, created_at FROM repair_order_photos WHERE repair_order_id = ? ORDER BY id',
       [id]
     );
-
-    const data = { ...order, photos };
+    const [items] = await pool.query(
+      'SELECT * FROM repair_order_items WHERE repair_order_id = ? ORDER BY sort_order, id',
+      [id]
+    );
+    const first = items[0] || {};
+    const data = { ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number };
     if (userRole === 'client') {
       delete data.internal_notes;
     }
@@ -146,7 +183,20 @@ const getRepairOrderById = async (req, res) => {
   }
 };
 
-// POST - Crear orden (con fotos opcionales)
+// Parse items desde body (JSON o array)
+const parseItems = (body) => {
+  let items = body.items;
+  if (!items) {
+    const { equipmentType, model, serialNumber, reportedFault, includedAccessories, isWarranty, brand, warrantyInvoice } = body;
+    if (equipmentType || model || serialNumber || reportedFault) {
+      items = [{ equipment_type: equipmentType, brand, model, serial_number: serialNumber, reported_fault: reportedFault, included_accessories: includedAccessories, is_warranty: isWarranty, warranty_invoice: warrantyInvoice }];
+    } else items = [];
+  }
+  if (typeof items === 'string') try { items = JSON.parse(items); } catch { items = []; }
+  return Array.isArray(items) ? items : [];
+};
+
+// POST - Crear orden (con fotos opcionales, items en body.items o legacy)
 const createRepairOrder = async (req, res) => {
   try {
     const files = req.files || [];
@@ -154,12 +204,6 @@ const createRepairOrder = async (req, res) => {
       clientId,
       entryDate,
       status,
-      equipmentType,
-      model,
-      serialNumber,
-      reportedFault,
-      includedAccessories,
-      isWarranty,
       laborCost,
       sparePartsCost,
       totalCost,
@@ -172,7 +216,14 @@ const createRepairOrder = async (req, res) => {
       deliveredDate,
       warrantyExpirationDate,
       publicNotes,
-      sparePartsDetail
+      sparePartsDetail,
+      orderType,
+      visitDate,
+      remotePlatform,
+      deliveryAddress,
+      paymentMethod,
+      paymentOperationNumber,
+      priority
     } = req.body;
 
     if (!clientId) {
@@ -185,30 +236,28 @@ const createRepairOrder = async (req, res) => {
       });
     }
 
+    const items = parseItems(req.body);
+    if (items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Se requiere al menos un equipo (items)' });
+    }
+
     const orderNumber = await generateOrderNumber();
-    const isWarrantyVal = isWarranty === 'true' || isWarranty === true ? 1 : 0;
 
     const [result] = await pool.query(
       `INSERT INTO repair_orders (
         client_id, order_number, entry_date, status,
-        equipment_type, model, serial_number, reported_fault,
-        included_accessories, is_warranty,
         labor_cost, spare_parts_cost, total_cost, deposit_paid,
         internal_notes, technical_report, technician_id,
         accepted_date, promised_date, delivered_date, warranty_expiration_date,
-        public_notes, spare_parts_detail
+        public_notes, spare_parts_detail,
+        order_type, visit_date, remote_platform, delivery_address,
+        payment_method, payment_operation_number, priority
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clientId,
         orderNumber,
         entryDate || null,
         status || 'ingresado',
-        equipmentType || null,
-        model || null,
-        serialNumber || null,
-        reportedFault || null,
-        includedAccessories || null,
-        isWarrantyVal,
         laborCost ? parseFloat(laborCost) : null,
         sparePartsCost ? parseFloat(sparePartsCost) : null,
         totalCost ? parseFloat(totalCost) : null,
@@ -221,11 +270,39 @@ const createRepairOrder = async (req, res) => {
         deliveredDate || null,
         warrantyExpirationDate || null,
         publicNotes || null,
-        sparePartsDetail || null
+        sparePartsDetail || null,
+        orderType || 'Taller',
+        visitDate || null,
+        remotePlatform || null,
+        deliveryAddress || null,
+        paymentMethod || null,
+        paymentOperationNumber || null,
+        priority || 'Normal'
       ]
     );
 
     const repairOrderId = result.insertId;
+
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const isWarranty = it.is_warranty === 'true' || it.is_warranty === true ? 1 : 0;
+      await pool.query(
+        `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          repairOrderId,
+          it.equipment_type || null,
+          it.brand || null,
+          it.model || null,
+          it.serial_number || null,
+          it.reported_fault || null,
+          it.included_accessories || null,
+          isWarranty,
+          it.warranty_invoice || null,
+          i
+        ]
+      );
+    }
 
     if (files.length > 0) {
       let perspectiveLabels = [];
@@ -269,12 +346,6 @@ const updateRepairOrder = async (req, res) => {
       clientId,
       entryDate,
       status,
-      equipmentType,
-      model,
-      serialNumber,
-      reportedFault,
-      includedAccessories,
-      isWarranty,
       laborCost,
       sparePartsCost,
       totalCost,
@@ -287,7 +358,14 @@ const updateRepairOrder = async (req, res) => {
       deliveredDate,
       warrantyExpirationDate,
       publicNotes,
-      sparePartsDetail
+      sparePartsDetail,
+      orderType,
+      visitDate,
+      remotePlatform,
+      deliveryAddress,
+      paymentMethod,
+      paymentOperationNumber,
+      priority
     } = req.body;
 
     const [existing] = await pool.query('SELECT id FROM repair_orders WHERE id = ?', [id]);
@@ -301,59 +379,53 @@ const updateRepairOrder = async (req, res) => {
       });
     }
 
-    const isWarrantyVal = isWarranty === 'true' || isWarranty === true ? 1 : 0;
+    const setClause = [];
+    const setParams = [];
+    const add = (col, val, isNum) => {
+      setClause.push(`${col} = ?`);
+      setParams.push(isNum && (val === '' || val == null) ? null : (isNum && val != null ? parseFloat(val) : val));
+    };
+    if (clientId !== undefined) add('client_id', clientId);
+    if (entryDate !== undefined) add('entry_date', entryDate);
+    if (status !== undefined && status !== '') add('status', status);
+    if (laborCost !== undefined) add('labor_cost', laborCost, true);
+    if (sparePartsCost !== undefined) add('spare_parts_cost', sparePartsCost, true);
+    if (totalCost !== undefined) add('total_cost', totalCost, true);
+    if (depositPaid !== undefined) add('deposit_paid', depositPaid, true);
+    if (internalNotes !== undefined) add('internal_notes', internalNotes);
+    if (technicalReport !== undefined) add('technical_report', technicalReport);
+    if (technicianId !== undefined) add('technician_id', technicianId || null);
+    if (acceptedDate !== undefined) add('accepted_date', acceptedDate);
+    if (promisedDate !== undefined) add('promised_date', promisedDate);
+    if (deliveredDate !== undefined) add('delivered_date', deliveredDate);
+    if (warrantyExpirationDate !== undefined) add('warranty_expiration_date', warrantyExpirationDate);
+    if (publicNotes !== undefined) add('public_notes', publicNotes);
+    if (sparePartsDetail !== undefined) add('spare_parts_detail', sparePartsDetail);
+    if (orderType !== undefined) add('order_type', orderType);
+    if (visitDate !== undefined) add('visit_date', visitDate);
+    if (remotePlatform !== undefined) add('remote_platform', remotePlatform);
+    if (deliveryAddress !== undefined) add('delivery_address', deliveryAddress);
+    if (paymentMethod !== undefined) add('payment_method', paymentMethod);
+    if (paymentOperationNumber !== undefined) add('payment_operation_number', paymentOperationNumber);
+    if (priority !== undefined) add('priority', priority);
+    if (setClause.length > 0) {
+      setParams.push(id);
+      await pool.query(`UPDATE repair_orders SET ${setClause.join(', ')} WHERE id = ?`, setParams);
+    }
 
-    await pool.query(
-      `UPDATE repair_orders SET
-        client_id = COALESCE(?, client_id),
-        entry_date = COALESCE(?, entry_date),
-        status = COALESCE(?, status),
-        equipment_type = COALESCE(?, equipment_type),
-        model = COALESCE(?, model),
-        serial_number = COALESCE(?, serial_number),
-        reported_fault = COALESCE(?, reported_fault),
-        included_accessories = COALESCE(?, included_accessories),
-        is_warranty = ?,
-        labor_cost = ?,
-        spare_parts_cost = ?,
-        total_cost = ?,
-        deposit_paid = ?,
-        internal_notes = COALESCE(?, internal_notes),
-        technical_report = COALESCE(?, technical_report),
-        technician_id = COALESCE(?, technician_id),
-        accepted_date = COALESCE(?, accepted_date),
-        promised_date = COALESCE(?, promised_date),
-        delivered_date = COALESCE(?, delivered_date),
-        warranty_expiration_date = COALESCE(?, warranty_expiration_date),
-        public_notes = COALESCE(?, public_notes),
-        spare_parts_detail = COALESCE(?, spare_parts_detail)
-      WHERE id = ?`,
-      [
-        clientId || null,
-        entryDate || null,
-        status || null,
-        equipmentType || null,
-        model || null,
-        serialNumber || null,
-        reportedFault || null,
-        includedAccessories || null,
-        isWarrantyVal,
-        laborCost !== undefined && laborCost !== '' ? parseFloat(laborCost) : null,
-        sparePartsCost !== undefined && sparePartsCost !== '' ? parseFloat(sparePartsCost) : null,
-        totalCost !== undefined && totalCost !== '' ? parseFloat(totalCost) : null,
-        depositPaid !== undefined && depositPaid !== '' ? parseFloat(depositPaid) : null,
-        internalNotes || null,
-        technicalReport || null,
-        technicianId !== undefined ? (technicianId || null) : null,
-        acceptedDate || null,
-        promisedDate || null,
-        deliveredDate || null,
-        warrantyExpirationDate || null,
-        publicNotes || null,
-        sparePartsDetail || null,
-        id
-      ]
-    );
+    const items = parseItems(req.body);
+    if (items.length > 0) {
+      await pool.query('DELETE FROM repair_order_items WHERE repair_order_id = ?', [id]);
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const isWarranty = it.is_warranty === 'true' || it.is_warranty === true ? 1 : 0;
+        await pool.query(
+          `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, it.equipment_type || null, it.brand || null, it.model || null, it.serial_number || null, it.reported_fault || null, it.included_accessories || null, isWarranty, it.warranty_invoice || null, i]
+        );
+      }
+    }
 
     res.json({ success: true, message: 'Orden actualizada' });
   } catch (error) {
@@ -372,6 +444,7 @@ const deleteRepairOrder = async (req, res) => {
     }
 
     await pool.query('DELETE FROM repair_order_photos WHERE repair_order_id = ?', [id]);
+    await pool.query('DELETE FROM repair_order_items WHERE repair_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_orders WHERE id = ?', [id]);
 
     res.json({ success: true, message: 'Orden eliminada' });
