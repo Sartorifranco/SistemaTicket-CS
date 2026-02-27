@@ -102,7 +102,7 @@ const ClientTicketDetailPage: React.FC = () => {
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                <h1 className="text-xl sm:text-3xl font-bold text-gray-800 break-all">Ticket #{ticket.id}: {ticket.title}</h1>
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-800 break-all">Ticket #{ticket.id}: {ticket.title || ticket.subject || (ticket.description ? `${ticket.description.substring(0, 60)}${ticket.description.length > 60 ? '...' : ''}` : 'Sin título')}</h1>
                 <button onClick={() => navigate(-1)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg self-start sm:self-center">Volver</button>
             </div>
 
@@ -148,8 +148,10 @@ const ClientTicketDetailPage: React.FC = () => {
                     <SectionCard title="Archivos Adjuntos" className="lg:col-span-3">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {ticket.attachments.map((att: Attachment) => {
-                                const rawPath = att.file_path ?? att.file_url ?? '';
+                                let rawPath = att.file_path ?? att.file_url ?? '';
                                 if (!rawPath) return null;
+                                if (!rawPath.startsWith('http') && !rawPath.startsWith('/')) rawPath = `/${rawPath}`;
+                                if (!rawPath.startsWith('/uploads') && !rawPath.startsWith('http')) rawPath = `/uploads/${rawPath.replace(/^\//, '')}`;
                                 const fileUrl = getImageUrl(rawPath);
                                 const isImage = att.file_type?.startsWith('image/');
                                 const isVideo = att.file_type?.startsWith('video/');

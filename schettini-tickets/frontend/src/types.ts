@@ -105,6 +105,7 @@ export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export interface TicketData {
     id: number;
     title: string;
+    subject?: string;  // Alias para compatibilidad con APIs que usan subject en lugar de title
     description: string;
     status: TicketStatus;
     priority: TicketPriority;

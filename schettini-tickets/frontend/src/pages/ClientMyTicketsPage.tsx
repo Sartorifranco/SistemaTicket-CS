@@ -131,7 +131,7 @@ const ClientTicketsPage: React.FC = () => {
                                     {tickets.map(ticket => (
                                         <tr key={ticket.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap">{ticket.id}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{ticket.title}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{ticket.title || ticket.subject || (ticket.description ? `${ticket.description.substring(0, 50)}${ticket.description.length > 50 ? '...' : ''}` : 'Sin título')}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {/* <-- 2. USAMOS EL COMPONENTE StatusBadge EN LA TABLA */}
                                                 <StatusBadge status={ticket.status as TicketStatus} />
@@ -149,7 +149,7 @@ const ClientTicketsPage: React.FC = () => {
                                 {tickets.map(ticket => (
                                     <div key={ticket.id} className="bg-gray-50 p-4 rounded-lg border">
                                         <div className="flex justify-between items-start">
-                                            <span className="font-bold text-gray-800 break-all pr-2">#{ticket.id} - {ticket.title}</span>
+                                            <span className="font-bold text-gray-800 break-all pr-2">#{ticket.id} - {ticket.title || ticket.subject || (ticket.description ? `${ticket.description.substring(0, 40)}${ticket.description.length > 40 ? '...' : ''}` : 'Sin título')}</span>
                                             <div className="flex-shrink-0">
                                                 {/* <-- 3. USAMOS EL COMPONENTE StatusBadge TAMBIÉN EN LA VISTA MÓVIL */}
                                                 <StatusBadge status={ticket.status as TicketStatus} />

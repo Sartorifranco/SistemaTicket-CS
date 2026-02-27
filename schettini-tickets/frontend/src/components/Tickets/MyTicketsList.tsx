@@ -91,7 +91,7 @@ const MyTicketsList: React.FC = () => {
                                     {tickets.map((ticket) => (
                                         <tr key={ticket.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ticket.id}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ticket.title}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ticket.title || ticket.subject || (ticket.description ? `${ticket.description.substring(0, 50)}${ticket.description.length > 50 ? '...' : ''}` : 'Sin título')}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ticketStatusTranslations[ticket.status]}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ticketPriorityTranslations[ticket.priority]}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatLocalDate(ticket.created_at)}</td>
@@ -114,7 +114,7 @@ const MyTicketsList: React.FC = () => {
                                 {tickets.map(ticket => (
                                     <div key={ticket.id} className="bg-gray-50 p-4 rounded-lg border">
                                         <div className="flex justify-between items-start">
-                                            <span className="font-bold text-gray-800 break-all pr-2">#{ticket.id} - {ticket.title}</span>
+                                            <span className="font-bold text-gray-800 break-all pr-2">#{ticket.id} - {ticket.title || ticket.subject || (ticket.description ? `${ticket.description.substring(0, 40)}${ticket.description.length > 40 ? '...' : ''}` : 'Sin título')}</span>
                                             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex-shrink-0">{ticketStatusTranslations[ticket.status]}</span>
                                         </div>
                                         <div className="text-sm text-gray-600 mt-2 space-y-1">

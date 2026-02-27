@@ -39,7 +39,7 @@ const DetailsModal: React.FC<{ title: string; items: Partial<TicketData>[]; onCl
                                 <li key={ticket.id} className="p-4 border border-gray-200 rounded-lg flex justify-between items-center hover:bg-gray-50 transition">
                                     <div>
                                         <span className="font-bold text-gray-800 block">Ticket #{ticket.id}</span>
-                                        <span className="text-sm text-gray-500">{ticket.title}</span>
+                                        <span className="text-sm text-gray-500">{ticket.title || ticket.subject || (ticket.description ? `${ticket.description.substring(0, 40)}${ticket.description.length > 40 ? '...' : ''}` : 'Sin título')}</span>
                                         <span className="text-xs px-2 py-0.5 rounded ml-2 bg-gray-100 text-gray-800">{ticketStatusTranslations[ticket.status as keyof typeof ticketStatusTranslations] || ticket.status}</span>
                                     </div>
                                     <Link to={`/client/tickets/${ticket.id}`} className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium text-sm">Ver Detalle</Link>
