@@ -115,7 +115,8 @@ const STATUS_LABELS: Record<string, string> = {
   sin_reparacion: 'Sin Reparación',
   listo: 'Listo',
   entregado: 'Entregado',
-  entregado_sin_reparacion: 'Entregado sin Reparación'
+  entregado_sin_reparacion: 'Entregado sin Reparación',
+  abandonado: 'Abandonado/Reciclaje'
 };
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
@@ -185,6 +186,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const basePath = isAdmin ? '/admin/repair-orders' : '/agent/repair-orders';
 
   const canEdit = user?.role === 'admin' || user?.role === 'agent' || user?.role === 'supervisor';
+  const canEditEquipment = user?.role === 'admin';
 
   const [order, setOrder] = useState<RepairOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -221,7 +223,8 @@ const ManageRepairOrderPage: React.FC = () => {
     warrantyExpirationDate: '',
     publicNotes: '',
     sparePartsDetail: '',
-    technicianId: ''
+    technicianId: '',
+    internalNotes: ''
   });
 
   const fetchOrder = () => {
@@ -250,7 +253,8 @@ const ManageRepairOrderPage: React.FC = () => {
           warrantyExpirationDate: formatDate(o.warranty_expiration_date) || '',
           publicNotes: o.public_notes || '',
           sparePartsDetail: o.spare_parts_detail || '',
-          technicianId: o.technician_id ? String(o.technician_id) : ''
+          technicianId: o.technician_id ? String(o.technician_id) : '',
+          internalNotes: o.internal_notes || ''
         });
         setLaborValue(o.labor_cost != null ? String(o.labor_cost) : '');
         try {
@@ -512,6 +516,17 @@ const ManageRepairOrderPage: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    const originalTechId = order?.technician_id ? String(order.technician_id) : '';
+    const newTechId = form.technicianId || '';
+    let finalInternalNotes = form.internalNotes || '';
+    if (originalTechId !== newTechId && newTechId) {
+      const ok = window.confirm('Estás reasignando esta orden. Quedará registrado. ¿Continuar?');
+      if (!ok) return;
+      const techName = technicians.find((t) => String(t.id) === newTechId)?.full_name || technicians.find((t) => String(t.id) === newTechId)?.username || 'Técnico';
+      const prevName = technicians.find((t) => String(t.id) === originalTechId)?.full_name || technicians.find((t) => String(t.id) === originalTechId)?.username || 'Sin asignar';
+      const note = `[${new Date().toLocaleString('es-AR')}] Reasignada a ${techName}. Anterior: ${prevName}.`;
+      finalInternalNotes = finalInternalNotes ? `${finalInternalNotes}\n${note}` : note;
+    }
     setSaving(true);
     try {
       const sparePartsDetailJson = sparePartsList.length > 0 ? JSON.stringify(sparePartsList) : null;
@@ -533,7 +548,8 @@ const ManageRepairOrderPage: React.FC = () => {
         warrantyExpirationDate: form.warrantyExpirationDate || null,
         publicNotes: form.publicNotes || null,
         sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
-        technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null
+        technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null,
+        internalNotes: finalInternalNotes || null
       });
       toast.success('Orden actualizada');
       fetchOrder();
@@ -607,14 +623,6 @@ const ManageRepairOrderPage: React.FC = () => {
           <SectionCard title="Editar Orden">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select name="status" value={form.status} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg">
-                  {STATUS_OPTIONS.map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Técnico Asignado <span className="text-red-500">*</span></label>
                 <select name="technicianId" value={form.technicianId} onChange={handleChange} required className="w-full px-3 py-2 border rounded-lg">
                   <option value="">Seleccionar técnico...</option>
@@ -627,23 +635,23 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
-                <input name="equipmentType" value={form.equipmentType} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
+                <input name="equipmentType" value={form.equipmentType} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                <input name="model" value={form.model} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
+                <input name="model" value={form.model} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nº de Serie</label>
-                <input name="serialNumber" value={form.serialNumber} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
+                <input name="serialNumber" value={form.serialNumber} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Falla / Problema Reportado</label>
-                <textarea name="reportedFault" value={form.reportedFault} onChange={handleChange} rows={3} className="w-full px-3 py-2 border rounded-lg" />
+                <textarea name="reportedFault" value={form.reportedFault} onChange={handleChange} rows={3} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Accesorios incluidos</label>
-                <textarea name="includedAccessories" value={form.includedAccessories} onChange={handleChange} rows={2} className="w-full px-3 py-2 border rounded-lg" />
+                <textarea name="includedAccessories" value={form.includedAccessories} onChange={handleChange} rows={2} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Informe Técnico / Solución</label>
@@ -755,8 +763,20 @@ const ManageRepairOrderPage: React.FC = () => {
                 <input type="date" name="warrantyExpirationDate" value={form.warrantyExpirationDate} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notas internas (solo personal)</label>
+                <textarea name="internalNotes" value={form.internalNotes} onChange={handleChange} rows={3} className="w-full px-3 py-2 border rounded-lg" placeholder="Notas internas, reasignaciones..." />
+              </div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones públicas (visible para el cliente)</label>
                 <textarea name="publicNotes" value={form.publicNotes} onChange={handleChange} rows={3} className="w-full px-3 py-2 border rounded-lg" placeholder="Ej: Falta caja" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select name="status" value={form.status} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg">
+                  {STATUS_OPTIONS.map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="mt-4 flex justify-end">

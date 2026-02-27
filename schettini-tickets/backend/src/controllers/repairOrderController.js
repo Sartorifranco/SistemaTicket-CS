@@ -9,7 +9,8 @@ const VALID_STATUSES = [
   'sin_reparacion',
   'listo',
   'entregado',
-  'entregado_sin_reparacion'
+  'entregado_sin_reparacion',
+  'abandonado'
 ];
 
 const isValidStatus = (s) => s && VALID_STATUSES.includes(String(s).toLowerCase());
@@ -30,15 +31,18 @@ const generateOrderNumber = async () => {
 // GET - Listar todas las órdenes
 const getRepairOrders = async (req, res) => {
   try {
-    const { status, clientId } = req.query;
+    const { status, clientId, technicianId, orderNumber, dateFrom, dateTo, brand, model, serial } = req.query;
     const userId = req.user.id;
     const userRole = req.user.role;
 
     let query = `
       SELECT ro.*,
+        ro.entry_date, ro.updated_at,
         u.username AS client_name,
         u.business_name AS client_business_name,
-        t.username AS technician_name
+        u.phone AS client_phone,
+        t.username AS technician_name,
+        ro.client_id, ro.technician_id
       FROM repair_orders ro
       LEFT JOIN Users u ON ro.client_id = u.id
       LEFT JOIN Users t ON ro.technician_id = t.id
@@ -62,8 +66,34 @@ const getRepairOrders = async (req, res) => {
       query += ' AND ro.client_id = ?';
       params.push(clientId);
     }
+    if (technicianId) {
+      query += ' AND ro.technician_id = ?';
+      params.push(technicianId);
+    }
+    if (orderNumber && String(orderNumber).trim()) {
+      query += ' AND ro.order_number LIKE ?';
+      params.push(`%${String(orderNumber).trim()}%`);
+    }
+    if (dateFrom) {
+      query += ' AND DATE(ro.entry_date) >= ?';
+      params.push(dateFrom);
+    }
+    if (dateTo) {
+      query += ' AND DATE(ro.entry_date) <= ?';
+      params.push(dateTo);
+    }
+    const brandQ = brand && String(brand).trim();
+    const modelQ = model && String(model).trim();
+    const serialQ = serial && String(serial).trim();
+    if (brandQ || modelQ || serialQ) {
+      const itemConds = [];
+      if (brandQ) { itemConds.push('(roi.brand LIKE ? OR roi.equipment_type LIKE ?)'); params.push(`%${brandQ}%`, `%${brandQ}%`); }
+      if (modelQ) { itemConds.push('roi.model LIKE ?'); params.push(`%${modelQ}%`); }
+      if (serialQ) { itemConds.push('roi.serial_number LIKE ?'); params.push(`%${serialQ}%`); }
+      query += ` AND ro.id IN (SELECT DISTINCT roi.repair_order_id FROM repair_order_items roi WHERE ${itemConds.join(' AND ')})`;
+    }
 
-    query += ' ORDER BY ro.created_at DESC';
+    query += ' ORDER BY ro.entry_date DESC, ro.created_at DESC';
 
     const [rows] = await pool.query(query, params);
     const ids = rows.map(r => r.id);

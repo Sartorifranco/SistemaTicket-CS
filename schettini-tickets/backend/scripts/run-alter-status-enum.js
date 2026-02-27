@@ -16,7 +16,8 @@ const sql = `ALTER TABLE repair_orders
     'sin_reparacion',
     'listo',
     'entregado',
-    'entregado_sin_reparacion'
+    'entregado_sin_reparacion',
+    'abandonado'
   ) NOT NULL DEFAULT 'ingresado'`;
 
 (async () => {

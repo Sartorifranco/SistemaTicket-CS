@@ -54,6 +54,13 @@ if [[ -f "backend/scripts/migrate-spare-parts-catalog.js" ]]; then
     echo ""
 fi
 
+# Estado abandonado en repair_orders
+if [[ -f "backend/scripts/run-alter-status-enum.js" ]]; then
+    echo ">>> Actualizando ENUM status (abandonado)..."
+    (cd backend && node scripts/run-alter-status-enum.js) || true
+    echo ""
+fi
+
 # Refactor Órdenes de Taller (system_options, repair_order_items, Users, company_settings)
 if [[ -f "backend/scripts/migrate-repair-orders-advanced.js" ]]; then
     echo ">>> Ejecutando migración repair-orders-advanced..."
