@@ -16,7 +16,8 @@ interface ClientMetrics {
 // --- Componente del Modal para Crear Ticket ---
 const CreateTicketModal: React.FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => void; }> = ({ isOpen, onClose, onSuccess }) => {
     const { user } = useAuth();
-    const [title, setTitle] = useState('');
+    const [ticketCategoryId, setTicketCategoryId] = useState('');
+    const [ticketCategories, setTicketCategories] = useState<{ id: number; name: string }[]>([]);
     const [description, setDescription] = useState('');
     const [departmentId, setDepartmentId] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
@@ -25,27 +26,34 @@ const CreateTicketModal: React.FC<{ isOpen: boolean; onClose: () => void; onSucc
 
     useEffect(() => {
         if (isOpen) {
-            const fetchDepartments = async () => {
+            const fetchData = async () => {
                 try {
-                    const response = await api.get('/api/departments'); // Asume que esta ruta devuelve todos los deptos.
-                    setDepartments(response.data.data || []);
-                } catch (error) {
-                    toast.error('No se pudieron cargar los departamentos.');
+                    const [deptsRes, catsRes] = await Promise.all([
+                        api.get('/api/departments'),
+                        api.get('/api/settings/ticket-categories')
+                    ]);
+                    setDepartments(deptsRes.data.data || []);
+                    setTicketCategories(catsRes.data.data || []);
+                } catch {
+                    toast.error('No se pudieron cargar los datos.');
                 }
             };
-            fetchDepartments();
+            fetchData();
+        } else {
+            setTicketCategoryId('');
         }
     }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title.trim() || !description.trim() || !departmentId) {
+        if (!ticketCategoryId || !description.trim() || !departmentId) {
             toast.error('Por favor, complete todos los campos.');
             return;
         }
+        const categoryName = ticketCategories.find(c => String(c.id) === ticketCategoryId)?.name || 'Otro';
         setLoading(true);
         const formData = new FormData();
-        formData.append('title', title);
+        formData.append('title', categoryName);
         formData.append('description', description);
         formData.append('department_id', departmentId);
         formData.append('priority', 'medium'); // Prioridad por defecto
@@ -76,8 +84,13 @@ const CreateTicketModal: React.FC<{ isOpen: boolean; onClose: () => void; onSucc
                 <h2 className="text-xl font-bold mb-4">Crear Nuevo Ticket</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Título</label>
-                        <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md mt-1" required />
+                        <label className="block text-sm font-medium text-gray-700">Tipo de Problema</label>
+                        <select value={ticketCategoryId} onChange={e => setTicketCategoryId(e.target.value)} className="w-full p-2 border rounded-md mt-1" required>
+                            <option value="">Seleccione categoría</option>
+                            {ticketCategories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Descripción</label>

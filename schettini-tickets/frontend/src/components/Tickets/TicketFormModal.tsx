@@ -30,10 +30,12 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
     const [categories, setCategories] = useState<ConfigOption[]>([]);
     const [specificProblems, setSpecificProblems] = useState<ConfigOption[]>([]);
 
+    const [ticketCategories, setTicketCategories] = useState<{ id: number; name: string }[]>([]);
+
     // Formulario
     const [formData, setFormData] = useState({
         user_id: undefined as number | undefined,
-        title: '',
+        ticket_category_id: '',
         system_id: '',
         custom_system: '',
         equipment_id: '',
@@ -57,6 +59,9 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
     // Cargar opciones
     useEffect(() => {
         if (isOpen) {
+            api.get('/api/settings/ticket-categories')
+                .then(res => setTicketCategories(res.data.data || []))
+                .catch(() => setTicketCategories([]));
             api.get('/api/ticket-config/options')
                 .then(res => {
                     if (res.data.success) {
@@ -71,7 +76,7 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
             // Reset
             setFormData({
                 user_id: undefined,
-                title: '',
+                ticket_category_id: '',
                 system_id: '', custom_system: '',
                 equipment_id: '', custom_equipment: '',
                 problem_category_id: '',
@@ -115,8 +120,8 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         if ((currentUserRole === 'admin' || currentUserRole === 'agent') && !formData.user_id) {
             return toast.warn("Selecciona el cliente afectado.");
         }
-        if (!formData.title.trim()) {
-            return toast.warn("Ingresa un título para el ticket.");
+        if (!formData.ticket_category_id) {
+            return toast.warn("Selecciona el tipo de problema.");
         }
         if (!formData.description.trim()) {
             return toast.warn("Describe el problema.");
@@ -126,7 +131,9 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
         }
 
         setLoading(true);
-        await onSave(formData, attachments);
+        const categoryName = ticketCategories.find(c => String(c.id) === formData.ticket_category_id)?.name || 'Otro';
+        const { ticket_category_id, ...rest } = formData;
+        await onSave({ ...rest, title: categoryName }, attachments);
         setLoading(false);
     };
 
@@ -148,18 +155,21 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     
-                    {/* TÍTULO */}
+                    {/* TIPO DE PROBLEMA (Categoría → Título) */}
                     <div className="border-l-4 border-blue-500 bg-blue-50/60 p-4 rounded-r-lg">
-                        <label className="block text-blue-800 font-bold mb-1 text-sm">Título del ticket</label>
-                        <input
-                            type="text"
-                            name="title"
-                            value={formData.title}
+                        <label className="block text-blue-800 font-bold mb-1 text-sm">Tipo de Problema</label>
+                        <select
+                            name="ticket_category_id"
+                            value={formData.ticket_category_id}
                             onChange={handleChange}
-                            placeholder="Ej: No funciona la impresora / Error en pantalla"
                             className="w-full p-2.5 border border-blue-200 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
                             required
-                        />
+                        >
+                            <option value="">-- Seleccione categoría --</option>
+                            {ticketCategories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* CLIENTE (SOLO ADMIN/AGENT) */}

@@ -40,6 +40,13 @@ if [[ -f "backend/scripts/migrate-password-reset.js" ]]; then
     echo ""
 fi
 
+# Tabla ticket_categories (categorías para tipos de problema)
+if [[ -f "backend/scripts/add-ticket-categories.js" ]]; then
+    echo ">>> Ejecutando migración ticket_categories..."
+    (cd backend && node scripts/add-ticket-categories.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

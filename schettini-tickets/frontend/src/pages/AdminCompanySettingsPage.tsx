@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
-import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage } from 'react-icons/fa';
+import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage, FaTicketAlt, FaTrash, FaPlus } from 'react-icons/fa';
 
 interface CompanySettings {
   company_name: string;
@@ -35,6 +35,54 @@ const AdminCompanySettingsPage: React.FC = () => {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  const [ticketCategories, setTicketCategories] = useState<{ id: number; name: string }[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+  const fetchTicketCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const res = await api.get('/api/settings/ticket-categories');
+      setTicketCategories(res.data.data || []);
+    } catch {
+      toast.error('No se pudieron cargar las categorías de tickets');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTicketCategories();
+  }, []);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast.warn('Ingresá un nombre para la categoría');
+      return;
+    }
+    try {
+      await api.post('/api/settings/ticket-categories', { name: newCategoryName.trim() });
+      toast.success('Categoría agregada');
+      setNewCategoryName('');
+      fetchTicketCategories();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al agregar';
+      toast.error(msg);
+    }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    if (!window.confirm('¿Eliminar esta categoría?')) return;
+    try {
+      await api.delete(`/api/settings/ticket-categories/${id}`);
+      toast.success('Categoría eliminada');
+      fetchTicketCategories();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar';
+      toast.error(msg);
+    }
+  };
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -299,6 +347,55 @@ const AdminCompanySettingsPage: React.FC = () => {
           </button>
         </div>
       </form>
+
+      <section className="mt-8 bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 border-l-4 border-teal-500 pl-3">
+          <FaTicketAlt className="text-teal-600" /> Categorías de Tickets
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Estas categorías se muestran como &quot;Tipo de Problema&quot; cuando el cliente crea un ticket. El título del ticket se genera automáticamente a partir de la categoría seleccionada.
+        </p>
+
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+            placeholder="Ej: Consulta de Precios"
+            className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleAddCategory}
+            className="px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 flex items-center gap-2"
+          >
+            <FaPlus /> Agregar
+          </button>
+        </div>
+
+        {categoriesLoading ? (
+          <p className="text-gray-500">Cargando categorías...</p>
+        ) : ticketCategories.length === 0 ? (
+          <p className="text-gray-500 italic">No hay categorías. Agregá al menos una para que los clientes puedan crear tickets.</p>
+        ) : (
+          <ul className="space-y-2">
+            {ticketCategories.map((cat) => (
+              <li key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <span className="font-medium text-gray-800">{cat.name}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(cat.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                  title="Eliminar"
+                >
+                  <FaTrash />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 };

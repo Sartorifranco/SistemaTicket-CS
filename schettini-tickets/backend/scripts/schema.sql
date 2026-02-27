@@ -333,6 +333,15 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   KEY idx_user_expires (user_id, expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Categorías predefinidas para tickets (Tipo de Problema)
+CREATE TABLE IF NOT EXISTS ticket_categories (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Los datos por defecto se insertan con: node backend/scripts/add-ticket-categories.js
+
 -- Configuración del sistema
 CREATE TABLE IF NOT EXISTS system_settings (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
