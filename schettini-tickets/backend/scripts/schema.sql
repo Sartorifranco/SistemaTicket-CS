@@ -381,6 +381,17 @@ CREATE TABLE IF NOT EXISTS company_settings (
 INSERT IGNORE INTO company_settings (id, company_name, address, phone, email, website, logo_url, tax_percentage, quote_footer_text, primary_color, usd_exchange_rate, list_price_surcharge_percent, default_iva_percent, legal_footer_text)
 VALUES (1, 'Tu Empresa S.A.', 'Av. Ejemplo 1234, CABA', '(011) 1234-5678', 'contacto@tuempresa.com', 'www.tuempresa.com.ar', NULL, 21.00, 'Presupuesto válido por 15 días. Precios sujetos a variación del dólar.', '#000000', NULL, NULL, 21.00, NULL);
 
+-- Catálogo de repuestos (cotizador integrado)
+CREATE TABLE IF NOT EXISTS spare_parts_catalog (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  nombre VARCHAR(255) NOT NULL,
+  precio_usd DECIMAL(12,2) NULL,
+  precio_ars DECIMAL(12,2) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Opciones dinámicas del sistema (listas desplegables: equipment_type, brand, model, labor_price, payment_method)
 CREATE TABLE IF NOT EXISTS system_options (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,

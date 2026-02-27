@@ -47,6 +47,13 @@ if [[ -f "backend/scripts/add-ticket-categories.js" ]]; then
     echo ""
 fi
 
+# Catálogo de repuestos (cotizador integrado)
+if [[ -f "backend/scripts/migrate-spare-parts-catalog.js" ]]; then
+    echo ">>> Ejecutando migración spare_parts_catalog..."
+    (cd backend && node scripts/migrate-spare-parts-catalog.js) || true
+    echo ""
+fi
+
 # Refactor Órdenes de Taller (system_options, repair_order_items, Users, company_settings)
 if [[ -f "backend/scripts/migrate-repair-orders-advanced.js" ]]; then
     echo ">>> Ejecutando migración repair-orders-advanced..."

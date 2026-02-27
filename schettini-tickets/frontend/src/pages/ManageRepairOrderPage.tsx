@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
@@ -7,7 +7,7 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
-import { FaWhatsapp, FaSave, FaTimes, FaFilePdf } from 'react-icons/fa';
+import { FaWhatsapp, FaSave, FaTimes, FaFilePdf, FaTrash, FaPlus } from 'react-icons/fa';
 
 interface CompanySettings {
   company_name: string;
@@ -19,6 +19,26 @@ interface CompanySettings {
   tax_percentage: number;
   quote_footer_text: string;
   primary_color: string;
+  usd_exchange_rate?: number | null;
+  default_iva_percent?: number | null;
+  list_price_surcharge_percent?: number | null;
+}
+
+interface SparePartItem {
+  nombre: string;
+  precio_ars: number;
+}
+
+interface SparePartCatalogItem {
+  id: number;
+  nombre: string;
+  precio_usd: number | null;
+  precio_ars: number | null;
+}
+
+interface LaborOption {
+  id: number;
+  value: string;
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -173,6 +193,15 @@ const ManageRepairOrderPage: React.FC = () => {
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [technicians, setTechnicians] = useState<TechnicianOption[]>([]);
+  const [sparePartsList, setSparePartsList] = useState<SparePartItem[]>([]);
+  const [sparePartsSearch, setSparePartsSearch] = useState('');
+  const [sparePartsSuggestions, setSparePartsSuggestions] = useState<SparePartCatalogItem[]>([]);
+  const [showSparePartsDropdown, setShowSparePartsDropdown] = useState(false);
+  const [laborOptions, setLaborOptions] = useState<LaborOption[]>([]);
+  const [laborValue, setLaborValue] = useState('');
+  const [manualPartNombre, setManualPartNombre] = useState('');
+  const [manualPartPrecio, setManualPartPrecio] = useState('');
+  const sparePartsDropdownRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
     status: '',
@@ -223,6 +252,20 @@ const ManageRepairOrderPage: React.FC = () => {
           sparePartsDetail: o.spare_parts_detail || '',
           technicianId: o.technician_id ? String(o.technician_id) : ''
         });
+        setLaborValue(o.labor_cost != null ? String(o.labor_cost) : '');
+        try {
+          const detail = o.spare_parts_detail || '';
+          if (detail.startsWith('[')) {
+            const arr = JSON.parse(detail) as SparePartItem[];
+            setSparePartsList(Array.isArray(arr) ? arr : []);
+          } else if (o.spare_parts_cost != null && o.spare_parts_cost > 0) {
+            setSparePartsList([{ nombre: detail || 'Repuestos', precio_ars: o.spare_parts_cost }]);
+          } else {
+            setSparePartsList([]);
+          }
+        } catch {
+          setSparePartsList(o.spare_parts_cost != null && o.spare_parts_cost > 0 ? [{ nombre: 'Repuestos', precio_ars: o.spare_parts_cost }] : []);
+        }
       })
       .catch(() => toast.error('Error al cargar la orden'))
       .finally(() => setLoading(false));
@@ -245,6 +288,66 @@ const ManageRepairOrderPage: React.FC = () => {
     }).catch(() => toast.error('Error al cargar técnicos'));
   }, []);
 
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=labor_price').then((res) => {
+      setLaborOptions((res.data.data || []).map((o) => ({ id: o.id, value: o.value })));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!sparePartsSearch.trim()) {
+      setSparePartsSuggestions([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      api.get<{ success: boolean; data: SparePartCatalogItem[] }>(`/api/settings/spare-parts-catalog/search?q=${encodeURIComponent(sparePartsSearch)}`).then((res) => {
+        setSparePartsSuggestions(res.data.data || []);
+        setShowSparePartsDropdown(true);
+      }).catch(() => setSparePartsSuggestions([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [sparePartsSearch]);
+
+  useEffect(() => {
+    const fn = (e: MouseEvent) => {
+      if (sparePartsDropdownRef.current && !sparePartsDropdownRef.current.contains(e.target as Node)) setShowSparePartsDropdown(false);
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  const sparePartsTotal = useMemo(() => sparePartsList.reduce((s, i) => s + i.precio_ars, 0), [sparePartsList]);
+  const laborNum = laborValue ? parseFloat(laborValue) : 0;
+  const subtotalNeto = sparePartsTotal + laborNum;
+  const ivaPct = companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21;
+  const ivaAmount = subtotalNeto * (ivaPct / 100);
+  const totalEfectivo = subtotalNeto + ivaAmount;
+  const surchargePct = companySettings?.list_price_surcharge_percent ?? 0;
+  const totalLista = surchargePct > 0 ? totalEfectivo * (1 + surchargePct / 100) : totalEfectivo;
+
+  const addSparePartFromCatalog = (item: SparePartCatalogItem) => {
+    const precio = item.precio_ars ?? (item.precio_usd ? item.precio_usd * (companySettings?.usd_exchange_rate ?? 1200) : 0);
+    setSparePartsList((p) => [...p, { nombre: item.nombre, precio_ars: precio }]);
+    setSparePartsSearch('');
+    setShowSparePartsDropdown(false);
+    setSparePartsSuggestions([]);
+  };
+
+  const addManualSparePart = () => {
+    const nombre = manualPartNombre.trim();
+    const precio = parseFloat(manualPartPrecio) || 0;
+    if (!nombre) {
+      toast.warn('Ingresá el nombre del repuesto');
+      return;
+    }
+    setSparePartsList((p) => [...p, { nombre, precio_ars: precio }]);
+    setManualPartNombre('');
+    setManualPartPrecio('');
+    toast.success('Repuesto agregado');
+  };
+
+  const removeSparePart = (idx: number) => setSparePartsList((p) => p.filter((_, i) => i !== idx));
+
   const generarComprobantePDF = async () => {
     if (!order) {
       toast.warning('Esperando datos de la orden...');
@@ -264,11 +367,10 @@ const ManageRepairOrderPage: React.FC = () => {
     const [r, g, b] = hexToRgb(cs.primary_color || '#000000');
 
     const depositPaid = form.depositPaid ? parseFloat(form.depositPaid) : (order.deposit_paid ?? 0);
-    const laborCost = form.laborCost ? parseFloat(form.laborCost) : (order.labor_cost ?? 0);
-    const sparePartsCost = form.sparePartsCost ? parseFloat(form.sparePartsCost) : (order.spare_parts_cost ?? 0);
-    const totalFromForm = form.totalCost ? parseFloat(form.totalCost) : null;
-    const subtotal = totalFromForm ?? ((laborCost + sparePartsCost) || (order.total_cost ?? 0));
-    const taxPct = cs.tax_percentage ?? 0;
+    const laborCost = laborNum || (order.labor_cost ?? 0);
+    const sparePartsCost = sparePartsTotal || (order.spare_parts_cost ?? 0);
+    const subtotal = sparePartsCost + laborCost;
+    const taxPct = cs.default_iva_percent ?? cs.tax_percentage ?? 21;
     const iva = taxPct > 0 ? subtotal * (taxPct / 100) : 0;
     const totalPagar = subtotal + iva;
     const saldo = totalPagar - depositPaid;
@@ -368,6 +470,9 @@ const ManageRepairOrderPage: React.FC = () => {
 
   const openWhatsAppModal = () => {
     if (!order) return;
+    const spareDetailText = sparePartsList.length > 0
+      ? sparePartsList.map((p) => `${p.nombre}: $${p.precio_ars.toLocaleString('es-AR')}`).join('\n')
+      : (form.sparePartsDetail || order.spare_parts_detail || '—');
     const merged: RepairOrder = {
       ...order,
       status: form.status || order.status,
@@ -376,14 +481,14 @@ const ManageRepairOrderPage: React.FC = () => {
       serial_number: form.serialNumber || order.serial_number,
       reported_fault: form.reportedFault || order.reported_fault,
       technical_report: form.technicalReport || order.technical_report,
-      total_cost: form.totalCost ? parseFloat(form.totalCost) : order.total_cost,
+      total_cost: totalEfectivo || order.total_cost,
       deposit_paid: form.depositPaid ? parseFloat(form.depositPaid) : order.deposit_paid,
       accepted_date: form.acceptedDate || order.accepted_date,
       promised_date: form.promisedDate || order.promised_date,
       delivered_date: form.deliveredDate || order.delivered_date,
       warranty_expiration_date: form.warrantyExpirationDate || order.warranty_expiration_date,
       public_notes: form.publicNotes || order.public_notes,
-      spare_parts_detail: form.sparePartsDetail || order.spare_parts_detail
+      spare_parts_detail: spareDetailText
     };
     setWhatsappMessage(buildWhatsAppTemplate(merged));
     setShowWhatsAppModal(true);
@@ -409,6 +514,7 @@ const ManageRepairOrderPage: React.FC = () => {
     if (!id) return;
     setSaving(true);
     try {
+      const sparePartsDetailJson = sparePartsList.length > 0 ? JSON.stringify(sparePartsList) : null;
       await api.put(`/api/repair-orders/${id}`, {
         status: form.status || null,
         equipmentType: form.equipmentType || null,
@@ -417,16 +523,16 @@ const ManageRepairOrderPage: React.FC = () => {
         reportedFault: form.reportedFault || null,
         includedAccessories: form.includedAccessories || null,
         technicalReport: form.technicalReport || null,
-        laborCost: form.laborCost ? parseFloat(form.laborCost) : null,
-        sparePartsCost: form.sparePartsCost ? parseFloat(form.sparePartsCost) : null,
-        totalCost: form.totalCost ? parseFloat(form.totalCost) : null,
+        laborCost: laborNum || null,
+        sparePartsCost: sparePartsTotal || null,
+        totalCost: totalEfectivo || null,
         depositPaid: form.depositPaid ? parseFloat(form.depositPaid) : null,
         acceptedDate: form.acceptedDate || null,
         promisedDate: form.promisedDate || null,
         deliveredDate: form.deliveredDate || null,
         warrantyExpirationDate: form.warrantyExpirationDate || null,
         publicNotes: form.publicNotes || null,
-        sparePartsDetail: form.sparePartsDetail || null,
+        sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
         technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null
       });
       toast.success('Orden actualizada');
@@ -543,17 +649,90 @@ const ManageRepairOrderPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Informe Técnico / Solución</label>
                 <textarea name="technicalReport" value={form.technicalReport} onChange={handleChange} rows={4} className="w-full px-3 py-2 border rounded-lg" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra ($)</label>
-                <input type="number" step="0.01" name="laborCost" value={form.laborCost} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Repuestos ($)</label>
-                <input type="number" step="0.01" name="sparePartsCost" value={form.sparePartsCost} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total ($)</label>
-                <input type="number" step="0.01" name="totalCost" value={form.totalCost} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
+              <div className="md:col-span-2">
+                <h4 className="text-sm font-bold text-gray-700 mb-2">Costos (Cotizador integrado)</h4>
+                <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Repuestos</label>
+                    <div className="relative" ref={sparePartsDropdownRef}>
+                      <input
+                        type="text"
+                        value={sparePartsSearch}
+                        onChange={(e) => setSparePartsSearch(e.target.value)}
+                        onFocus={() => sparePartsSearch && setShowSparePartsDropdown(true)}
+                        placeholder="Buscar en catálogo..."
+                        className="w-full px-3 py-2 border rounded-lg mb-2"
+                      />
+                      {showSparePartsDropdown && sparePartsSuggestions.length > 0 && (
+                        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                          {sparePartsSuggestions.map((s) => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => addSparePartFromCatalog(s)}
+                              className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm"
+                            >
+                              {s.nombre} — ${(s.precio_ars ?? 0).toLocaleString('es-AR')}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={manualPartNombre}
+                        onChange={(e) => setManualPartNombre(e.target.value)}
+                        placeholder="Agregar manual: nombre"
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={manualPartPrecio}
+                        onChange={(e) => setManualPartPrecio(e.target.value)}
+                        placeholder="$"
+                        className="w-24 px-3 py-2 border rounded-lg text-sm"
+                      />
+                      <button type="button" onClick={addManualSparePart} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
+                        <FaPlus /> Agregar
+                      </button>
+                    </div>
+                    {sparePartsList.length > 0 && (
+                      <ul className="space-y-1">
+                        {sparePartsList.map((p, i) => (
+                          <li key={i} className="flex justify-between items-center text-sm bg-white px-2 py-1 rounded border">
+                            <span>{p.nombre}</span>
+                            <span className="flex items-center gap-2">
+                              ${p.precio_ars.toLocaleString('es-AR')}
+                              <button type="button" onClick={() => removeSparePart(i)} className="text-red-600 hover:text-red-700 p-1">
+                                <FaTrash size={12} />
+                              </button>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra</label>
+                    <select value={laborValue} onChange={(e) => setLaborValue(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
+                      <option value="">Seleccionar...</option>
+                      {laborOptions.map((o) => (
+                        <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                      ))}
+                      {laborValue && !laborOptions.some((o) => o.value === laborValue) && (
+                        <option value={laborValue}>${parseFloat(laborValue || '0').toLocaleString('es-AR')} (guardado)</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="pt-3 border-t border-gray-200 space-y-1 text-sm">
+                    <p className="flex justify-between"><span>Subtotal neto:</span> <strong>${subtotalNeto.toLocaleString('es-AR')}</strong></p>
+                    <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> ${ivaAmount.toLocaleString('es-AR')}</p>
+                    <p className="flex justify-between text-green-700 font-bold"><span>Total Efectivo/Transferencia:</span> ${totalEfectivo.toLocaleString('es-AR')}</p>
+                    {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>Total Precio Lista ({surchargePct}%):</span> ${totalLista.toLocaleString('es-AR')}</p>}
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Seña / Pagos ($)</label>
@@ -578,10 +757,6 @@ const ManageRepairOrderPage: React.FC = () => {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones públicas (visible para el cliente)</label>
                 <textarea name="publicNotes" value={form.publicNotes} onChange={handleChange} rows={3} className="w-full px-3 py-2 border rounded-lg" placeholder="Ej: Falta caja" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Repuestos (detalle)</label>
-                <textarea name="sparePartsDetail" value={form.sparePartsDetail} onChange={handleChange} rows={3} className="w-full px-3 py-2 border rounded-lg" />
               </div>
             </div>
             <div className="mt-4 flex justify-end">

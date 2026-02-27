@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
-import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage, FaTicketAlt, FaTrash, FaPlus } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
+import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage, FaTicketAlt, FaTrash, FaPlus, FaCalculator, FaFileExcel } from 'react-icons/fa';
 
 interface CompanySettings {
   company_name: string;
@@ -14,6 +15,9 @@ interface CompanySettings {
   tax_percentage: number;
   quote_footer_text: string;
   primary_color: string;
+  usd_exchange_rate?: number | null;
+  default_iva_percent?: number | null;
+  list_price_surcharge_percent?: number | null;
 }
 
 const defaultSettings: CompanySettings = {
@@ -26,6 +30,9 @@ const defaultSettings: CompanySettings = {
   tax_percentage: 21,
   quote_footer_text: '',
   primary_color: '#000000',
+  usd_exchange_rate: null,
+  default_iva_percent: 21,
+  list_price_surcharge_percent: null,
 };
 
 const AdminCompanySettingsPage: React.FC = () => {
@@ -39,6 +46,8 @@ const AdminCompanySettingsPage: React.FC = () => {
   const [ticketCategories, setTicketCategories] = useState<{ id: number; name: string }[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [sparePartsUploading, setSparePartsUploading] = useState(false);
+  const sparePartsInputRef = useRef<HTMLInputElement>(null);
 
   const fetchTicketCategories = async () => {
     setCategoriesLoading(true);
@@ -72,6 +81,59 @@ const AdminCompanySettingsPage: React.FC = () => {
     }
   };
 
+  const handleSparePartsExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      toast.error('Solo se aceptan archivos Excel (.xlsx, .xls)');
+      return;
+    }
+    setSparePartsUploading(true);
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const firstSheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
+      const items: { nombre: string; precio_usd?: number; precio_ars?: number }[] = [];
+      const toNum = (v: unknown): number | undefined => {
+        if (v == null || v === '') return undefined;
+        if (typeof v === 'number' && !isNaN(v)) return v;
+        const s = String(v).replace(/[^\d.,-]/g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? undefined : n;
+      };
+      const headers = (rows[0] as unknown[])?.map((h) => String(h ?? '').toLowerCase()) || [];
+      const idxNombre = headers.findIndex((h) => h.includes('nombre') || h.includes('descripcion') || h.includes('repuesto'));
+      const idxUsd = headers.findIndex((h) => h.includes('usd') || h.includes('dolar') || h.includes('dólar'));
+      const idxArs = headers.findIndex((h) => h.includes('ars') || h.includes('pesos'));
+      const colNombre = idxNombre >= 0 ? idxNombre : 0;
+      const colUsd = idxUsd >= 0 ? idxUsd : 1;
+      const colArs = idxArs >= 0 ? idxArs : 2;
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i] as unknown[];
+        const nombre = String(row[colNombre] ?? '').trim();
+        if (!nombre) continue;
+        items.push({
+          nombre,
+          precio_usd: toNum(row[colUsd]),
+          precio_ars: toNum(row[colArs])
+        });
+      }
+      if (items.length === 0) {
+        toast.warn('No se encontraron filas válidas. Use columnas: nombre, precio_usd, precio_ars');
+        return;
+      }
+      await api.post('/api/settings/spare-parts-catalog/bulk', { items });
+      toast.success(`${items.length} repuestos importados correctamente`);
+      if (sparePartsInputRef.current) sparePartsInputRef.current.value = '';
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al importar';
+      toast.error(msg);
+    } finally {
+      setSparePartsUploading(false);
+    }
+  };
+
   const handleDeleteCategory = async (id: number) => {
     if (!window.confirm('¿Eliminar esta categoría?')) return;
     try {
@@ -99,6 +161,9 @@ const AdminCompanySettingsPage: React.FC = () => {
           tax_percentage: data.tax_percentage != null ? Number(data.tax_percentage) : 21,
           quote_footer_text: data.quote_footer_text ?? '',
           primary_color: data.primary_color ?? '#000000',
+          usd_exchange_rate: data.usd_exchange_rate != null ? Number(data.usd_exchange_rate) : null,
+          default_iva_percent: data.default_iva_percent != null ? Number(data.default_iva_percent) : 21,
+          list_price_surcharge_percent: data.list_price_surcharge_percent != null ? Number(data.list_price_surcharge_percent) : null,
         });
         if (data.logo_url) {
           setLogoPreview(getImageUrl(data.logo_url));
@@ -139,6 +204,9 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append('tax_percentage', String(formData.tax_percentage));
       form.append('quote_footer_text', formData.quote_footer_text);
       form.append('primary_color', formData.primary_color);
+      form.append('usd_exchange_rate', formData.usd_exchange_rate != null ? String(formData.usd_exchange_rate) : '');
+      form.append('default_iva_percent', formData.default_iva_percent != null ? String(formData.default_iva_percent) : '');
+      form.append('list_price_surcharge_percent', formData.list_price_surcharge_percent != null ? String(formData.list_price_surcharge_percent) : '');
 
       if (logoFile) {
         form.append('logo', logoFile);
@@ -281,6 +349,73 @@ const AdminCompanySettingsPage: React.FC = () => {
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
             placeholder="Ej: www.tuempresa.com.ar"
           />
+        </div>
+
+        {/* Configuración del Cotizador */}
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FaCalculator className="text-amber-600" /> Cotizador Integrado (Órdenes de Taller)
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Estos valores se usan en la edición de órdenes para calcular precios. El técnico no puede modificarlos.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cotización USD</label>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={formData.usd_exchange_rate ?? ''}
+                onChange={(e) => setFormData({ ...formData, usd_exchange_rate: e.target.value ? parseFloat(e.target.value) : null })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Ej: 1200"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">IVA por defecto (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                max={100}
+                value={formData.default_iva_percent ?? ''}
+                onChange={(e) => setFormData({ ...formData, default_iva_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="21"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Recargo Lista (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={formData.list_price_surcharge_percent ?? ''}
+                onChange={(e) => setFormData({ ...formData, list_price_surcharge_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Tarjetas/Link"
+              />
+              <p className="text-xs text-gray-500 mt-1">Recargo para precio de lista (tarjetas, link de pago)</p>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-amber-200">
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaFileExcel className="text-green-600" /> Catálogo de Repuestos (Excel)
+            </label>
+            <p className="text-xs text-gray-500 mb-2">Subí un archivo Excel con columnas: nombre, precio_usd (opcional), precio_ars (opcional)</p>
+            <div className="flex gap-2 items-center">
+              <input
+                ref={sparePartsInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleSparePartsExcel}
+                disabled={sparePartsUploading}
+                className="block text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-green-100 file:text-green-700 file:font-medium hover:file:bg-green-200 cursor-pointer disabled:opacity-50"
+              />
+              {sparePartsUploading && <span className="text-sm text-gray-500">Importando...</span>}
+            </div>
+          </div>
         </div>
 
         {/* IVA / Impuesto */}
