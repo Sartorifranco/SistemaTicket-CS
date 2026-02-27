@@ -59,19 +59,38 @@ async function main() {
         ['brand', 'Epson', 2],
         ['brand', 'Canon', 3],
         ['brand', 'Otro', 99],
-        ['model', 'Genérico', 1],
+        ['model', 'Genérico', 1], ['model', 'ThinkPad', 2], ['model', 'Pavilion', 3], ['model', 'Inspiron', 4], ['model', 'Otro', 99],
         ['labor_price', '5000', 1],
         ['labor_price', '10000', 2],
         ['labor_price', '15000', 3],
         ['payment_method', 'Efectivo', 1],
         ['payment_method', 'Transferencia', 2],
         ['payment_method', 'Tarjeta', 3],
-        ['payment_method', 'Mercado Pago', 4]
+        ['payment_method', 'Mercado Pago', 4],
+        ['accessories', 'Cargador', 1],
+        ['accessories', 'Mouse', 2],
+        ['accessories', 'Bolso', 3],
+        ['accessories', 'Cable', 4],
+        ['accessories', 'Ninguno', 99],
+        ['remote_platform', 'TeamViewer', 1],
+        ['remote_platform', 'AnyDesk', 2],
+        ['remote_platform', 'Google Meet', 3]
       ];
       for (const [cat, val, ord] of defaults) {
         await conn.query('INSERT INTO system_options (category, value, sort_order) VALUES (?, ?, ?)', [cat, val, ord]);
       }
       console.log('✓ Datos por defecto en system_options');
+    } else {
+      const extra = [
+        ['accessories', 'Cargador', 1], ['accessories', 'Mouse', 2], ['accessories', 'Bolso', 3], ['accessories', 'Cable', 4], ['accessories', 'Ninguno', 99],
+        ['remote_platform', 'TeamViewer', 1], ['remote_platform', 'AnyDesk', 2], ['remote_platform', 'Google Meet', 3]
+      ];
+      for (const [cat, val, ord] of extra) {
+        const [exists] = await conn.query('SELECT 1 FROM system_options WHERE category = ? AND value = ?', [cat, val]);
+        if (exists.length === 0) {
+          await conn.query('INSERT INTO system_options (category, value, sort_order) VALUES (?, ?, ?)', [cat, val, ord]);
+        }
+      }
     }
 
     console.log('\n=== 2. Users: nuevos campos cliente ===\n');

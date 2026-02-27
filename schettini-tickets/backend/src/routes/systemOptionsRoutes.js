@@ -3,10 +3,11 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { getAll, getCategories, create, update, remove } = require('../controllers/systemOptionsController');
 
+router.use(protect);
 router.get('/', getAll);
 router.get('/categories', getCategories);
-router.post('/', protect, authorize('admin'), create);
-router.put('/:id', protect, authorize('admin'), update);
-router.delete('/:id', protect, authorize('admin'), remove);
+router.post('/', authorize('admin'), create);
+router.put('/:id', authorize('admin'), update);
+router.delete('/:id', authorize('admin'), remove);
 
 module.exports = router;

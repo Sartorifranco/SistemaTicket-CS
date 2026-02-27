@@ -4,34 +4,97 @@ import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
 import WebcamCapture, { CapturedPhoto } from '../components/RepairOrders/WebcamCapture';
+import NewClientModal from '../components/RepairOrders/NewClientModal';
 import { User } from '../types';
-import { FaSave, FaSearch } from 'react-icons/fa';
+import { FaSave, FaSearch, FaPlus, FaTrash } from 'react-icons/fa';
+
+type OrderType = 'Taller' | 'Domicilio' | 'Remoto';
+type Priority = 'Normal' | 'Urgente' | 'Critico';
+
+interface SystemOption {
+  id: number;
+  category: string;
+  value: string;
+  sort_order: number;
+}
+
+interface RepairOrderItem {
+  equipment_type: string;
+  brand: string;
+  model: string;
+  serial_number: string;
+  reported_fault: string;
+  included_accessories: string;
+  is_warranty: boolean;
+  warranty_invoice: string;
+}
+
+const PRIORITY_COLORS: Record<Priority, string> = {
+  Normal: 'bg-gray-100 text-gray-800 border-gray-300',
+  Urgente: 'bg-amber-100 text-amber-800 border-amber-400',
+  Critico: 'bg-red-100 text-red-800 border-red-500'
+};
+
+const DEFAULT_ITEM: RepairOrderItem = {
+  equipment_type: '',
+  brand: '',
+  model: '',
+  serial_number: '',
+  reported_fault: '',
+  included_accessories: '',
+  is_warranty: false,
+  warranty_invoice: ''
+};
 
 const NewRepairOrderPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
-
   const basePath = isAdmin ? '/admin/repair-orders' : '/agent/repair-orders';
 
+  // Cliente
   const [clients, setClients] = useState<User[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const clientDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [orderType, setOrderType] = useState<'taller' | 'domicilio'>('taller');
-  const [equipmentType, setEquipmentType] = useState('');
-  const [model, setModel] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [reportedFault, setReportedFault] = useState('');
-  const [includedAccessories, setIncludedAccessories] = useState('');
-  const [isWarranty, setIsWarranty] = useState(false);
+  // Tipo de orden
+  const [orderType, setOrderType] = useState<OrderType>('Taller');
+  const [requiresCourier, setRequiresCourier] = useState(false);
+  const [visitDate, setVisitDate] = useState('');
+  const [visitTime, setVisitTime] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [remotePlatform, setRemotePlatform] = useState('');
+
+  // Equipos
+  const [items, setItems] = useState<RepairOrderItem[]>([{ ...DEFAULT_ITEM }]);
+
+  // Seña
+  const [depositPaid, setDepositPaid] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentOperationNumber, setPaymentOperationNumber] = useState('');
+
+  // Asignación
+  const [technicians, setTechnicians] = useState<User[]>([]);
+  const [technicianId, setTechnicianId] = useState<string>('');
+  const [priority, setPriority] = useState<Priority>('Normal');
 
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [technicians, setTechnicians] = useState<User[]>([]);
-  const [technicianId, setTechnicianId] = useState<string>('');
-  const clientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // System options (selects dinámicos)
+  const [systemOptions, setSystemOptions] = useState<SystemOption[]>([]);
+
+  const optionsByCategory = useMemo(() => {
+    const map: Record<string, SystemOption[]> = {};
+    for (const o of systemOptions) {
+      if (!map[o.category]) map[o.category] = [];
+      map[o.category].push(o);
+    }
+    return map;
+  }, [systemOptions]);
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -42,22 +105,21 @@ const NewRepairOrderPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    api
-      .get<{ success: boolean; data: User[] }>('/api/users')
-      .then((res) => {
-        const list = res.data.data || [];
-        setClients(list.filter((u) => u.role === 'client'));
-      })
-      .catch(() => toast.error('Error al cargar clientes'));
+    api.get<{ success: boolean; data: User[] }>('/api/users').then((res) => {
+      setClients((res.data.data || []).filter((u) => u.role === 'client'));
+    }).catch(() => toast.error('Error al cargar clientes'));
   }, []);
 
   useEffect(() => {
-    api
-      .get<{ success: boolean; data: User[] }>('/api/users/technicians')
-      .then((res) => {
-        setTechnicians(res.data.data || []);
-      })
-      .catch(() => toast.error('Error al cargar técnicos'));
+    api.get<{ success: boolean; data: User[] }>('/api/users/technicians').then((res) => {
+      setTechnicians(res.data.data || []);
+    }).catch(() => toast.error('Error al cargar técnicos'));
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: SystemOption[] }>('/api/settings/system-options').then((res) => {
+      setSystemOptions(res.data.data || []);
+    }).catch(() => toast.error('Error al cargar opciones'));
   }, []);
 
   const filteredClients = useMemo(() => {
@@ -74,6 +136,32 @@ const NewRepairOrderPage: React.FC = () => {
       .slice(0, 10);
   }, [clients, clientSearch]);
 
+  const handleClientCreated = (client: User) => {
+    setClients((prev) => [client, ...prev]);
+    setSelectedClient(client);
+    setClientSearch('');
+    setShowClientDropdown(false);
+  };
+
+  const updateItem = (idx: number, field: keyof RepairOrderItem, value: string | boolean) => {
+    setItems((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const addItem = () => setItems((prev) => [...prev, { ...DEFAULT_ITEM }]);
+  const removeItem = (idx: number) => {
+    if (items.length <= 1) return;
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const simularAgenda = () => toast.info('Simulación de agenda: próximamente');
+
+  const isEfectivo = paymentMethod.toLowerCase() === 'efectivo';
+  const hasDeposit = depositPaid !== '' && parseFloat(depositPaid) > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) {
@@ -84,43 +172,81 @@ const NewRepairOrderPage: React.FC = () => {
       toast.error('Seleccioná un técnico asignado');
       return;
     }
+    const validItems = items.filter((it) => it.equipment_type || it.model || it.serial_number || it.reported_fault);
+    if (validItems.length === 0) {
+      toast.error('Agregá al menos un equipo con tipo, modelo, serie o falla');
+      return;
+    }
+    for (let i = 0; i < validItems.length; i++) {
+      if (validItems[i].is_warranty && !validItems[i].warranty_invoice?.trim()) {
+        toast.error(`Equipo ${i + 1}: Si es garantía, indicá el Nº de Comprobante/Factura`);
+        return;
+      }
+    }
+    if (hasDeposit && !isEfectivo && !paymentOperationNumber?.trim()) {
+      toast.error('Si la seña no es en efectivo, indicá el Nº de Operación');
+      return;
+    }
 
     setLoading(true);
     const formData = new FormData();
     formData.append('clientId', String(selectedClient.id));
     formData.append('status', 'ingresado');
     formData.append('entryDate', new Date().toISOString().slice(0, 19).replace('T', ' '));
-    formData.append('equipmentType', equipmentType);
-    formData.append('model', model);
-    formData.append('serialNumber', serialNumber);
-    formData.append('reportedFault', reportedFault);
-    formData.append('includedAccessories', includedAccessories);
-    formData.append('isWarranty', String(isWarranty));
-
-    const tipoTexto = orderType === 'taller' ? 'Orden de Taller' : 'Visita a Domicilio';
-    formData.append('internalNotes', `Tipo: ${tipoTexto}`);
     formData.append('technicianId', technicianId);
+    const finalOrderType = requiresCourier ? 'Cadeteria' : orderType;
+    formData.append('orderType', finalOrderType);
+    formData.append('priority', priority);
 
-    photos.forEach((p, i) => {
-      formData.append('photos', p.file);
-    });
+    if (orderType === 'Domicilio' || finalOrderType === 'Cadeteria') {
+      const dt = visitDate && visitTime ? `${visitDate}T${visitTime}:00` : '';
+      if (dt) formData.append('visitDate', dt);
+      if (deliveryAddress) formData.append('deliveryAddress', deliveryAddress);
+    }
+    if (orderType === 'Remoto') {
+      const dt = visitDate && visitTime ? `${visitDate}T${visitTime}:00` : '';
+      if (dt) formData.append('visitDate', dt);
+      if (remotePlatform) formData.append('remotePlatform', remotePlatform);
+    }
+    if (depositPaid) {
+      formData.append('depositPaid', depositPaid);
+      if (paymentMethod) formData.append('paymentMethod', paymentMethod);
+      if (paymentOperationNumber) formData.append('paymentOperationNumber', paymentOperationNumber);
+    }
+
+    formData.append('items', JSON.stringify(validItems));
+    photos.forEach((p) => formData.append('photos', p.file));
     formData.append('perspectiveLabels', JSON.stringify(photos.map((p) => p.label)));
 
     try {
-      const res = await api.post<{ success: boolean; data: { id: number; orderNumber: string } }>(
-        '/api/repair-orders',
-        formData
-      );
+      const res = await api.post<{ success: boolean; data: { id: number; orderNumber: string } }>('/api/repair-orders', formData);
       toast.success(`Orden ${res.data.data.orderNumber} creada correctamente`);
       navigate(`${basePath}/${res.data.data.id}`);
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response
-        ? (err.response.data as { message?: string })?.message
-        : 'Error al crear la orden';
+      const msg =
+        err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response
+          ? (err.response.data as { message?: string })?.message
+          : 'Error al crear la orden';
       toast.error(msg || 'Error al crear la orden');
     } finally {
       setLoading(false);
     }
+  };
+
+  const SelectOption = ({ category, value, onChange, placeholder }: { category: string; value: string; onChange: (v: string) => void; placeholder?: string }) => {
+    const opts = optionsByCategory[category] || [];
+    return (
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+      >
+        <option value="">{placeholder || 'Seleccionar...'}</option>
+        {opts.map((o) => (
+          <option key={o.id} value={o.value}>{o.value}</option>
+        ))}
+      </select>
+    );
   };
 
   return (
@@ -150,17 +276,7 @@ const NewRepairOrderPage: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 />
                 {selectedClient && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedClient(null);
-                      setClientSearch('');
-                      setShowClientDropdown(true);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
-                  >
-                    Cambiar
-                  </button>
+                  <button type="button" onClick={() => { setSelectedClient(null); setClientSearch(''); setShowClientDropdown(true); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">Cambiar</button>
                 )}
                 {showClientDropdown && !selectedClient && (
                   <div className="absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
@@ -168,16 +284,7 @@ const NewRepairOrderPage: React.FC = () => {
                       <p className="p-3 text-sm text-gray-500">Sin resultados</p>
                     ) : (
                       filteredClients.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedClient(c);
-                            setClientSearch('');
-                            setShowClientDropdown(false);
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0"
-                        >
+                        <button key={c.id} type="button" onClick={() => { setSelectedClient(c); setClientSearch(''); setShowClientDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0">
                           <span className="font-medium">{c.username}</span>
                           {c.business_name && <span className="text-gray-500"> — {c.business_name}</span>}
                         </button>
@@ -186,145 +293,201 @@ const NewRepairOrderPage: React.FC = () => {
                   </div>
                 )}
               </div>
+              <button type="button" onClick={() => setShowNewClientModal(true)} className="px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 whitespace-nowrap">
+                Nuevo Cliente
+              </button>
             </div>
-          </div>
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Técnico Asignado <span className="text-red-500">*</span></label>
-            <select
-              value={technicianId}
-              onChange={(e) => setTechnicianId(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">Seleccionar técnico...</option>
-              {technicians.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name || t.username} {t.role && `(${t.role})`}
-                </option>
-              ))}
-            </select>
           </div>
         </SectionCard>
 
         {/* Tipo de Orden */}
         <SectionCard title="Tipo de Orden">
-          <div className="flex flex-wrap gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="orderType"
-                checked={orderType === 'taller'}
-                onChange={() => setOrderType('taller')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span>Orden de Taller</span>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-6">
+              {(['Taller', 'Domicilio', 'Remoto'] as OrderType[]).map((t) => (
+                <label key={t} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="orderType" checked={orderType === t} onChange={() => setOrderType(t)} className="w-4 h-4 text-indigo-600" />
+                  <span>{t}</span>
+                </label>
+              ))}
+            </div>
+            {orderType === 'Domicilio' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de visita</label>
+                  <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Calle, número, localidad..." className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                  <input type="time" value={visitTime} onChange={(e) => setVisitTime(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <button type="button" onClick={simularAgenda} className="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
+                    Simular agenda
+                  </button>
+                </div>
+              </div>
+            )}
+            {orderType === 'Remoto' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                  <input type="time" value={visitTime} onChange={(e) => setVisitTime(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Plataforma</label>
+                  <SelectOption category="remote_platform" value={remotePlatform} onChange={setRemotePlatform} placeholder="TeamViewer, AnyDesk..." />
+                </div>
+              </div>
+            )}
+            <label className="flex items-center gap-2 cursor-pointer pt-2">
+              <input type="checkbox" checked={requiresCourier} onChange={(e) => setRequiresCourier(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
+              <span>Requiere Cadetería (Retiro/Envío)</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="orderType"
-                checked={orderType === 'domicilio'}
-                onChange={() => setOrderType('domicilio')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span>Visita a Domicilio</span>
-            </label>
+            {requiresCourier && !deliveryAddress && orderType !== 'Domicilio' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de entrega</label>
+                <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Para retiro/envío" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            )}
           </div>
         </SectionCard>
 
-        {/* Datos del Equipo */}
-        <SectionCard title="Datos del Equipo">
+        {/* Equipos (múltiples) */}
+        <SectionCard title="Equipos">
+          <div className="space-y-6">
+            {items.map((item, idx) => (
+              <div key={idx} className="p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-medium text-gray-700">Equipo {idx + 1}</span>
+                  {items.length > 1 && (
+                    <button type="button" onClick={() => removeItem(idx)} className="text-red-600 hover:text-red-700 text-sm flex items-center gap-1">
+                      <FaTrash /> Quitar
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
+                    <SelectOption category="equipment_type" value={item.equipment_type} onChange={(v) => updateItem(idx, 'equipment_type', v)} placeholder="Seleccionar..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                    <SelectOption category="brand" value={item.brand} onChange={(v) => updateItem(idx, 'brand', v)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                    <SelectOption category="model" value={item.model} onChange={(v) => updateItem(idx, 'model', v)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Serie N°</label>
+                    <input type="text" value={item.serial_number} onChange={(e) => updateItem(idx, 'serial_number', e.target.value)} placeholder="Texto libre" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Falla / Problema Reportado</label>
+                  <textarea value={item.reported_fault} onChange={(e) => updateItem(idx, 'reported_fault', e.target.value)} placeholder="Descripción de la falla..." rows={2} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-y" />
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Accesorios Incluidos</label>
+                  <SelectOption category="accessories" value={item.included_accessories} onChange={(v) => updateItem(idx, 'included_accessories', v)} placeholder="Seleccionar..." />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-4 items-center">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={item.is_warranty} onChange={(e) => updateItem(idx, 'is_warranty', e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
+                    <span>Es Garantía</span>
+                  </label>
+                  {item.is_warranty && (
+                    <div className="flex-1 min-w-[200px]">
+                      <input
+                        type="text"
+                        value={item.warranty_invoice}
+                        onChange={(e) => updateItem(idx, 'warranty_invoice', e.target.value)}
+                        placeholder="Nº de Comprobante / Factura *"
+                        required={item.is_warranty}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={addItem} className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-indigo-400 text-indigo-600 rounded-lg hover:bg-indigo-50">
+              <FaPlus /> Agregar otro equipo a esta orden
+            </button>
+          </div>
+        </SectionCard>
+
+        {/* Seña */}
+        <SectionCard title="Seña">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
-              <input
-                type="text"
-                value={equipmentType}
-                onChange={(e) => setEquipmentType(e.target.value)}
-                placeholder="Ej: Notebook, PC, Monitor..."
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Monto de seña ($)</label>
+              <input type="number" step="0.01" min="0" value={depositPaid} onChange={(e) => setDepositPaid(e.target.value)} placeholder="0" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-              <input
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="Ej: ThinkPad T14"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Serie N°</label>
-              <input
-                type="text"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                placeholder="Número de serie"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Falla / Problema Reportado</label>
-            <textarea
-              value={reportedFault}
-              onChange={(e) => setReportedFault(e.target.value)}
-              placeholder="Describa la falla o problema reportado por el cliente..."
-              rows={5}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-y"
-            />
+            {hasDeposit && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Medio de pago</label>
+                  <SelectOption category="payment_method" value={paymentMethod} onChange={setPaymentMethod} />
+                </div>
+                {!isEfectivo && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nº Operación *</label>
+                    <input type="text" value={paymentOperationNumber} onChange={(e) => setPaymentOperationNumber(e.target.value)} placeholder="Nº de operación o referencia" required={hasDeposit && !isEfectivo} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </SectionCard>
 
-        {/* Detalles */}
-        <SectionCard title="Detalles">
-          <div className="space-y-4">
+        {/* Asignación y Prioridad */}
+        <SectionCard title="Asignación y Prioridad">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Accesorios Incluidos</label>
-              <textarea
-                value={includedAccessories}
-                onChange={(e) => setIncludedAccessories(e.target.value)}
-                placeholder="Ej: Cargador, mouse, bolso..."
-                rows={2}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-y"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Técnico Asignado <span className="text-red-500">*</span></label>
+              <select value={technicianId} onChange={(e) => setTechnicianId(e.target.value)} required className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <option value="">Seleccionar técnico...</option>
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.id}>{t.full_name || t.username} {t.role && `(${t.role})`}</option>
+                ))}
+              </select>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isWarranty}
-                onChange={(e) => setIsWarranty(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded"
-              />
-              <span>En Garantía</span>
-            </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad</label>
+              <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                {(Object.keys(PRIORITY_COLORS) as Priority[]).map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs border ${PRIORITY_COLORS[priority]}`}>{priority}</span>
+            </div>
           </div>
         </SectionCard>
 
-        {/* Fotos con Webcam */}
+        {/* Fotos */}
         <SectionCard title="Fotos del Equipo">
           <WebcamCapture photos={photos} onPhotosChange={setPhotos} />
         </SectionCard>
 
         <div className="flex justify-end gap-4">
-          <button
-            type="button"
-            onClick={() => navigate(basePath)}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-          >
+          <button type="button" onClick={() => navigate(basePath)} className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
+          <button type="submit" disabled={loading} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50">
             <FaSave /> {loading ? 'Guardando...' : 'Crear Orden'}
           </button>
         </div>
       </form>
+
+      <NewClientModal isOpen={showNewClientModal} onClose={() => setShowNewClientModal(false)} onClientCreated={handleClientCreated} />
     </div>
   );
 };
