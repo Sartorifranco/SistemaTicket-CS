@@ -19,9 +19,17 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        // No enviar token en login/register para evitar Bearer null/undefined que provoca 401
+        const isAuthRoute = config.url?.includes('/api/auth/login') || config.url?.includes('/api/auth/register');
+        if (!isAuthRoute) {
+            const token = localStorage.getItem('token');
+            // Solo añadir si es un token válido (no null, undefined o string vacío)
+            if (token && token !== 'null' && token !== 'undefined' && token.trim() !== '') {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } else {
+            // En login/register: asegurar que no llevamos Authorization (evitar token caducado/inválido)
+            delete config.headers.Authorization;
         }
         if (config.data instanceof FormData) {
             delete config.headers['Content-Type'];
