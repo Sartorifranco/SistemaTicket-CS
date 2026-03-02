@@ -52,8 +52,7 @@ const updateCompanySettings = async (req, res) => {
     const updates = [
       'company_name = ?', 'address = ?', 'phone = ?', 'email = ?', 'website = ?',
       'tax_percentage = ?', 'quote_footer_text = ?', 'primary_color = ?',
-      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'legal_footer_text = ?',
-      'updated_at = NOW()'
+      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'legal_footer_text = ?'
     ];
     const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, legalFooterText];
 
