@@ -84,10 +84,9 @@ function ReceiptHalf({
         included_accessories: order.included_accessories || null,
       }];
 
-  const logoUrl = cs.logo_url
-    ? (cs.logo_url.startsWith('http') ? cs.logo_url : `${API_BASE_URL || ''}${cs.logo_url.startsWith('/') ? '' : '/'}${cs.logo_url}`)
-    : null;
-  const legalText = (cs.legal_footer_text?.trim() || DEFAULT_LEGAL_TEXT);
+  const logoUrl = cs?.logo_url
+    ? (cs.logo_url.startsWith('http') ? cs.logo_url : `${API_BASE_URL || ''}${cs.logo_url}`)
+    : '';
 
   return (
     <div className="h-[48vh] overflow-hidden flex flex-col p-2 break-inside-avoid">
@@ -96,14 +95,14 @@ function ReceiptHalf({
 
       {/* HEADER: Flexbox */}
       <div className="flex justify-between items-start gap-2 mb-1 flex-shrink-0">
-        <div className="flex-1 min-w-0">
-          {logoUrl && (
+        <div className="min-w-0">
+          {logoUrl ? (
             <img
               src={logoUrl}
               alt="Logo"
               className="h-12 object-contain mb-0.5 max-w-[120px]"
             />
-          )}
+          ) : null}
           <p className="text-[11px] font-bold text-black leading-tight">{cs.company_name || '—'}</p>
           <p className="text-[9px] text-gray-700 leading-tight">Soluciones para comercios y empresas</p>
           <p className="text-[9px] text-gray-600 leading-tight">{cs.address || '—'}</p>
@@ -125,8 +124,8 @@ function ReceiptHalf({
       {/* TÍTULO */}
       <h2 className="text-center font-bold text-sm mb-1 flex-shrink-0">NOTA DE RECEPCION</h2>
 
-      {/* CAJA CLIENTE: Grid 2 cols */}
-      <div className="border border-black p-1 mb-1 break-inside-avoid flex-shrink-0">
+      {/* CAJA CLIENTE: Grid 2 cols - h-auto, sin flex-1 para que mida exacto el contenido */}
+      <div className="border border-black p-1 mb-1 break-inside-avoid h-auto">
         <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px]">
           <div>
             <span className="font-semibold">Cliente: </span>
@@ -147,8 +146,8 @@ function ReceiptHalf({
         </div>
       </div>
 
-      {/* CAJA EQUIPO: Línea superior e inferior */}
-      <div className="border-t border-b border-black py-1 mb-1 break-inside-avoid flex-1 min-h-0 overflow-hidden">
+      {/* CAJA EQUIPO: Línea superior e inferior - h-auto, sin flex-1 para que mida exacto el contenido */}
+      <div className="border-t border-b border-black py-1 mb-1 break-inside-avoid h-auto">
         {items.map((it, idx) => (
           <div key={idx} className="mb-1 last:mb-0 text-[9px] leading-tight">
             <p><span className="font-semibold">Equipo: </span>{[it.equipment_type, it.brand, it.model].filter(Boolean).join(' / ') || '—'}</p>
@@ -174,13 +173,14 @@ function ReceiptHalf({
         )}
       </div>
 
-      {/* LEGALES - texto dinámico, compacto (3-4 renglones máx) */}
-      <div className="flex-shrink-0 mt-0.5 break-inside-avoid">
-        <p className="text-[7px] leading-tight text-justify line-clamp-4 overflow-hidden" title={legalText}>
-          {legalText}
+      {/* TÉRMINOS Y CONDICIONES - texto fijo incrustado */}
+      <div className="text-[7px] leading-tight text-justify mt-2 break-inside-avoid">
+        <p className="font-semibold mb-0.5">Términos y condiciones - SCH COMERCIAL SAS</p>
+        <p className="whitespace-pre-line">
+          {DEFAULT_LEGAL_TEXT}
         </p>
         {/* Espacio para firma - alineado a la derecha */}
-        <div className="flex justify-end mt-1">
+        <div className="flex justify-end mt-2">
           <div className="w-48 border-t border-black text-center text-[10px] font-bold pt-1">
             Firma del Cliente y Aclaración
           </div>
