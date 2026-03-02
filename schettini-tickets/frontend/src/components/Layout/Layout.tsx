@@ -152,7 +152,7 @@ const Layout: React.FC = () => {
     const isPremium = String(realTimePlan).toLowerCase().includes('enterprise') || String(realTimePlan).toLowerCase().includes('premium');
 
     return (
-        <div className="flex h-screen bg-gray-100 font-sans">
+        <div className="flex h-screen bg-gray-100 font-sans print:hidden">
             <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 text-white flex flex-col shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
                 <div className="h-20 flex items-center justify-center border-b border-gray-800 bg-gray-950 px-4">
                     {/* ✅ LOGO NUEVO: Lila.png */}

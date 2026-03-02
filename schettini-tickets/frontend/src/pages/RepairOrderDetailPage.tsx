@@ -24,6 +24,7 @@ interface RepairOrder {
   client_business_name?: string;
   client_phone?: string;
   client_email?: string;
+  client_address?: string | null;
   status: string;
   equipment_type?: string;
   model?: string;
@@ -50,7 +51,6 @@ const RepairOrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<RepairOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [companySettings, setCompanySettings] = useState<{ company_name: string; address?: string; phone?: string; email?: string; logo_url?: string | null; legal_footer_text?: string | null } | null>(null);
-  const [showReceiptPrint, setShowReceiptPrint] = useState(false);
   useReceiptPrintPortal();
 
   useEffect(() => {
@@ -107,10 +107,10 @@ const RepairOrderDetailPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setShowReceiptPrint(true)}
+          onClick={() => window.print()}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
         >
-          <FaPrint size={18} /> Nota de Recepción
+          <FaPrint size={18} /> Imprimir Comprobante
         </button>
       </div>
       <h1 className="text-2xl font-bold text-gray-800">
@@ -170,12 +170,10 @@ const RepairOrderDetailPage: React.FC = () => {
         </SectionCard>
       )}
 
-      {showReceiptPrint && order && (
+      {order && (
         <RepairOrderReceipt
           order={order}
           companySettings={companySettings ?? { company_name: 'SCH COMERCIAL SAS', address: '—', phone: '—', email: '—', logo_url: null, legal_footer_text: '' }}
-          onClose={() => setShowReceiptPrint(false)}
-          showActions={true}
         />
       )}
     </div>

@@ -80,6 +80,7 @@ interface RepairOrderItem {
   model?: string | null;
   serial_number?: string | null;
   reported_fault?: string | null;
+  included_accessories?: string | null;
 }
 
 interface RepairOrder {
@@ -90,6 +91,7 @@ interface RepairOrder {
   client_business_name?: string;
   client_email?: string;
   client_phone?: string;
+  client_address?: string | null;
   technician_id?: number | null;
   technician_name?: string | null;
   status: string;
@@ -204,7 +206,6 @@ const ManageRepairOrderPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
-  const [showReceiptPrint, setShowReceiptPrint] = useState(false);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [technicians, setTechnicians] = useState<TechnicianOption[]>([]);
   const [sparePartsList, setSparePartsList] = useState<SparePartItem[]>([]);
@@ -659,10 +660,10 @@ const ManageRepairOrderPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowReceiptPrint(true)}
+              onClick={() => window.print()}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
             >
-              <FaPrint size={18} /> Nota de Recepción
+              <FaPrint size={18} /> Imprimir Comprobante
             </button>
             <button
               type="button"
@@ -920,12 +921,10 @@ const ManageRepairOrderPage: React.FC = () => {
         </div>
       )}
 
-      {showReceiptPrint && order && (
+      {order && (
         <RepairOrderReceipt
           order={order}
           companySettings={companySettings ?? { company_name: 'SCH COMERCIAL SAS', address: '—', phone: '—', email: '—', logo_url: null, legal_footer_text: '' }}
-          onClose={() => setShowReceiptPrint(false)}
-          showActions={true}
         />
       )}
     </div>

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
 import { getImageUrl } from '../../utils/imageUrl';
-import { FaPrint, FaTimes } from 'react-icons/fa';
 import './RepairOrderReceipt.css';
 
 export interface CompanySettingsReceipt {
@@ -31,6 +30,7 @@ export interface RepairOrderReceiptData {
   client_business_name?: string | null;
   client_phone?: string | null;
   client_email?: string | null;
+  client_address?: string | null;
   entry_date?: string | null;
   created_at?: string | null;
   deposit_paid?: number | null;
@@ -43,12 +43,13 @@ export interface RepairOrderReceiptData {
   included_accessories?: string | null;
 }
 
-const formatDateTime = (d?: string | null) =>
+const formatDate = (d?: string | null) =>
   d ? new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
-const FRONTEND_URL = typeof window !== 'undefined'
-  ? `${window.location.origin}/client/repairs`
-  : (process.env.REACT_APP_PUBLIC_URL || '');
+function parseAccessoriesList(text?: string | null): string[] {
+  if (!text || typeof text !== 'string') return [];
+  return text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+}
 
 function ReceiptHalf({
   label,
@@ -61,6 +62,7 @@ function ReceiptHalf({
 }) {
   const cs = companySettings;
   const clientName = order.client_name || order.client_business_name || '—';
+  const clientAddress = order.client_address || '—';
   const items = order.items && order.items.length > 0
     ? order.items
     : [{
@@ -71,78 +73,92 @@ function ReceiptHalf({
         reported_fault: order.reported_fault || '—',
         included_accessories: order.included_accessories || null,
       }];
-  const depositPaid = order.deposit_paid ?? 0;
 
   return (
-    <div className="receipt-half break-inside-avoid">
+    <div className="break-inside-avoid">
+      {/* Label */}
       <p className="text-right text-xs font-semibold text-gray-600 mb-1">{label}</p>
+
+      {/* HEADER: Flexbox */}
       <div className="flex justify-between items-start gap-4 mb-3">
         <div className="flex-1">
           {cs.logo_url && (
-            <img src={getImageUrl(cs.logo_url)} alt="Logo" className="h-14 object-contain mb-1" />
+            <img src={getImageUrl(cs.logo_url)} alt="Logo" className="w-32 object-contain mb-1" />
           )}
-          <p className="font-bold text-sm">{cs.company_name || '—'}</p>
-          <p className="text-xs">{cs.address || '—'}</p>
-          <p className="text-xs">Tel: {cs.phone || '—'}</p>
-          <p className="text-xs">{cs.email || '—'}</p>
+          <p className="text-sm font-bold text-black">{cs.company_name || '—'}</p>
+          <p className="text-xs text-gray-700">Soluciones para comercios y empresas</p>
+          <p className="text-xs text-gray-600">{cs.address || '—'}</p>
+          <p className="text-xs text-gray-600">Tel: {cs.phone || '—'}</p>
+          <p className="text-xs text-gray-600">{cs.email || '—'}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs mb-1">Entrada: {formatDateTime(order.entry_date || order.created_at)}</p>
+          <p className="text-xs mb-1">Entrada: {formatDate(order.entry_date || order.created_at)}</p>
           <div className="border border-black p-2 text-center">
             <p className="text-xs font-medium">Orden de Reparación</p>
-            <p className="text-xl font-bold">{order.order_number}</p>
+            <p className="text-2xl font-bold">{order.order_number}</p>
+            <div className="flex justify-center mt-1">
+              <Barcode value={String(order.order_number)} width={1.5} height={40} displayValue={false} />
+            </div>
           </div>
-          <div className="flex justify-center my-1">
-            <Barcode value={order.order_number} displayValue fontSize={10} />
-          </div>
-          <p className="text-[10px] mt-1">Vea el estado de su Orden por internet en:</p>
-          <p className="text-[10px] font-medium break-all">{FRONTEND_URL}</p>
-          <p className="text-[10px] mt-0.5">Su Nº de Cliente es: {order.client_id}</p>
         </div>
       </div>
 
-      <h2 className="text-center font-bold text-base mb-3">NOTA DE RECEPCIÓN</h2>
+      {/* TÍTULO */}
+      <h2 className="text-center font-bold text-base mb-3">NOTA DE RECEPCION</h2>
 
-      <div className="border border-black p-2 mb-2 receipt-box break-inside-avoid">
-        <p className="text-xs font-semibold mb-1">Datos del Cliente</p>
-        <p className="text-xs">Nombre: {clientName}</p>
-        <p className="text-xs">Teléfono: {order.client_phone || '—'}</p>
-        <p className="text-xs">Dirección: —</p>
-        <p className="text-xs">Email: {order.client_email || '—'}</p>
+      {/* CAJA CLIENTE: Grid 2 cols */}
+      <div className="border border-black p-2 mb-2 break-inside-avoid">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+          <div>
+            <span className="font-semibold">Cliente: </span>
+            <span>{clientName}</span>
+          </div>
+          <div>
+            <span className="font-semibold">Teléfono: </span>
+            <span>{order.client_phone || '—'}</span>
+          </div>
+          <div>
+            <span className="font-semibold">Dirección: </span>
+            <span>{clientAddress}</span>
+          </div>
+          <div>
+            <span className="font-semibold">Email: </span>
+            <span>{order.client_email || '—'}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="border border-black p-2 mb-2 receipt-box break-inside-avoid">
-        <p className="text-xs font-semibold mb-1">Equipo(s)</p>
+      {/* CAJA EQUIPO: Línea superior e inferior */}
+      <div className="border-t border-b border-black py-2 mb-2 break-inside-avoid">
         {items.map((it, idx) => (
           <div key={idx} className="mb-2 last:mb-0 text-xs">
-            <p><span className="font-medium">Equipo:</span> {[it.equipment_type, it.brand, it.model].filter(Boolean).join(' / ') || '—'}</p>
-            <p><span className="font-medium">Modelo:</span> {it.model || '—'}</p>
-            <p><span className="font-medium">Serie:</span> {it.serial_number || '—'}</p>
-            {it.included_accessories && <p><span className="font-medium">Accesorios incluidos:</span> {it.included_accessories}</p>}
-            <p><span className="font-medium">Falla declarada:</span> {it.reported_fault || '—'}</p>
+            <p><span className="font-semibold">Equipo: </span>{[it.equipment_type, it.brand, it.model].filter(Boolean).join(' / ') || '—'}</p>
+            <p><span className="font-semibold">Modelo: </span>{it.model || '—'}</p>
+            <p><span className="font-semibold">Serie: </span>{it.serial_number || '—'}</p>
+            {parseAccessoriesList(it.included_accessories).length > 0 ? (
+              <div>
+                <span className="font-semibold">Accesorios Incluidos: </span>
+                <ul className="list-disc list-inside ml-1 mt-0.5">
+                  {parseAccessoriesList(it.included_accessories).map((a, i) => (
+                    <li key={i}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : it.included_accessories ? (
+              <p><span className="font-semibold">Accesorios Incluidos: </span>{it.included_accessories}</p>
+            ) : null}
+            <p><span className="font-semibold">Falla declarada: </span>{it.reported_fault || '—'}</p>
           </div>
         ))}
+        {order.public_notes && (
+          <p className="mt-1"><span className="font-semibold">Observaciones: </span>{order.public_notes}</p>
+        )}
       </div>
 
-      {order.public_notes && (
-        <div className="mb-2 text-xs">
-          <p className="font-medium">Observaciones:</p>
-          <p className="whitespace-pre-wrap">{order.public_notes}</p>
-        </div>
-      )}
-
-      {depositPaid > 0 && (
-        <p className="text-sm font-bold border-t border-black pt-1 mt-1">
-          Seña / Pago por adelantado: $ {depositPaid.toLocaleString('es-AR')}
-        </p>
-      )}
-
-      <div className="mt-2 pt-2 border-t border-dashed receipt-legal break-inside-avoid">
-        <p className="text-[9px] font-semibold mb-1">Términos y condiciones - SCH COMERCIAL SAS</p>
-        <p className="text-[8px] leading-tight whitespace-pre-wrap">{cs.legal_footer_text?.trim() || 'Sin términos adicionales.'}</p>
-        <div className="mt-4 pt-2 border-t border-gray-400">
-          <p className="text-xs">Firma del Cliente: _________________________</p>
-        </div>
+      {/* LEGALES */}
+      <div className="text-[9px] leading-tight break-inside-avoid">
+        <p className="font-semibold mb-1">Términos y condiciones - SCH COMERCIAL SAS</p>
+        <p className="whitespace-pre-wrap">{cs.legal_footer_text?.trim() || 'Sin términos adicionales.'}</p>
       </div>
     </div>
   );
@@ -151,17 +167,9 @@ function ReceiptHalf({
 interface RepairOrderReceiptProps {
   order: RepairOrderReceiptData;
   companySettings: CompanySettingsReceipt;
-  onClose?: () => void;
-  /** Si es true, muestra el modal con acciones Imprimir/Cerrar. Si es false, solo el contenido (para uso interno) */
-  showActions?: boolean;
 }
 
-const RepairOrderReceipt: React.FC<RepairOrderReceiptProps> = ({
-  order,
-  companySettings,
-  onClose,
-  showActions = true,
-}) => {
+const RepairOrderReceipt: React.FC<RepairOrderReceiptProps> = ({ order, companySettings }) => {
   const cs = companySettings ?? {
     company_name: 'SCH COMERCIAL SAS',
     address: '—',
@@ -171,65 +179,30 @@ const RepairOrderReceipt: React.FC<RepairOrderReceiptProps> = ({
     legal_footer_text: '',
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const content = (
-    <div className="w-full max-w-[210mm] mx-auto bg-white text-black">
+    <div className="h-screen w-full flex flex-col bg-white text-black p-4">
       <ReceiptHalf label="ORIGINAL" order={order} companySettings={cs} />
-      <div className="flex items-center justify-center gap-2 py-2 my-2 border-t-2 border-dashed border-gray-500">
-        <span className="text-gray-500">✂️</span>
-        <span className="text-xs text-gray-500">Cortar por aquí</span>
-        <span className="text-gray-500">✂️</span>
-      </div>
+      <hr className="border-dashed border-gray-400 my-4 flex-shrink-0" />
       <ReceiptHalf label="DUPLICADO" order={order} companySettings={cs} />
     </div>
   );
 
-  if (!showActions) {
-    return content;
-  }
-
-  const modal = (
+  const portalContent = (
     <div
-      id="receipt-print-portal"
-      className="fixed inset-0 z-[9999] bg-gray-900/80 flex items-center justify-center p-4 overflow-auto"
-      style={{ display: 'flex' }}
+      id="receipt-print-area"
+      className="hidden print:block print:absolute print:inset-0 print:bg-white print:text-black print:z-[9999]"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full max-h-[95vh] overflow-auto">
-        <div className="sticky top-0 bg-white border-b px-4 py-3 flex justify-between items-center receipt-print-no-print z-10">
-          <h3 className="font-bold text-gray-800">Nota de Recepción - Orden {order.order_number}</h3>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              <FaPrint size={16} /> Imprimir
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-            >
-              <FaTimes size={16} /> Cerrar
-            </button>
-          </div>
-        </div>
-        <div className="p-4 text-black">{content}</div>
-      </div>
+      {content}
     </div>
   );
 
   const portalRoot = typeof document !== 'undefined' ? document.getElementById('receipt-print-portal-root') : null;
   if (portalRoot) {
-    return createPortal(modal, portalRoot);
+    return createPortal(portalContent, portalRoot);
   }
-  return modal;
+  return portalContent;
 };
 
-/** Crea el contenedor portal en el body si no existe */
 export function useReceiptPrintPortal() {
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -239,9 +212,6 @@ export function useReceiptPrintPortal() {
       el.id = 'receipt-print-portal-root';
       document.body.appendChild(el);
     }
-    return () => {
-      // No eliminamos el div, puede usarse para futuras impresiones
-    };
   }, []);
 }
 

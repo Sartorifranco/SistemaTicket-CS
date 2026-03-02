@@ -173,6 +173,7 @@ const getRepairOrderById = async (req, res) => {
         u.business_name AS client_business_name,
         u.email AS client_email,
         u.phone AS client_phone,
+        u.address AS client_address,
         t.username AS technician_name
       FROM repair_orders ro
       LEFT JOIN Users u ON ro.client_id = u.id
