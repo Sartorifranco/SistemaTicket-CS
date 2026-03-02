@@ -1,0 +1,36 @@
+/* RepairOrderReceipt - estilos para impresión tipo remito */
+
+.receipt-print-no-print {
+  /* Ocultar en impresión: barra de acciones del modal */
+}
+
+@media print {
+  .receipt-print-no-print {
+    display: none !important;
+  }
+  /* Ocultar la app, solo mostrar el portal del recibo */
+  #root {
+    display: none !important;
+  }
+  #receipt-print-portal {
+    display: block !important;
+    position: static !important;
+    background: white !important;
+    padding: 0 !important;
+  }
+  #receipt-print-portal .receipt-half {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  #receipt-print-portal .receipt-box {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  #receipt-print-portal .receipt-legal {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  @page {
+    margin: 10mm;
+  }
+}

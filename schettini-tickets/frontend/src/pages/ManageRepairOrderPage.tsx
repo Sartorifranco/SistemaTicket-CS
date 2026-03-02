@@ -7,7 +7,8 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
-import { FaWhatsapp, FaSave, FaTimes, FaFilePdf, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaWhatsapp, FaSave, FaTimes, FaFilePdf, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
+import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 
 interface CompanySettings {
   company_name: string;
@@ -203,6 +204,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [showReceiptPrint, setShowReceiptPrint] = useState(false);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [technicians, setTechnicians] = useState<TechnicianOption[]>([]);
   const [sparePartsList, setSparePartsList] = useState<SparePartItem[]>([]);
@@ -214,6 +216,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const [manualPartNombre, setManualPartNombre] = useState('');
   const [manualPartPrecio, setManualPartPrecio] = useState('');
   const sparePartsDropdownRef = useRef<HTMLDivElement>(null);
+  useReceiptPrintPortal();
 
   const [form, setForm] = useState({
     status: '',
@@ -656,10 +659,17 @@ const ManageRepairOrderPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setShowReceiptPrint(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              <FaPrint size={18} /> Nota de Recepción
+            </button>
+            <button
+              type="button"
               onClick={generarComprobantePDF}
               className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800"
             >
-              <FaFilePdf size={18} /> Imprimir Comprobante
+              <FaFilePdf size={18} /> Comprobante PDF
             </button>
             {canEdit && (
               <button
@@ -908,6 +918,15 @@ const ManageRepairOrderPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showReceiptPrint && order && (
+        <RepairOrderReceipt
+          order={order}
+          companySettings={companySettings ?? { company_name: 'SCH COMERCIAL SAS', address: '—', phone: '—', email: '—', logo_url: null, legal_footer_text: '' }}
+          onClose={() => setShowReceiptPrint(false)}
+          showActions={true}
+        />
       )}
     </div>
   );

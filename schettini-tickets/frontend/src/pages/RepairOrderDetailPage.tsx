@@ -4,6 +4,17 @@ import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
+import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
+import { FaPrint } from 'react-icons/fa';
+
+interface RepairOrderItem {
+  equipment_type?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  reported_fault?: string | null;
+  included_accessories?: string | null;
+}
 
 interface RepairOrder {
   id: number;
@@ -11,6 +22,8 @@ interface RepairOrder {
   client_id: number;
   client_name?: string;
   client_business_name?: string;
+  client_phone?: string;
+  client_email?: string;
   status: string;
   equipment_type?: string;
   model?: string;
@@ -21,6 +34,9 @@ interface RepairOrder {
   internal_notes?: string;
   entry_date?: string;
   created_at?: string;
+  deposit_paid?: number | null;
+  public_notes?: string | null;
+  items?: RepairOrderItem[];
   photos?: { id: number; photo_url: string; perspective_label: string }[];
 }
 
@@ -33,6 +49,9 @@ const RepairOrderDetailPage: React.FC = () => {
 
   const [order, setOrder] = useState<RepairOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [companySettings, setCompanySettings] = useState<{ company_name: string; address?: string; phone?: string; email?: string; logo_url?: string | null; legal_footer_text?: string | null } | null>(null);
+  const [showReceiptPrint, setShowReceiptPrint] = useState(false);
+  useReceiptPrintPortal();
 
   useEffect(() => {
     if (!id) return;
@@ -42,6 +61,13 @@ const RepairOrderDetailPage: React.FC = () => {
       .catch(() => toast.error('Error al cargar la orden'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    api.get('/api/settings/company').then((res) => {
+      const d = res.data.data || res.data;
+      if (d) setCompanySettings(d);
+    }).catch(() => {});
+  }, []);
 
   if (loading) {
     return (
@@ -75,17 +101,24 @@ const RepairOrderDetailPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <button onClick={() => navigate(basePath)} className="text-indigo-600 hover:underline flex items-center gap-1">
           ← Volver
         </button>
-        <h1 className="text-2xl font-bold text-gray-800">
-          Orden {order.order_number}
-          <span className="ml-2 text-sm font-normal px-2 py-0.5 rounded bg-gray-200">
-            {statusLabels[order.status] || order.status}
-          </span>
-        </h1>
+        <button
+          type="button"
+          onClick={() => setShowReceiptPrint(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        >
+          <FaPrint size={18} /> Nota de Recepción
+        </button>
       </div>
+      <h1 className="text-2xl font-bold text-gray-800">
+        Orden {order.order_number}
+        <span className="ml-2 text-sm font-normal px-2 py-0.5 rounded bg-gray-200">
+          {statusLabels[order.status] || order.status}
+        </span>
+      </h1>
 
       <SectionCard title="Cliente">
         <p className="font-medium">{order.client_name || 'Sin nombre'}</p>
@@ -135,6 +168,15 @@ const RepairOrderDetailPage: React.FC = () => {
             ))}
           </div>
         </SectionCard>
+      )}
+
+      {showReceiptPrint && order && (
+        <RepairOrderReceipt
+          order={order}
+          companySettings={companySettings ?? { company_name: 'SCH COMERCIAL SAS', address: '—', phone: '—', email: '—', logo_url: null, legal_footer_text: '' }}
+          onClose={() => setShowReceiptPrint(false)}
+          showActions={true}
+        />
       )}
     </div>
   );
