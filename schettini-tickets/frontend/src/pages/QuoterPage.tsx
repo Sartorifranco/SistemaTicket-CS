@@ -18,6 +18,14 @@ interface CompanySettings {
   tax_percentage: number;
   quote_footer_text: string;
   primary_color: string;
+  usd_exchange_rate?: number | null;
+  default_iva_percent?: number | null;
+  list_price_surcharge_percent?: number | null;
+}
+
+interface LaborOption {
+  id: number;
+  value: string;
 }
 
 const defaultCompanySettings: CompanySettings = {
@@ -143,6 +151,10 @@ const QuoterPage: React.FC = () => {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [companySettings, setCompanySettings] = useState<CompanySettings>(defaultCompanySettings);
+  const [manualCostInput, setManualCostInput] = useState('');
+  const [manualCostIsUsd, setManualCostIsUsd] = useState(false);
+  const [manualLaborValue, setManualLaborValue] = useState('');
+  const [laborOptions, setLaborOptions] = useState<LaborOption[]>([]);
 
   useEffect(() => {
     api.get('/api/settings/company').then((res) => {
@@ -158,8 +170,17 @@ const QuoterPage: React.FC = () => {
           tax_percentage: d.tax_percentage != null ? Number(d.tax_percentage) : 21,
           quote_footer_text: d.quote_footer_text ?? defaultCompanySettings.quote_footer_text,
           primary_color: d.primary_color ?? '#000000',
+          usd_exchange_rate: d.usd_exchange_rate != null ? Number(d.usd_exchange_rate) : null,
+          default_iva_percent: d.default_iva_percent != null ? Number(d.default_iva_percent) : 21,
+          list_price_surcharge_percent: d.list_price_surcharge_percent != null ? Number(d.list_price_surcharge_percent) : null,
         });
       }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=labor_price').then((res) => {
+      setLaborOptions((res.data.data || []).map((o) => ({ id: o.id, value: o.value })));
     }).catch(() => {});
   }, []);
 
@@ -244,6 +265,17 @@ const QuoterPage: React.FC = () => {
     });
     return { totalPesosExcel, totalUsdExcel, totalACobrar };
   }, [quoteItems, dolarActual, margenGanancia, costoEnPesos]);
+
+  const usdRate = companySettings?.usd_exchange_rate ?? 0;
+  const ivaPct = companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21;
+  const surchargePct = companySettings?.list_price_surcharge_percent ?? 0;
+  const manualCostNum = parseFloat(manualCostInput) || 0;
+  const costoBaseManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
+  const manualLaborNum = parseFloat(manualLaborValue) || 0;
+  const subtotalManual = costoBaseManual + manualLaborNum;
+  const ivaManual = subtotalManual * (ivaPct / 100);
+  const totalEfectivoManual = subtotalManual + ivaManual;
+  const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
 
   const generarTextoCotizacion = (): string => {
     if (quoteItems.length === 0) return '';
@@ -416,8 +448,9 @@ const QuoterPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-800">Cotizador</h1>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* COLUMNA IZQUIERDA: Cotizador Automático - Importador + Cotización Actual */}
+        <div className="space-y-6">
           <SectionCard title="Importador de Lista de Precios">
             <div className="flex flex-wrap gap-4 items-end">
               <label className="flex-1 min-w-[200px]">
@@ -481,10 +514,8 @@ const QuoterPage: React.FC = () => {
               </>
             )}
           </SectionCard>
-        </div>
 
-        <div className="lg:w-96 flex-shrink-0">
-          <SectionCard title="Cotización Actual" className="sticky top-4">
+          <SectionCard title="Cotización Actual">
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dólar Actual (ARS)</label>
@@ -580,6 +611,70 @@ const QuoterPage: React.FC = () => {
               )}
             </div>
           </SectionCard>
+        </div>
+
+        {/* COLUMNA DERECHA: Calculadora Manual POSVENTA */}
+        <div className="space-y-4">
+          <div className="p-6 rounded-xl border-2 border-indigo-200 bg-gray-50 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Calculadora Manual (Repuestos Externos)</h3>
+
+            <div className="mb-4 p-4 bg-white rounded-lg border border-amber-300 shadow-inner">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Cotizar en:</p>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setManualCostIsUsd(true)}
+                  className={`flex-1 py-3 px-4 rounded-lg font-bold text-lg transition ${manualCostIsUsd ? 'bg-indigo-600 text-white ring-2 ring-indigo-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  USD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManualCostIsUsd(false)}
+                  className={`flex-1 py-3 px-4 rounded-lg font-bold text-lg transition ${!manualCostIsUsd ? 'bg-indigo-600 text-white ring-2 ring-indigo-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  PESOS
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Precio COSTO sin IVA</label>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={manualCostInput}
+                onChange={(e) => setManualCostInput(e.target.value)}
+                placeholder="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+              />
+              <p className="text-xs text-gray-500 mt-0.5">Dólar: ${usdRate.toLocaleString('es-AR')} (solo lectura)</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mano de Obra</label>
+              <select
+                value={manualLaborValue}
+                onChange={(e) => setManualLaborValue(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="">Seleccionar...</option>
+                {laborOptions.map((o) => (
+                  <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="p-4 bg-white rounded-lg border border-gray-300 space-y-2">
+              <p className="flex justify-between text-sm text-gray-600"><span>COSTO BASE:</span> <strong>${costoBaseManual.toLocaleString('es-AR')}</strong></p>
+              <p className="flex justify-between text-sm text-gray-600"><span>SUBTOTAL:</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
+              <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO (35% Desc):</span> ${totalEfectivoManual.toLocaleString('es-AR')}</p>
+              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL LISTA (Tarjetas):</span> ${totalListaManual.toLocaleString('es-AR')}</p>
+              <p className="text-xs text-gray-400 mt-2">IVA ({ivaPct}%), Recargo ({surchargePct}%), Dólar: solo lectura desde empresa</p>
+            </div>
+          </div>
         </div>
       </div>
 
