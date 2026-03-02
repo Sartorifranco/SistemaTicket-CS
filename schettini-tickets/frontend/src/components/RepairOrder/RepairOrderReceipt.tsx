@@ -84,45 +84,50 @@ function ReceiptHalf({
         included_accessories: order.included_accessories || null,
       }];
 
+  const logoUrl = cs.logo_url
+    ? (cs.logo_url.startsWith('http') ? cs.logo_url : `${API_BASE_URL || ''}${cs.logo_url.startsWith('/') ? '' : '/'}${cs.logo_url}`)
+    : null;
+  const legalText = (cs.legal_footer_text?.trim() || DEFAULT_LEGAL_TEXT);
+
   return (
-    <div className="break-inside-avoid">
+    <div className="h-[48vh] overflow-hidden flex flex-col p-2 break-inside-avoid">
       {/* Label */}
-      <p className="text-right text-xs font-semibold text-gray-600 mb-1">{label}</p>
+      <p className="text-right text-[10px] font-semibold text-gray-600 mb-0.5 flex-shrink-0">{label}</p>
 
       {/* HEADER: Flexbox */}
-      <div className="flex justify-between items-start gap-4 mb-3">
-        <div className="flex-1">
-          {cs.logo_url && (
+      <div className="flex justify-between items-start gap-2 mb-1 flex-shrink-0">
+        <div className="flex-1 min-w-0">
+          {logoUrl && (
             <img
-              src={cs.logo_url.startsWith('http') ? cs.logo_url : `${API_BASE_URL || ''}${cs.logo_url.startsWith('/') ? '' : '/'}${cs.logo_url}`}
+              src={logoUrl}
               alt="Logo"
-              className="w-32 object-contain mb-1"
+              className="h-12 object-contain mb-0.5 max-w-[120px]"
             />
           )}
-          <p className="text-sm font-bold text-black">{cs.company_name || '—'}</p>
-          <p className="text-xs text-gray-700">Soluciones para comercios y empresas</p>
-          <p className="text-xs text-gray-600">{cs.address || '—'}</p>
-          <p className="text-xs text-gray-600">Tel: {cs.phone || '—'}</p>
-          <p className="text-xs text-gray-600">{cs.email || '—'}</p>
+          <p className="text-[11px] font-bold text-black leading-tight">{cs.company_name || '—'}</p>
+          <p className="text-[9px] text-gray-700 leading-tight">Soluciones para comercios y empresas</p>
+          <p className="text-[9px] text-gray-600 leading-tight">{cs.address || '—'}</p>
+          <p className="text-[9px] text-gray-600 leading-tight">Tel: {cs.phone || '—'}</p>
+          <p className="text-[9px] text-gray-600 leading-tight">{cs.email || '—'}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs mb-1">Entrada: {formatDate(order.entry_date || order.created_at)}</p>
-          <div className="border border-black p-2 text-center">
-            <p className="text-xs font-medium">Orden de Reparación</p>
-            <p className="text-2xl font-bold">{order.order_number}</p>
-            <div className="flex justify-center mt-1">
-              <Barcode value={String(order.order_number)} width={1.5} height={40} displayValue={false} />
+          <p className="text-[9px] mb-0.5">Entrada: {formatDate(order.entry_date || order.created_at)}</p>
+          <div className="border border-black p-1 text-center">
+            <p className="text-[10px] font-medium">Orden de Reparación</p>
+            <p className="text-lg font-bold">{order.order_number}</p>
+            <div className="flex justify-center">
+              <Barcode value={String(order.order_number)} width={1.2} height={32} displayValue={false} />
             </div>
           </div>
         </div>
       </div>
 
       {/* TÍTULO */}
-      <h2 className="text-center font-bold text-base mb-3">NOTA DE RECEPCION</h2>
+      <h2 className="text-center font-bold text-sm mb-1 flex-shrink-0">NOTA DE RECEPCION</h2>
 
       {/* CAJA CLIENTE: Grid 2 cols */}
-      <div className="border border-black p-2 mb-2 break-inside-avoid">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+      <div className="border border-black p-1 mb-1 break-inside-avoid flex-shrink-0">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px]">
           <div>
             <span className="font-semibold">Cliente: </span>
             <span>{clientName}</span>
@@ -143,9 +148,9 @@ function ReceiptHalf({
       </div>
 
       {/* CAJA EQUIPO: Línea superior e inferior */}
-      <div className="border-t border-b border-black py-2 mb-2 break-inside-avoid">
+      <div className="border-t border-b border-black py-1 mb-1 break-inside-avoid flex-1 min-h-0 overflow-hidden">
         {items.map((it, idx) => (
-          <div key={idx} className="mb-2 last:mb-0 text-xs">
+          <div key={idx} className="mb-1 last:mb-0 text-[9px] leading-tight">
             <p><span className="font-semibold">Equipo: </span>{[it.equipment_type, it.brand, it.model].filter(Boolean).join(' / ') || '—'}</p>
             <p><span className="font-semibold">Modelo: </span>{it.model || '—'}</p>
             <p><span className="font-semibold">Serie: </span>{it.serial_number || '—'}</p>
@@ -165,14 +170,21 @@ function ReceiptHalf({
           </div>
         ))}
         {order.public_notes && (
-          <p className="mt-1"><span className="font-semibold">Observaciones: </span>{order.public_notes}</p>
+          <p className="mt-0.5"><span className="font-semibold">Observaciones: </span>{order.public_notes}</p>
         )}
       </div>
 
-      {/* LEGALES */}
-      <div className="text-[8px] leading-tight break-inside-avoid">
-        <p className="font-semibold mb-1">Términos y condiciones - SCH COMERCIAL SAS</p>
-        <p className="whitespace-pre-wrap">{cs.legal_footer_text?.trim() || DEFAULT_LEGAL_TEXT}</p>
+      {/* LEGALES - texto dinámico, compacto (3-4 renglones máx) */}
+      <div className="flex-shrink-0 mt-0.5 break-inside-avoid">
+        <p className="text-[7px] leading-tight text-justify line-clamp-4 overflow-hidden" title={legalText}>
+          {legalText}
+        </p>
+        {/* Espacio para firma - alineado a la derecha */}
+        <div className="flex justify-end mt-1">
+          <div className="w-48 border-t border-black text-center text-[10px] font-bold pt-1">
+            Firma del Cliente y Aclaración
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -194,9 +206,9 @@ const RepairOrderReceipt: React.FC<RepairOrderReceiptProps> = ({ order, companyS
   };
 
   const content = (
-    <div className="h-screen w-full flex flex-col bg-white text-black p-4">
+    <div className="min-h-screen w-full flex flex-col bg-white text-black p-2 print:p-1">
       <ReceiptHalf label="ORIGINAL" order={order} companySettings={cs} />
-      <hr className="border-dashed border-gray-400 my-4 flex-shrink-0" />
+      <hr className="border-dashed border-gray-400 my-1 flex-shrink-0" />
       <ReceiptHalf label="DUPLICADO" order={order} companySettings={cs} />
     </div>
   );

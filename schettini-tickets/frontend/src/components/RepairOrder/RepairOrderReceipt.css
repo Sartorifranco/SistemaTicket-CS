@@ -12,7 +12,12 @@
     display: block !important;
   }
   @page {
-    margin: 10mm;
+    margin: 8mm;
     size: A4;
+  }
+  /* Forzar Original + Duplicado en 1 hoja: cada mitad ~48% del alto útil */
+  #receipt-print-area .break-inside-avoid {
+    height: 48vh !important;
+    max-height: 48vh !important;
   }
 }
