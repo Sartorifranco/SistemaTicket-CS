@@ -190,6 +190,9 @@ const ManageRepairOrderPage: React.FC = () => {
   const [laborValue, setLaborValue] = useState('');
   const [manualPartNombre, setManualPartNombre] = useState('');
   const [manualPartPrecio, setManualPartPrecio] = useState('');
+  const [manualCostInput, setManualCostInput] = useState('');
+  const [manualCostIsUsd, setManualCostIsUsd] = useState(false);
+  const [manualLaborValue, setManualLaborValue] = useState('');
   const sparePartsDropdownRef = useRef<HTMLDivElement>(null);
   useReceiptPrintPortal();
 
@@ -316,6 +319,27 @@ const ManageRepairOrderPage: React.FC = () => {
   const totalEfectivo = subtotalNeto + ivaAmount;
   const surchargePct = companySettings?.list_price_surcharge_percent ?? 0;
   const totalLista = surchargePct > 0 ? totalEfectivo * (1 + surchargePct / 100) : totalEfectivo;
+
+  const usdRate = companySettings?.usd_exchange_rate ?? 0;
+  const manualCostNum = parseFloat(manualCostInput) || 0;
+  const costoBasePesosManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
+  const manualLaborNum = parseFloat(manualLaborValue) || 0;
+  const subtotalManual = costoBasePesosManual + manualLaborNum;
+  const ivaManual = subtotalManual * (ivaPct / 100);
+  const totalEfectivoManual = subtotalManual + ivaManual;
+  const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
+
+  const applyManualQuote = () => {
+    if (costoBasePesosManual <= 0) {
+      toast.warn('Ingresá un costo válido');
+      return;
+    }
+    setSparePartsList((p) => [...p, { nombre: 'Repuesto Externo / Manual', precio_ars: costoBasePesosManual }]);
+    setLaborValue(manualLaborValue || laborValue);
+    setManualCostInput('');
+    setManualLaborValue('');
+    toast.success('Cotización manual aplicada a la orden');
+  };
 
   const addSparePartFromCatalog = (item: SparePartCatalogItem) => {
     const precio = item.precio_ars ?? (item.precio_usd ? item.precio_usd * (companySettings?.usd_exchange_rate ?? 1200) : 0);
@@ -526,87 +550,151 @@ const ManageRepairOrderPage: React.FC = () => {
                 <textarea name="technicalReport" value={form.technicalReport} onChange={handleChange} rows={4} className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div className="md:col-span-2">
-                <h4 className="text-sm font-bold text-gray-700 mb-2">Costos (Cotizador integrado)</h4>
-                <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Repuestos</label>
-                    <div className="relative" ref={sparePartsDropdownRef}>
-                      <input
-                        type="text"
-                        value={sparePartsSearch}
-                        onChange={(e) => setSparePartsSearch(e.target.value)}
-                        onFocus={() => sparePartsSearch && setShowSparePartsDropdown(true)}
-                        placeholder="Buscar en catálogo..."
-                        className="w-full px-3 py-2 border rounded-lg mb-2"
-                      />
-                      {showSparePartsDropdown && sparePartsSuggestions.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                          {sparePartsSuggestions.map((s) => (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => addSparePartFromCatalog(s)}
-                              className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm"
-                            >
-                              {s.nombre} — ${(s.precio_ars ?? 0).toLocaleString('es-AR')}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={manualPartNombre}
-                        onChange={(e) => setManualPartNombre(e.target.value)}
-                        placeholder="Agregar manual: nombre"
-                        className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                      />
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={manualPartPrecio}
-                        onChange={(e) => setManualPartPrecio(e.target.value)}
-                        placeholder="$"
-                        className="w-24 px-3 py-2 border rounded-lg text-sm"
-                      />
-                      <button type="button" onClick={addManualSparePart} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
-                        <FaPlus /> Agregar
-                      </button>
-                    </div>
-                    {sparePartsList.length > 0 && (
-                      <ul className="space-y-1">
-                        {sparePartsList.map((p, i) => (
-                          <li key={i} className="flex justify-between items-center text-sm bg-white px-2 py-1 rounded border">
-                            <span>{p.nombre}</span>
-                            <span className="flex items-center gap-2">
-                              ${p.precio_ars.toLocaleString('es-AR')}
-                              <button type="button" onClick={() => removeSparePart(i)} className="text-red-600 hover:text-red-700 p-1">
-                                <FaTrash size={12} />
+                <h4 className="text-sm font-bold text-gray-700 mb-3">Costos / Cotización</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* COLUMNA IZQUIERDA: Cotizador Automático */}
+                  <div className="space-y-4 p-4 bg-white rounded-lg border border-gray-200">
+                    <h5 className="text-sm font-semibold text-indigo-700">Cotizador Automático</h5>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Repuestos</label>
+                      <div className="relative" ref={sparePartsDropdownRef}>
+                        <input
+                          type="text"
+                          value={sparePartsSearch}
+                          onChange={(e) => setSparePartsSearch(e.target.value)}
+                          onFocus={() => sparePartsSearch && setShowSparePartsDropdown(true)}
+                          placeholder="Buscar en catálogo..."
+                          className="w-full px-3 py-2 border rounded-lg mb-2"
+                        />
+                        {showSparePartsDropdown && sparePartsSuggestions.length > 0 && (
+                          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                            {sparePartsSuggestions.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => addSparePartFromCatalog(s)}
+                                className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm"
+                              >
+                                {s.nombre} — ${(s.precio_ars ?? 0).toLocaleString('es-AR')}
                               </button>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra</label>
-                    <select value={laborValue} onChange={(e) => setLaborValue(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
-                      <option value="">Seleccionar...</option>
-                      {laborOptions.map((o) => (
-                        <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
-                      ))}
-                      {laborValue && !laborOptions.some((o) => o.value === laborValue) && (
-                        <option value={laborValue}>${parseFloat(laborValue || '0').toLocaleString('es-AR')} (guardado)</option>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={manualPartNombre}
+                          onChange={(e) => setManualPartNombre(e.target.value)}
+                          placeholder="Agregar manual: nombre"
+                          className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={manualPartPrecio}
+                          onChange={(e) => setManualPartPrecio(e.target.value)}
+                          placeholder="$"
+                          className="w-24 px-3 py-2 border rounded-lg text-sm"
+                        />
+                        <button type="button" onClick={addManualSparePart} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
+                          <FaPlus /> Agregar
+                        </button>
+                      </div>
+                      {sparePartsList.length > 0 && (
+                        <ul className="space-y-1">
+                          {sparePartsList.map((p, i) => (
+                            <li key={i} className="flex justify-between items-center text-sm bg-gray-50 px-2 py-1 rounded border">
+                              <span>{p.nombre}</span>
+                              <span className="flex items-center gap-2">
+                                ${p.precio_ars.toLocaleString('es-AR')}
+                                <button type="button" onClick={() => removeSparePart(i)} className="text-red-600 hover:text-red-700 p-1">
+                                  <FaTrash size={12} />
+                                </button>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
-                    </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra</label>
+                      <select value={laborValue} onChange={(e) => setLaborValue(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
+                        <option value="">Seleccionar...</option>
+                        {laborOptions.map((o) => (
+                          <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                        ))}
+                        {laborValue && !laborOptions.some((o) => o.value === laborValue) && (
+                          <option value={laborValue}>${parseFloat(laborValue || '0').toLocaleString('es-AR')} (guardado)</option>
+                        )}
+                      </select>
+                    </div>
+                    <div className="pt-3 border-t border-gray-200 space-y-1 text-sm">
+                      <p className="flex justify-between"><span>Subtotal neto:</span> <strong>${subtotalNeto.toLocaleString('es-AR')}</strong></p>
+                      <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> ${ivaAmount.toLocaleString('es-AR')}</p>
+                      <p className="flex justify-between text-green-700 font-bold"><span>Total Efectivo:</span> ${totalEfectivo.toLocaleString('es-AR')}</p>
+                      {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>Total Lista ({surchargePct}%):</span> ${totalLista.toLocaleString('es-AR')}</p>}
+                    </div>
                   </div>
-                  <div className="pt-3 border-t border-gray-200 space-y-1 text-sm">
-                    <p className="flex justify-between"><span>Subtotal neto:</span> <strong>${subtotalNeto.toLocaleString('es-AR')}</strong></p>
-                    <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> ${ivaAmount.toLocaleString('es-AR')}</p>
-                    <p className="flex justify-between text-green-700 font-bold"><span>Total Efectivo/Transferencia:</span> ${totalEfectivo.toLocaleString('es-AR')}</p>
-                    {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>Total Precio Lista ({surchargePct}%):</span> ${totalLista.toLocaleString('es-AR')}</p>}
+
+                  {/* COLUMNA DERECHA: Calculadora Manual (Repuestos Externos) */}
+                  <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h5 className="text-sm font-semibold text-gray-800">Calculadora Manual (Repuestos Externos)</h5>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio COSTO sin IVA</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={manualCostInput}
+                          onChange={(e) => setManualCostInput(e.target.value)}
+                          placeholder="0"
+                          className="flex-1 px-3 py-2 border rounded-lg bg-white"
+                        />
+                        <label className="flex items-center gap-2 cursor-pointer shrink-0 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={manualCostIsUsd}
+                            onChange={(e) => setManualCostIsUsd(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className={manualCostIsUsd ? 'font-bold text-indigo-700' : 'text-gray-500'}>USD</span>
+                          <span className="text-gray-400">|</span>
+                          <span className={!manualCostIsUsd ? 'font-bold text-indigo-700' : 'text-gray-500'}>PESOS</span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {manualCostIsUsd ? 'USD' : 'PESOS'} — Dólar: ${usdRate.toLocaleString('es-AR')} (solo lectura)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mano de Obra</label>
+                      <select
+                        value={manualLaborValue}
+                        onChange={(e) => setManualLaborValue(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg bg-white"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {laborOptions.map((o) => (
+                          <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="pt-3 border-t border-gray-300 space-y-1 text-sm bg-white p-3 rounded">
+                      <p className="flex justify-between text-gray-600"><span>Costo Base Pesos:</span> <strong>${costoBasePesosManual.toLocaleString('es-AR')}</strong></p>
+                      <p className="flex justify-between text-gray-600"><span>Subtotal:</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
+                      <p className="flex justify-between text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+                      <p className="flex justify-between text-green-700 font-bold"><span>TOTAL EFECTIVO:</span> ${totalEfectivoManual.toLocaleString('es-AR')}</p>
+                      {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>TOTAL LISTA ({surchargePct}%):</span> ${totalListaManual.toLocaleString('es-AR')}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={applyManualQuote}
+                      className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+                    >
+                      Aplicar Cotización Manual a la Orden
+                    </button>
                   </div>
                 </div>
               </div>
