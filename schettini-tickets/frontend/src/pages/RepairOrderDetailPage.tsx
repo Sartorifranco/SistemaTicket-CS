@@ -100,7 +100,7 @@ const RepairOrderDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 print:hidden">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <button onClick={() => navigate(basePath)} className="text-indigo-600 hover:underline flex items-center gap-1">
           ← Volver

@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
-import { FaWhatsapp, FaSave, FaTimes, FaFilePdf, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
+import { FaWhatsapp, FaSave, FaTimes, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 
 interface CompanySettings {
@@ -41,30 +39,6 @@ interface SparePartCatalogItem {
 interface LaborOption {
   id: number;
   value: string;
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace(/^#/, '');
-  const expanded = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(expanded);
-  return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0, 0, 0];
-}
-
-async function loadImageAsDataUrl(url: string): Promise<string | null> {
-  try {
-    const fullUrl = getImageUrl(url);
-    const res = await fetch(fullUrl, { mode: 'cors' });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
 }
 
 interface TechnicianOption {
@@ -366,172 +340,6 @@ const ManageRepairOrderPage: React.FC = () => {
 
   const removeSparePart = (idx: number) => setSparePartsList((p) => p.filter((_, i) => i !== idx));
 
-  const generarComprobantePDF = async () => {
-    if (!order) {
-      toast.warning('Esperando datos de la orden...');
-      return;
-    }
-    const cs: CompanySettings = companySettings ?? {
-      company_name: 'Tu Empresa S.A.',
-      address: '—',
-      phone: '—',
-      email: '—',
-      website: '—',
-      logo_url: null,
-      tax_percentage: 21,
-      quote_footer_text: 'Comprobante válido como referencia.',
-      primary_color: '#000000',
-    };
-    const [r, g, b] = hexToRgb(cs.primary_color || '#000000');
-
-    const depositPaid = form.depositPaid ? parseFloat(form.depositPaid) : (order.deposit_paid ?? 0);
-    const laborCost = laborNum || (order.labor_cost ?? 0);
-    const sparePartsCost = sparePartsTotal || (order.spare_parts_cost ?? 0);
-    const subtotal = sparePartsCost + laborCost;
-    const taxPct = cs.default_iva_percent ?? cs.tax_percentage ?? 21;
-    const iva = taxPct > 0 ? subtotal * (taxPct / 100) : 0;
-    const totalPagar = subtotal + iva;
-    const saldo = totalPagar - depositPaid;
-
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const pageW = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    let y = 20;
-
-    let logoDataUrl: string | null = null;
-    if (cs.logo_url) logoDataUrl = await loadImageAsDataUrl(cs.logo_url);
-    if (logoDataUrl) {
-      try {
-        const fmt = logoDataUrl.includes('image/jpeg') || logoDataUrl.includes('image/jpg') ? 'JPEG' : 'PNG';
-        doc.addImage(logoDataUrl, fmt, margin, 12, 25, 18);
-      } catch {
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(margin, 12, 25, 18);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('LOGO', margin + 4, 22);
-      }
-    } else {
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, 12, 25, 18);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text('LOGO', margin + 4, 22);
-    }
-
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-    doc.text(cs.company_name || 'Tu Empresa S.A.', pageW - margin - 50, 16);
-    doc.setFontSize(8);
-    doc.text(cs.address || '—', pageW - margin - 50, 21);
-    doc.text(`Tel: ${cs.phone || '—'}`, pageW - margin - 50, 26);
-    doc.text(cs.website || cs.email || '—', pageW - margin - 50, 31);
-
-    y = 45;
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`COMPROBANTE - Orden Nº ${order.order_number}`, margin, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}`, margin, y);
-    y += 10;
-
-    const baseTableData: (string | number)[][] = [
-      ['Cliente', order.client_name || order.client_business_name || '—'],
-      ['Estado', STATUS_LABELS[form.status || order.status] || '—'],
-      ['Informe técnico', (form.technicalReport || order.technical_report || '—').slice(0, 80) + ((form.technicalReport || order.technical_report || '').length > 80 ? '...' : '')],
-    ];
-    autoTable(doc, {
-      startY: y,
-      head: [['Dato', 'Valor']],
-      body: baseTableData,
-      theme: 'grid',
-      headStyles: { fillColor: [r, g, b], textColor: 255 },
-      styles: { fontSize: 9 },
-    });
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
-
-    const items = order.items && order.items.length > 0
-      ? order.items
-      : [{
-          equipment_type: form.equipmentType || order.equipment_type || '—',
-          brand: null as string | null,
-          model: form.model || order.model || '—',
-          serial_number: form.serialNumber || order.serial_number || '—',
-          reported_fault: form.reportedFault || order.reported_fault || '—',
-        }];
-    const equiposBody = items.map((it, idx) => [
-      idx + 1,
-      (it.equipment_type || '—').toString().slice(0, 25),
-      (it.brand || '—').toString().slice(0, 18),
-      (it.model || '—').toString().slice(0, 25),
-      (it.serial_number || '—').toString().slice(0, 20),
-      (it.reported_fault || '—').toString().slice(0, 50) + ((it.reported_fault || '').length > 50 ? '...' : ''),
-    ]);
-    autoTable(doc, {
-      startY: y,
-      head: [['#', 'Tipo', 'Marca', 'Modelo', 'Nº Serie', 'Falla']],
-      body: equiposBody,
-      theme: 'grid',
-      headStyles: { fillColor: [r, g, b], textColor: 255 },
-      styles: { fontSize: 8 },
-    });
-
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
-
-    const costRows: (string | number)[][] = [
-      ['Mano de obra', `$ ${Math.round(laborCost).toLocaleString('es-AR')}`],
-      ['Repuestos', `$ ${Math.round(sparePartsCost).toLocaleString('es-AR')}`],
-    ];
-    if (taxPct > 0) {
-      costRows.push([`IVA ${taxPct}%`, `$ ${Math.round(iva).toLocaleString('es-AR')}`]);
-    }
-    costRows.push(['Total', `$ ${Math.round(totalPagar).toLocaleString('es-AR')}`]);
-    costRows.push(['Pagado/Seña', `$ ${Math.round(depositPaid).toLocaleString('es-AR')}`]);
-    costRows.push(['Saldo', `$ ${Math.round(saldo).toLocaleString('es-AR')}`]);
-
-    autoTable(doc, {
-      startY: y,
-      head: [['Concepto', 'Monto']],
-      body: costRows,
-      theme: 'grid',
-      headStyles: { fillColor: [r, g, b], textColor: 255 },
-      styles: { fontSize: 10 },
-    });
-
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
-    doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    doc.text(cs.quote_footer_text?.trim() || 'Comprobante válido como referencia. Sujeto a condiciones del servicio.', margin, y);
-
-    const legalText = (cs.legal_footer_text ?? '').trim();
-    if (legalText) {
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const lineHeight = 4;
-      const maxWidth = pageW - 2 * margin;
-      y += 12;
-      doc.setFontSize(6);
-      doc.setTextColor(70, 70, 70);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Términos y condiciones legales', margin, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      const lines = doc.splitTextToSize(legalText, maxWidth);
-      for (const line of lines) {
-        if (y + lineHeight > pageHeight - margin) {
-          doc.addPage();
-          y = margin;
-        }
-        doc.text(line, margin, y);
-        y += lineHeight;
-      }
-    }
-
-    doc.save(`Comprobante-Orden-${order.order_number}.pdf`);
-    toast.success('Comprobante descargado correctamente.');
-  };
-
   const openWhatsAppModal = () => {
     if (!order) return;
     const spareDetailText = sparePartsList.length > 0
@@ -645,7 +453,7 @@ const ManageRepairOrderPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 print:hidden">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <button onClick={() => navigate(basePath)} className="text-indigo-600 hover:underline flex items-center gap-1">
           ← Volver
@@ -664,13 +472,6 @@ const ManageRepairOrderPage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
             >
               <FaPrint size={18} /> Imprimir Comprobante
-            </button>
-            <button
-              type="button"
-              onClick={generarComprobantePDF}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800"
-            >
-              <FaFilePdf size={18} /> Comprobante PDF
             </button>
             {canEdit && (
               <button
