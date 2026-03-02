@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
-import { API_BASE_URL } from '../../config/axiosConfig';
+import { getImageUrl } from '../../utils/imageUrl';
 import './RepairOrderReceipt.css';
 
 const DEFAULT_LEGAL_TEXT = `1- Para el requerimiento de cualquier servicio respecto del equipo y/o el retiro del mismo, se solicitará, sin excepción, la exhibición del presente comprobante o el DNI.
@@ -84,9 +84,7 @@ function ReceiptHalf({
         included_accessories: order.included_accessories || null,
       }];
 
-  const logoUrl = cs?.logo_url
-    ? (cs.logo_url.startsWith('http') ? cs.logo_url : `${API_BASE_URL || ''}${cs.logo_url}`)
-    : '';
+  const logoSrc = getImageUrl(cs?.logo_url);
 
   return (
     <div className="h-[48vh] overflow-hidden flex flex-col p-2 break-inside-avoid">
@@ -96,9 +94,9 @@ function ReceiptHalf({
       {/* HEADER: Flexbox */}
       <div className="flex justify-between items-start gap-2 mb-1 flex-shrink-0">
         <div className="min-w-0">
-          {logoUrl ? (
+          {logoSrc ? (
             <img
-              src={logoUrl}
+              src={logoSrc}
               alt="Logo"
               className="h-12 object-contain mb-0.5 max-w-[120px]"
             />
