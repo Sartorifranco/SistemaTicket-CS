@@ -3,7 +3,7 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
-import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage, FaTicketAlt, FaTrash, FaPlus, FaCalculator, FaFileExcel } from 'react-icons/fa';
+import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage, FaTicketAlt, FaTrash, FaPlus, FaCalculator, FaFileExcel, FaBalanceScale } from 'react-icons/fa';
 
 interface CompanySettings {
   company_name: string;
@@ -12,6 +12,7 @@ interface CompanySettings {
   email: string;
   website: string;
   logo_url: string | null;
+  legal_footer_text: string;
   tax_percentage: number;
   quote_footer_text: string;
   primary_color: string;
@@ -27,6 +28,7 @@ const defaultSettings: CompanySettings = {
   email: '',
   website: '',
   logo_url: null,
+  legal_footer_text: '',
   tax_percentage: 21,
   quote_footer_text: '',
   primary_color: '#000000',
@@ -158,6 +160,7 @@ const AdminCompanySettingsPage: React.FC = () => {
           email: data.email ?? '',
           website: data.website ?? '',
           logo_url: data.logo_url ?? null,
+          legal_footer_text: data.legal_footer_text ?? '',
           tax_percentage: data.tax_percentage != null ? Number(data.tax_percentage) : 21,
           quote_footer_text: data.quote_footer_text ?? '',
           primary_color: data.primary_color ?? '#000000',
@@ -203,6 +206,7 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append('website', formData.website);
       form.append('tax_percentage', String(formData.tax_percentage));
       form.append('quote_footer_text', formData.quote_footer_text);
+      form.append('legal_footer_text', formData.legal_footer_text);
       form.append('primary_color', formData.primary_color);
       form.append('usd_exchange_rate', formData.usd_exchange_rate != null ? String(formData.usd_exchange_rate) : '');
       form.append('default_iva_percent', formData.default_iva_percent != null ? String(formData.default_iva_percent) : '');
@@ -218,7 +222,11 @@ const AdminCompanySettingsPage: React.FC = () => {
       setLogoFile(null);
       const updated = res.data.data || res.data;
       if (updated) {
-        setFormData((prev) => ({ ...prev, logo_url: updated.logo_url ?? prev.logo_url }));
+        setFormData((prev) => ({
+          ...prev,
+          logo_url: updated.logo_url ?? prev.logo_url,
+          legal_footer_text: updated.legal_footer_text ?? prev.legal_footer_text,
+        }));
         setLogoPreview(updated.logo_url ? getImageUrl(updated.logo_url) : null);
       }
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -349,6 +357,21 @@ const AdminCompanySettingsPage: React.FC = () => {
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
             placeholder="Ej: www.tuempresa.com.ar"
           />
+        </div>
+
+        {/* Términos y Condiciones Legales */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <FaBalanceScale className="text-indigo-600" /> Términos y Condiciones Legales
+          </label>
+          <textarea
+            value={formData.legal_footer_text}
+            onChange={(e) => setFormData({ ...formData, legal_footer_text: e.target.value })}
+            rows={8}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
+            placeholder="Términos y condiciones que aparecerán en los PDFs de órdenes de taller y cotizaciones..."
+          />
+          <p className="text-xs text-gray-400 mt-1">Aparece en el pie de los PDFs. Podés usar saltos de línea.</p>
         </div>
 
         {/* Configuración del Cotizador */}

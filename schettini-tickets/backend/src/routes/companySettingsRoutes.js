@@ -5,8 +5,11 @@ const path = require('path');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { getCompanySettings, updateCompanySettings } = require('../controllers/companySettingsController');
 
+// Ruta absoluta a uploads (coincide con app.use('/uploads', express.static(uploadsPath)))
+const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) =>
     cb(null, `company-logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${path.extname(file.originalname) || '.png'}`)
 });
