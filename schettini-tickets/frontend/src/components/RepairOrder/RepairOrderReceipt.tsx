@@ -1,8 +1,18 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
-import { getImageUrl } from '../../utils/imageUrl';
+import { API_BASE_URL } from '../../config/axiosConfig';
 import './RepairOrderReceipt.css';
+
+const DEFAULT_LEGAL_TEXT = `1- Para el requerimiento de cualquier servicio respecto del equipo y/o el retiro del mismo, se solicitará, sin excepción, la exhibición del presente comprobante o el DNI.
+2- SCH COMERCIAL SAS no se responsabiliza por la pérdida total o parcial de la información.
+3- El plazo para el retiro del equipo en reparación es de 60 días a partir de la fecha de ingreso. Durante ese tiempo el equipo estará a disposición del cliente. Cumplido ese término, se cobrará un monto diario de usd$0.80+iva, en concepto de gastos por depósito. Si no es retirada en 90 días, se considerará abandonada por su dueño y SCH COMERCIAL SAS quedará facultado para ejercer cualquier acto de disposición.
+4- El diagnóstico de los equipos tiene un costo actual de $6.900 (pesos) que serán abonados al INGRESO del equipo. Este monto será reconocido cómo parte de pago en caso de aceptar la reparación.
+5- GARANTIA: se conviene un plazo de garantía por el servicio técnico y materiales de 30 días.
+7- El cliente firma en conformidad, declarando haber leído y aceptado todas las condiciones.
+8- Es responsabilidad del cliente revisar las condiciones: https://casaschettini-shop.com/terminos-y-condiciones-politicas-garantia/
+10- El cliente recibe copia de este documento.
+11- Las cotizaciones qué NO superen el monto de $40.000 + iva, se consideran ACEPTADAS sin necesidad de previa confirmación del cliente.`;
 
 export interface CompanySettingsReceipt {
   company_name: string;
@@ -83,7 +93,11 @@ function ReceiptHalf({
       <div className="flex justify-between items-start gap-4 mb-3">
         <div className="flex-1">
           {cs.logo_url && (
-            <img src={getImageUrl(cs.logo_url)} alt="Logo" className="w-32 object-contain mb-1" />
+            <img
+              src={cs.logo_url.startsWith('http') ? cs.logo_url : `${API_BASE_URL || ''}${cs.logo_url.startsWith('/') ? '' : '/'}${cs.logo_url}`}
+              alt="Logo"
+              className="w-32 object-contain mb-1"
+            />
           )}
           <p className="text-sm font-bold text-black">{cs.company_name || '—'}</p>
           <p className="text-xs text-gray-700">Soluciones para comercios y empresas</p>
@@ -156,9 +170,9 @@ function ReceiptHalf({
       </div>
 
       {/* LEGALES */}
-      <div className="text-[9px] leading-tight break-inside-avoid">
+      <div className="text-[8px] leading-tight break-inside-avoid">
         <p className="font-semibold mb-1">Términos y condiciones - SCH COMERCIAL SAS</p>
-        <p className="whitespace-pre-wrap">{cs.legal_footer_text?.trim() || 'Sin términos adicionales.'}</p>
+        <p className="whitespace-pre-wrap">{cs.legal_footer_text?.trim() || DEFAULT_LEGAL_TEXT}</p>
       </div>
     </div>
   );

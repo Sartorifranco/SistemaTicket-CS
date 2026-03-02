@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import api from '../config/axiosConfig';
-import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
-import { FaPlus, FaEye, FaFilePdf, FaWhatsapp } from 'react-icons/fa';
+import { FaPlus, FaEye, FaPrint, FaWhatsapp } from 'react-icons/fa';
+import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
+import type { RepairOrderReceiptData } from '../components/RepairOrder/RepairOrderReceipt';
 
 interface RepairOrderRow {
   id: number;
@@ -15,6 +14,8 @@ interface RepairOrderRow {
   client_name?: string;
   client_business_name?: string;
   client_phone?: string;
+  client_email?: string | null;
+  client_address?: string | null;
   status: string;
   equipment_type?: string;
   model?: string;
@@ -35,17 +36,20 @@ interface RepairOrderRow {
   promised_date?: string | null;
   delivered_date?: string | null;
   warranty_expiration_date?: string | null;
-  items?: { brand?: string; model?: string; serial_number?: string }[];
+  items?: { equipment_type?: string; brand?: string; model?: string; serial_number?: string; reported_fault?: string; included_accessories?: string }[];
 }
 
 interface CompanySettings {
   company_name: string;
-  address: string;
-  logo_url: string | null;
-  tax_percentage: number;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  logo_url?: string | null;
+  tax_percentage?: number;
   default_iva_percent?: number | null;
-  quote_footer_text: string;
-  primary_color: string;
+  quote_footer_text?: string;
+  primary_color?: string;
+  legal_footer_text?: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -65,11 +69,6 @@ function formatDateTime(d?: string | null): string {
   if (!d) return '—';
   const dt = new Date(d);
   return dt.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(d?: string | null): string {
-  if (!d) return '';
-  return new Date(d).toISOString().slice(0, 10);
 }
 
 function phoneToWhatsApp(phone?: string | null): string {
@@ -110,30 +109,6 @@ function getAlertBadge(order: RepairOrderRow): { text: string; className: string
   return null;
 }
 
-async function loadImageAsDataUrl(url: string): Promise<string | null> {
-  try {
-    const fullUrl = getImageUrl(url);
-    const res = await fetch(fullUrl, { mode: 'cors' });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace(/^#/, '');
-  const expanded = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(expanded);
-  return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0, 0, 0];
-}
-
 const RepairOrdersListPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -145,6 +120,8 @@ const RepairOrdersListPage: React.FC = () => {
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [clients, setClients] = useState<{ id: number; username: string; business_name?: string }[]>([]);
   const [technicians, setTechnicians] = useState<{ id: number; username: string; full_name?: string }[]>([]);
+  const [printOrder, setPrintOrder] = useState<RepairOrderRow | null>(null);
+  useReceiptPrintPortal();
 
   const [filters, setFilters] = useState({
     orderNumber: '',
@@ -201,67 +178,26 @@ const RepairOrdersListPage: React.FC = () => {
     }).catch(() => {});
   }, []);
 
-  const generarPDF = async (order: RepairOrderRow) => {
-    const cs = companySettings ?? { company_name: 'Empresa', address: '—', logo_url: null, tax_percentage: 21, quote_footer_text: '', primary_color: '#000000' };
-    const [r, g, b] = hexToRgb(cs.primary_color || '#000000');
-    const laborCost = 0;
-    const sparePartsCost = 0;
-    const subtotal = (order.total_cost ?? 0) / (1 + ((cs.default_iva_percent ?? cs.tax_percentage ?? 21) / 100));
-    const iva = (order.total_cost ?? 0) - subtotal;
-    const totalPagar = order.total_cost ?? 0;
-    const depositPaid = order.deposit_paid ?? 0;
-    const saldo = totalPagar - depositPaid;
-
-    let logoDataUrl: string | null = null;
-    if (cs.logo_url) logoDataUrl = await loadImageAsDataUrl(cs.logo_url);
-
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const margin = 15;
-    let y = 20;
-
-    if (logoDataUrl) {
-      try {
-        const fmt = logoDataUrl.includes('image/jpeg') || logoDataUrl.includes('image/jpg') ? 'JPEG' : 'PNG';
-        doc.addImage(logoDataUrl, fmt, margin, 12, 25, 18);
-      } catch {
-        doc.rect(margin, 12, 25, 18);
+  const handlePrintComprobante = async (order: RepairOrderRow) => {
+    try {
+      const res = await api.get<{ success: boolean; data: RepairOrderRow }>(`/api/repair-orders/${order.id}`);
+      const fullOrder = res.data.data;
+      if (!fullOrder) {
+        toast.error('No se pudo cargar la orden');
+        return;
       }
+      setPrintOrder(fullOrder);
+      setTimeout(() => window.print(), 150);
+    } catch {
+      toast.error('Error al cargar la orden para imprimir');
     }
-    doc.setFontSize(10);
-    doc.text(cs.company_name || 'Empresa', 200, 16);
-    doc.setFontSize(8);
-    doc.text(cs.address || '—', 200, 21);
-
-    y = 45;
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`COMPROBANTE - Orden Nº ${order.order_number}`, margin, y);
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-
-    const tableData: (string | number)[][] = [
-      ['Cliente', order.client_name || order.client_business_name || '—'],
-      ['Equipo', order.equipment_type || '—'],
-      ['Modelo', order.model || '—'],
-      ['Nº Serie', order.serial_number || '—'],
-      ['Estado', STATUS_LABELS[order.status] || order.status],
-      ['Total', `$ ${Math.round(totalPagar).toLocaleString('es-AR')}`],
-      ['Pagado', `$ ${Math.round(depositPaid).toLocaleString('es-AR')}`],
-      ['Saldo', `$ ${Math.round(saldo).toLocaleString('es-AR')}`]
-    ];
-    autoTable(doc, {
-      startY: y,
-      head: [['Dato', 'Valor']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [r, g, b], textColor: 255 },
-      styles: { fontSize: 9 }
-    });
-
-    doc.save(`Comprobante-Orden-${order.order_number}.pdf`);
-    toast.success('Comprobante descargado.');
   };
+
+  useEffect(() => {
+    const onAfterPrint = () => setPrintOrder(null);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => window.removeEventListener('afterprint', onAfterPrint);
+  }, []);
 
   const enviarWhatsApp = (order: RepairOrderRow) => {
     if (!order.client_phone) {
@@ -278,7 +214,7 @@ const RepairOrdersListPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:hidden">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Órdenes de Reparación</h1>
         <button
@@ -407,7 +343,7 @@ const RepairOrdersListPage: React.FC = () => {
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-1">
                           <button onClick={() => navigate(`${basePath}/${o.id}`)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Ver Detalles"><FaEye /></button>
-                          <button onClick={() => generarPDF(o)} className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg" title="Re-imprimir PDF"><FaFilePdf /></button>
+                          <button onClick={() => handlePrintComprobante(o)} className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg" title="Imprimir comprobante"><FaPrint /></button>
                           <button onClick={() => enviarWhatsApp(o)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Enviar WhatsApp"><FaWhatsapp /></button>
                         </div>
                       </td>
@@ -419,6 +355,13 @@ const RepairOrdersListPage: React.FC = () => {
           </div>
         )}
       </SectionCard>
+
+      {printOrder && (
+        <RepairOrderReceipt
+          order={printOrder as RepairOrderReceiptData}
+          companySettings={companySettings ?? { company_name: 'SCH COMERCIAL SAS', address: '—', phone: '—', email: '—', logo_url: null, legal_footer_text: '' }}
+        />
+      )}
     </div>
   );
 };
