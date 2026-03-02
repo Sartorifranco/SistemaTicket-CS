@@ -163,8 +163,12 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
     try {
+        console.log('[Login] Intento de login recibido');
         const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ message: 'Faltan credenciales.' });
+        if (!email || !password) {
+            console.log('[Login] Faltan credenciales: email=', !!email, 'password=', !!password);
+            return res.status(400).json({ message: 'Faltan credenciales.' });
+        }
 
         // Aceptar login por email O por nombre de usuario (sin exigir @)
         const identifier = (email || '').trim();
@@ -174,7 +178,13 @@ const loginUser = async (req, res) => {
         );
         const user = users[0];
 
-        if (!user || !(await bcrypt.compare(password, user.password))) {
+        if (!user) {
+            console.log('[Login] Usuario no encontrado para identificador:', identifier);
+            return res.status(401).json({ message: 'Credenciales incorrectas.' });
+        }
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            console.log('[Login] Contraseña incorrecta para usuario id:', user.id);
             return res.status(401).json({ message: 'Credenciales incorrectas.' });
         }
 
@@ -210,7 +220,7 @@ const loginUser = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error(error);
+        console.error('[Login] Error en login:', error);
         res.status(500).json({ message: 'Error de servidor.' });
     }
 };

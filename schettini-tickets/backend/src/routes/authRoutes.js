@@ -18,9 +18,6 @@ router.post('/reset-password', resetPassword);
 
 // Ruta de perfil del usuario logueado (protegida)
 // GET a /api/auth/me para obtener los datos del usuario autenticado
-// Esta ruta requiere que el usuario esté autenticado, por eso usa el middleware 'authenticateToken'
-router.get('/me', authenticateToken, getMe); // <-- ¡CAMBIO AQUÍ!
-
 router.get('/me', authenticateToken, getMe);
 
 // Exporta el router para que pueda ser utilizado en app.js
