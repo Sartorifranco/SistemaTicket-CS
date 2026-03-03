@@ -112,6 +112,7 @@ const systemOptionsRoutes = require('./routes/systemOptionsRoutes');
 const sparePartsCatalogRoutes = require('./routes/sparePartsCatalogRoutes');
 const activationRoutes = require('./routes/activationRoutes');
 const factoryShipmentRoutes = require('./routes/factoryShipmentRoutes');
+const techCashRoutes = require('./routes/techCashRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -145,8 +146,9 @@ app.use('/api/settings/system-options', systemOptionsRoutes);
 app.use('/api/settings/spare-parts-catalog', sparePartsCatalogRoutes);
 app.use('/api/activations', activationRoutes);
 app.use('/api/factory-shipments', factoryShipmentRoutes);
+app.use('/api/tech-cash', techCashRoutes);
 
-// Rutas opcionales (try-catch para evitar errores si no existen los archivos)
+// Rutas opcionales (reportRoutes ya incluye /api/reports con debts) (try-catch para evitar errores si no existen los archivos)
 try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) { console.log('Ruta admin opcional no cargada'); }
 try { app.use('/api', require('./routes/dataRoutes')); } catch (e) { console.log('Ruta data opcional no cargada'); }
 

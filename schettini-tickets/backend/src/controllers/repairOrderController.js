@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { createDraftFromRepairOrder } = require('./factoryShipmentController');
+const { registerPaymentFromRepairOrder } = require('./techCashController');
 
 const VALID_STATUSES = [
   'ingresado',
@@ -480,7 +481,7 @@ const updateRepairOrder = async (req, res) => {
     } = req.body;
 
     const [existingRows] = await pool.query(
-      'SELECT id, status, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier FROM repair_orders WHERE id = ?',
+      'SELECT id, status, deposit_paid, total_cost, order_number, client_id, payment_method, requires_factory_shipping, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier FROM repair_orders WHERE id = ?',
       [id]
     );
     if (existingRows.length === 0) {
@@ -584,6 +585,20 @@ const updateRepairOrder = async (req, res) => {
     if (setClause.length > 0) {
       setParams.push(id);
       await pool.query(`UPDATE repair_orders SET ${setClause.join(', ')} WHERE id = ?`, setParams);
+    }
+
+    const oldDeposit = parseFloat(existing.deposit_paid) || 0;
+    const newDeposit = depositPaid !== undefined ? (depositPaid === '' || depositPaid == null ? 0 : parseFloat(depositPaid)) : oldDeposit;
+    if (depositPaid !== undefined && newDeposit > oldDeposit) {
+      const delta = newDeposit - oldDeposit;
+      await registerPaymentFromRepairOrder(
+        id,
+        existing.order_number,
+        delta,
+        req.body.paymentMethod || existing.payment_method,
+        existing.client_id,
+        req.user?.id
+      );
     }
 
     if (requiresFactoryShipping !== undefined && newRequiresFactory && !existing.requires_factory_shipping) {
