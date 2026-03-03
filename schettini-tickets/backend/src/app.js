@@ -109,6 +109,7 @@ const companySettingsRoutes = require('./routes/companySettingsRoutes');
 const ticketCategoriesRoutes = require('./routes/ticketCategoriesRoutes');
 const systemOptionsRoutes = require('./routes/systemOptionsRoutes');
 const sparePartsCatalogRoutes = require('./routes/sparePartsCatalogRoutes');
+const activationRoutes = require('./routes/activationRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -139,6 +140,7 @@ app.use('/api/settings/company', companySettingsRoutes);
 app.use('/api/settings/ticket-categories', ticketCategoriesRoutes);
 app.use('/api/settings/system-options', systemOptionsRoutes);
 app.use('/api/settings/spare-parts-catalog', sparePartsCatalogRoutes);
+app.use('/api/activations', activationRoutes);
 
 // Rutas opcionales (try-catch para evitar errores si no existen los archivos)
 try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) { console.log('Ruta admin opcional no cargada'); }
