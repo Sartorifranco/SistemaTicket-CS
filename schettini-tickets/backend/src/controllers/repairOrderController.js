@@ -13,7 +13,25 @@ const VALID_STATUSES = [
   'abandonado'
 ];
 
+const WARRANTY_TYPES = ['oficial_fabricante', 'garantia_propia', 'garantia_proveedor'];
+const WARRANTY_STATUSES = [
+  'ingresado_garantia', 'en_diagnostico', 'espera_aprobacion_proveedor', 'enviado_fabrica',
+  'aprobado_cambio', 'reparado_garantia', 'rechazado_mal_uso', 'finalizado', 'entregado'
+];
+
 const isValidStatus = (s) => s && VALID_STATUSES.includes(String(s).toLowerCase());
+const isValidWarrantyType = (t) => t && WARRANTY_TYPES.includes(String(t));
+const isValidWarrantyStatus = (s) => !s || WARRANTY_STATUSES.includes(String(s));
+
+/** Registra cambio de status o warranty_status en historial */
+const logStatusHistory = async (repairOrderId, fieldChanged, oldValue, newValue, userId) => {
+  if (oldValue === newValue) return;
+  await pool.query(
+    `INSERT INTO repair_order_status_history (repair_order_id, field_changed, old_value, new_value, changed_by)
+     VALUES (?, ?, ?, ?, ?)`,
+    [repairOrderId, fieldChanged, oldValue || null, newValue || null, userId || null]
+  );
+};
 
 // Genera order_number: REP-0001, REP-0002, etc.
 const generateOrderNumber = async () => {
@@ -256,7 +274,14 @@ const createRepairOrder = async (req, res) => {
       deliveryAddress,
       paymentMethod,
       paymentOperationNumber,
-      priority
+      priority,
+      isWarranty,
+      warrantyType,
+      purchaseInvoiceNumber,
+      purchaseDate,
+      originalSupplier,
+      requiresFactoryShipping,
+      warrantyStatus
     } = req.body;
 
     if (!clientId) {
@@ -274,6 +299,37 @@ const createRepairOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Se requiere al menos un equipo (items)' });
     }
 
+    const isWarrantyOrder = isWarranty === true || isWarranty === 'true' || isWarranty === 1;
+    if (isWarrantyOrder) {
+      if (!warrantyType || !isValidWarrantyType(warrantyType)) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere warranty_type válido: oficial_fabricante, garantia_propia, garantia_proveedor' });
+      }
+      if (!purchaseInvoiceNumber || !String(purchaseInvoiceNumber).trim()) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere purchase_invoice_number' });
+      }
+      if (!purchaseDate || !String(purchaseDate).trim()) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere purchase_date' });
+      }
+      if (!originalSupplier || !String(originalSupplier).trim()) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere original_supplier' });
+      }
+      const hasSerial = items.some(it => it.serial_number && String(it.serial_number).trim());
+      if (!hasSerial) {
+        return res.status(400).json({ success: false, message: 'En garantía al menos un equipo debe tener serial_number' });
+      }
+      if (warrantyStatus && !isValidWarrantyStatus(warrantyStatus)) {
+        return res.status(400).json({ success: false, message: `warranty_status inválido. Valores: ${WARRANTY_STATUSES.join(', ')}` });
+      }
+    }
+
+    let finalLaborCost = laborCost ? parseFloat(laborCost) : null;
+    let finalSparePartsCost = sparePartsCost ? parseFloat(sparePartsCost) : null;
+    if (isWarrantyOrder && warrantyType === 'oficial_fabricante') {
+      finalLaborCost = 0;
+      finalSparePartsCost = 0;
+    }
+    const finalTotalCost = totalCost ? parseFloat(totalCost) : (finalLaborCost != null && finalSparePartsCost != null ? finalLaborCost + finalSparePartsCost : null);
+
     const orderNumber = await generateOrderNumber();
 
     const [result] = await pool.query(
@@ -284,16 +340,17 @@ const createRepairOrder = async (req, res) => {
         accepted_date, promised_date, delivered_date, warranty_expiration_date,
         public_notes, spare_parts_detail,
         order_type, visit_date, remote_platform, delivery_address,
-        payment_method, payment_operation_number, priority
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        payment_method, payment_operation_number, priority,
+        is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier, requires_factory_shipping, warranty_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clientId,
         orderNumber,
         entryDate || null,
         status || 'ingresado',
-        laborCost ? parseFloat(laborCost) : null,
-        sparePartsCost ? parseFloat(sparePartsCost) : null,
-        totalCost ? parseFloat(totalCost) : null,
+        finalLaborCost,
+        finalSparePartsCost,
+        finalTotalCost,
         depositPaid ? parseFloat(depositPaid) : null,
         internalNotes || null,
         technicalReport || null,
@@ -310,11 +367,22 @@ const createRepairOrder = async (req, res) => {
         deliveryAddress || null,
         paymentMethod || null,
         paymentOperationNumber || null,
-        priority || 'Normal'
+        priority || 'Normal',
+        isWarrantyOrder ? 1 : 0,
+        isWarrantyOrder ? warrantyType : null,
+        isWarrantyOrder ? String(purchaseInvoiceNumber).trim() : null,
+        isWarrantyOrder && purchaseDate ? purchaseDate : null,
+        isWarrantyOrder ? String(originalSupplier).trim() : null,
+        requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1 ? 1 : 0,
+        isWarrantyOrder && warrantyStatus ? warrantyStatus : null
       ]
     );
 
     const repairOrderId = result.insertId;
+
+    if (isWarrantyOrder && warrantyStatus) {
+      await logStatusHistory(repairOrderId, 'warranty_status', null, warrantyStatus, req.user?.id);
+    }
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -400,18 +468,72 @@ const updateRepairOrder = async (req, res) => {
       paymentOperationNumber,
       priority,
       recyclingNotes,
-      recyclingPhotos
+      recyclingPhotos,
+      isWarranty,
+      warrantyType,
+      purchaseInvoiceNumber,
+      purchaseDate,
+      originalSupplier,
+      requiresFactoryShipping,
+      warrantyStatus
     } = req.body;
 
-    const [existing] = await pool.query('SELECT id FROM repair_orders WHERE id = ?', [id]);
-    if (existing.length === 0) {
+    const [existingRows] = await pool.query(
+      'SELECT id, status, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier FROM repair_orders WHERE id = ?',
+      [id]
+    );
+    if (existingRows.length === 0) {
       return res.status(404).json({ success: false, message: 'Orden no encontrada' });
     }
+    const existing = existingRows[0];
     if (status !== undefined && status !== null && status !== '' && !isValidStatus(status)) {
       return res.status(400).json({
         success: false,
         message: `Estado inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}`
       });
+    }
+
+    const isWarrantyOrder = isWarranty === true || isWarranty === 'true' || isWarranty === 1;
+    const effectiveIsWarranty = isWarranty !== undefined ? isWarrantyOrder : !!existing.is_warranty;
+    if (effectiveIsWarranty) {
+      const effType = warrantyType !== undefined ? warrantyType : existing.warranty_type;
+      if (!effType || !isValidWarrantyType(effType)) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere warranty_type válido' });
+      }
+      const effInvoice = purchaseInvoiceNumber !== undefined ? purchaseInvoiceNumber : existing.purchase_invoice_number;
+      if (!effInvoice || !String(effInvoice).trim()) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere purchase_invoice_number' });
+      }
+      const effDate = purchaseDate !== undefined ? purchaseDate : existing.purchase_date;
+      if (!effDate || !String(effDate).trim()) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere purchase_date' });
+      }
+      const effSupplier = originalSupplier !== undefined ? originalSupplier : existing.original_supplier;
+      if (!effSupplier || !String(effSupplier).trim()) {
+        return res.status(400).json({ success: false, message: 'En garantía se requiere original_supplier' });
+      }
+      const items = parseItems(req.body);
+      if (items.length > 0) {
+        const hasSerial = items.some(it => it.serial_number && String(it.serial_number).trim());
+        if (!hasSerial) {
+          const [currentItems] = await pool.query('SELECT serial_number FROM repair_order_items WHERE repair_order_id = ?', [id]);
+          const hasExistingSerial = currentItems.some(it => it.serial_number && String(it.serial_number).trim());
+          if (!hasExistingSerial) {
+            return res.status(400).json({ success: false, message: 'En garantía al menos un equipo debe tener serial_number' });
+          }
+        }
+      }
+      if (warrantyStatus !== undefined && warrantyStatus !== null && warrantyStatus !== '' && !isValidWarrantyStatus(warrantyStatus)) {
+        return res.status(400).json({ success: false, message: `warranty_status inválido. Valores: ${WARRANTY_STATUSES.join(', ')}` });
+      }
+    }
+
+    let finalLaborCost = laborCost !== undefined ? (laborCost === '' || laborCost == null ? null : parseFloat(laborCost)) : undefined;
+    let finalSparePartsCost = sparePartsCost !== undefined ? (sparePartsCost === '' || sparePartsCost == null ? null : parseFloat(sparePartsCost)) : undefined;
+    const effWarrantyType = warrantyType !== undefined ? warrantyType : existing.warranty_type;
+    if (effectiveIsWarranty && effWarrantyType === 'oficial_fabricante') {
+      finalLaborCost = 0;
+      finalSparePartsCost = 0;
     }
 
     const setClause = [];
@@ -423,8 +545,10 @@ const updateRepairOrder = async (req, res) => {
     if (clientId !== undefined) add('client_id', clientId);
     if (entryDate !== undefined) add('entry_date', entryDate);
     if (status !== undefined && status !== '') add('status', status);
-    if (laborCost !== undefined) add('labor_cost', laborCost, true);
-    if (sparePartsCost !== undefined) add('spare_parts_cost', sparePartsCost, true);
+    if (finalLaborCost !== undefined) add('labor_cost', finalLaborCost, true);
+    else if (laborCost !== undefined) add('labor_cost', laborCost, true);
+    if (finalSparePartsCost !== undefined) add('spare_parts_cost', finalSparePartsCost, true);
+    else if (sparePartsCost !== undefined) add('spare_parts_cost', sparePartsCost, true);
     if (totalCost !== undefined) add('total_cost', totalCost, true);
     if (depositPaid !== undefined) add('deposit_paid', depositPaid, true);
     if (internalNotes !== undefined) add('internal_notes', internalNotes);
@@ -448,9 +572,24 @@ const updateRepairOrder = async (req, res) => {
       const val = typeof recyclingPhotos === 'string' ? (recyclingPhotos ? JSON.parse(recyclingPhotos) : null) : recyclingPhotos;
       add('recycling_photos', val ? JSON.stringify(val) : null);
     }
+    if (isWarranty !== undefined) add('is_warranty', isWarrantyOrder ? 1 : 0);
+    if (warrantyType !== undefined) add('warranty_type', warrantyType || null);
+    if (purchaseInvoiceNumber !== undefined) add('purchase_invoice_number', purchaseInvoiceNumber ? String(purchaseInvoiceNumber).trim() : null);
+    if (purchaseDate !== undefined) add('purchase_date', purchaseDate || null);
+    if (originalSupplier !== undefined) add('original_supplier', originalSupplier ? String(originalSupplier).trim() : null);
+    if (requiresFactoryShipping !== undefined) add('requires_factory_shipping', requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1 ? 1 : 0);
+    if (warrantyStatus !== undefined) add('warranty_status', warrantyStatus || null);
     if (setClause.length > 0) {
       setParams.push(id);
       await pool.query(`UPDATE repair_orders SET ${setClause.join(', ')} WHERE id = ?`, setParams);
+    }
+
+    const userId = req.user?.id || null;
+    if (status !== undefined && status !== '' && String(status) !== String(existing.status)) {
+      await logStatusHistory(id, 'status', existing.status, status, userId);
+    }
+    if (warrantyStatus !== undefined && String(warrantyStatus || '') !== String(existing.warranty_status || '')) {
+      await logStatusHistory(id, 'warranty_status', existing.warranty_status || null, warrantyStatus || null, userId);
     }
 
     const items = parseItems(req.body);
