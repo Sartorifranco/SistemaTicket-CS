@@ -384,12 +384,16 @@ VALUES (1, 'Tu Empresa S.A.', 'Av. Ejemplo 1234, CABA', '(011) 1234-5678', 'cont
 -- Catálogo de repuestos (cotizador integrado)
 CREATE TABLE IF NOT EXISTS spare_parts_catalog (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  codigo VARCHAR(100) NULL,
   nombre VARCHAR(255) NOT NULL,
   precio_usd DECIMAL(12,2) NULL,
   precio_ars DECIMAL(12,2) NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_nombre (nombre)
+  UNIQUE KEY uk_codigo (codigo),
+  KEY idx_nombre (nombre),
+  KEY idx_codigo (codigo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Opciones dinámicas del sistema (listas desplegables: equipment_type, brand, model, labor_price, payment_method)

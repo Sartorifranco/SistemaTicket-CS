@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -78,6 +78,14 @@ interface PriceItem {
   precioListaDebito: number;
 }
 
+interface SparePartCatalogItem {
+  id: number;
+  codigo?: string | null;
+  nombre: string;
+  precio_usd: number | null;
+  precio_ars: number | null;
+}
+
 function findHeaderRow(rows: unknown[][]): number {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i] as unknown[];
@@ -144,6 +152,10 @@ const QuoterPage: React.FC = () => {
   const [items, setItems] = useState<PriceItem[]>([]);
   const [search, setSearch] = useState('');
   const [quoteItems, setQuoteItems] = useState<PriceItem[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogSuggestions, setCatalogSuggestions] = useState<SparePartCatalogItem[]>([]);
+  const [showCatalogDropdown, setShowCatalogDropdown] = useState(false);
+  const catalogDropdownRef = useRef<HTMLDivElement>(null);
   const [dolarActual, setDolarActual] = useState<number>(1150);
   const [margenGanancia, setMargenGanancia] = useState<number>(30);
   const [costoEnPesos, setCostoEnPesos] = useState(true);
@@ -184,12 +196,12 @@ const QuoterPage: React.FC = () => {
     }).catch(() => {});
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const data = ev.target?.result;
         if (!data || (typeof data !== 'string' && !(data instanceof ArrayBuffer))) return;
@@ -207,6 +219,13 @@ const QuoterPage: React.FC = () => {
         setItems(parsed);
         setFileName(file.name);
         toast.success(`Se importaron ${parsed.length} artículos.`);
+
+        try {
+          await api.post('/api/settings/spare-parts-catalog/import', { items: parsed });
+          toast.success('Lista de precios actualizada en la base de datos.');
+        } catch {
+          toast.warn('Los datos se cargaron localmente, pero no se pudo guardar en el servidor.');
+        }
       } catch (err) {
         console.error(err);
         toast.error('Error al leer el archivo Excel.');
@@ -229,6 +248,45 @@ const QuoterPage: React.FC = () => {
         i.descripcion.toLowerCase().includes(q)
     );
   }, [items, search]);
+
+  useEffect(() => {
+    if (!catalogSearch.trim()) {
+      setCatalogSuggestions([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      api.get<{ success: boolean; data: SparePartCatalogItem[] }>(`/api/settings/spare-parts-catalog/search?q=${encodeURIComponent(catalogSearch)}`).then((res) => {
+        setCatalogSuggestions(res.data.data || []);
+        setShowCatalogDropdown(true);
+      }).catch(() => setCatalogSuggestions([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [catalogSearch]);
+
+  useEffect(() => {
+    const fn = (e: MouseEvent) => {
+      if (catalogDropdownRef.current && !catalogDropdownRef.current.contains(e.target as Node)) setShowCatalogDropdown(false);
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  const addCatalogItemToQuote = (item: SparePartCatalogItem) => {
+    const priceItem: PriceItem = {
+      codigo: item.codigo || '',
+      descripcion: item.nombre,
+      aptoModelo: '',
+      costoSinIva: 0,
+      costoConIva: 0,
+      precioVentaPesos: item.precio_ars ?? 0,
+      precioVentaUsd: item.precio_usd ?? 0,
+      precioListaCuotas: 0,
+      precioListaDebito: 0
+    };
+    addToQuote(priceItem);
+    setCatalogSearch('');
+    setShowCatalogDropdown(false);
+  };
 
   const addToQuote = (item: PriceItem) => {
     setQuoteItems((prev) => [...prev, { ...item }]);
@@ -468,6 +526,37 @@ const QuoterPage: React.FC = () => {
               {fileName && <span className="text-sm text-gray-500">Cargado: {fileName}</span>}
             </div>
 
+            <div className="mt-4">
+              <div className="relative" ref={catalogDropdownRef}>
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar en catálogo..."
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  onFocus={() => catalogSearch && setShowCatalogDropdown(true)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+                {showCatalogDropdown && catalogSuggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {catalogSuggestions.map((s) => (
+                      <li
+                        key={s.id}
+                        className="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-sm flex justify-between items-center"
+                        onMouseDown={() => addCatalogItemToQuote(s)}
+                      >
+                        <span className="truncate">{s.nombre}{s.codigo ? ` (${s.codigo})` : ''}</span>
+                        <span className="text-gray-600 ml-2 shrink-0">${(s.precio_ars ?? s.precio_usd ?? 0).toLocaleString('es-AR')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {catalogSearch && !catalogSuggestions.length && catalogSearch.length >= 2 && (
+                <p className="text-xs text-gray-500 mt-1">No se encontraron resultados. Probá otra búsqueda.</p>
+              )}
+            </div>
+
             {items.length > 0 && (
               <>
                 <div className="mt-4">
@@ -475,7 +564,7 @@ const QuoterPage: React.FC = () => {
                     <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Buscar por Código o Descripción..."
+                      placeholder="Filtrar tabla cargada por código o descripción..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
