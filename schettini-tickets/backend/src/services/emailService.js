@@ -115,8 +115,38 @@ const sendPasswordResetEmail = async (to, token, fullName = '') => {
     }
 };
 
+/** Notifica al cliente que su equipo/software está listo para usar o retirar */
+const sendEquipmentReadyEmail = async (to, clientName = '', invoiceNumber = '') => {
+    const loginUrl = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/client` : 'http://localhost:3000/client';
+
+    const mailOptions = {
+        from: `"Sistema de Tickets" <${process.env.EMAIL_USER}>`,
+        to: to,
+        subject: 'Tu equipo/software está listo',
+        html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <h2>¡Buenas noticias!</h2>
+                <p>${clientName ? `Hola ${clientName},` : 'Hola,'}</p>
+                <p>Te informamos que tu equipo/software ${invoiceNumber ? `(Factura/Pedido ${invoiceNumber})` : ''} está <strong>listo para usar o retirar</strong>.</p>
+                <p>Podés ingresar al portal para más detalles o contactarnos si tenés consultas.</p>
+                <a href="${loginUrl}" style="background-color: #16A34A; color: white; padding: 12px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 8px; font-weight: bold;">
+                    Ir al portal
+                </a>
+            </div>
+        `,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`[EmailService] Correo "equipo listo" enviado a ${to}`);
+    } catch (error) {
+        console.error('[EmailService] Error al enviar correo equipo listo:', error);
+    }
+};
+
 module.exports = {
     sendActivationEmail,
     sendWelcomeEmail,
     sendPasswordResetEmail,
+    sendEquipmentReadyEmail,
 };

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { sendEquipmentReadyEmail } = require('../services/emailService');
 
 const VALID_FORM_TYPES = ['fiscal', 'no_fiscal', 'controlador_fiscal', 'none'];
 const VALID_STATUSES = ['pending_validation', 'pending_client_fill', 'processing', 'ready'];
@@ -217,11 +218,54 @@ const getActivationById = async (req, res) => {
   }
 };
 
+// PUT /api/activations/:id — Actualizar estado (ej: marcar como 'ready') y opcionalmente notificar al cliente
+const updateActivationStatus = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status, notify_client } = req.body;
+
+    if (!status || !VALID_STATUSES.includes(String(status))) {
+      return res.status(400).json({
+        success: false,
+        message: `status inválido. Valores: ${VALID_STATUSES.join(', ')}`
+      });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT a.id, a.client_id, a.invoice_number, a.status, u.email, u.username, u.full_name FROM activations a LEFT JOIN Users u ON a.client_id = u.id WHERE a.id = ?',
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Activación no encontrada.' });
+    }
+    const act = rows[0];
+
+    await pool.query(
+      'UPDATE activations SET status = ?, updated_at = NOW() WHERE id = ?',
+      [status, id]
+    );
+
+    if (status === 'ready' && notify_client && act.email) {
+      sendEquipmentReadyEmail(act.email, act.full_name || act.username || '', act.invoice_number || '').catch(err => console.error(err));
+    }
+
+    res.json({
+      success: true,
+      message: status === 'ready' && notify_client ? 'Estado actualizado y cliente notificado por email.' : 'Estado actualizado.',
+      data: { id: parseInt(id, 10), status }
+    });
+  } catch (error) {
+    console.error('Error updateActivationStatus:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar estado.' });
+  }
+};
+
 module.exports = {
   requestActivation,
   validateActivation,
   submitForm,
   getActivations,
   getClientActivations,
-  getActivationById
+  getActivationById,
+  updateActivationStatus
 };
