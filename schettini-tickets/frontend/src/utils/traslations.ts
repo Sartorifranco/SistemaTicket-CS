@@ -25,6 +25,7 @@ export const userRoleTranslations: Record<UserRole, string> = {
     agent: 'Agente',
     supervisor: 'Supervisor',
     admin: 'Administrador',
+    viewer: 'Vista',
 };
 
 // Planes (Free, Pro, Enterprise -> español)

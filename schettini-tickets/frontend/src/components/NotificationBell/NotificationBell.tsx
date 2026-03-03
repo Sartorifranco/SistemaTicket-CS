@@ -32,7 +32,7 @@ const NotificationBell: React.FC = () => {
         }
 
         if (notification.related_type === 'ticket' && notification.related_id) {
-            const basePath = user?.role === 'admin' ? '/admin' : (user?.role === 'agent' || user?.role === 'supervisor') ? '/agent' : '/client';
+            const basePath = user?.role === 'admin' ? '/admin' : (user?.role === 'agent' || user?.role === 'supervisor' || user?.role === 'viewer') ? '/agent' : '/client';
             navigate(`${basePath}/tickets/${notification.related_id}`);
         } else if (notification.related_type === 'payment') {
             navigate('/admin/payments'); // O ruta correspondiente

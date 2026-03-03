@@ -7,7 +7,7 @@ export interface NewUser {
     username: string;
     email: string;
     password?: string; // La contraseña es opcional para NewUser si tu backend la genera o si hay otros métodos de registro
-    role: 'admin' | 'supervisor' | 'agent' | 'client';
+    role: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
     department_id?: number | null;
 }
 
@@ -15,7 +15,7 @@ export interface UpdateUser {
     username?: string;
     email?: string;
     password?: string;
-    role?: 'admin' | 'supervisor' | 'agent' | 'client';
+    role?: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
     department_id?: number | null;
 }
 

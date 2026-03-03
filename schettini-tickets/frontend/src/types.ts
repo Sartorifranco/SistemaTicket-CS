@@ -32,7 +32,7 @@ export interface Company {
 // ====================================================================
 // USER TYPES
 // ====================================================================
-export type UserRole = 'admin' | 'supervisor' | 'agent' | 'client';
+export type UserRole = 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
 
 export interface User {
     id: number;

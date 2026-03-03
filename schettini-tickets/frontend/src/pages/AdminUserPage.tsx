@@ -15,7 +15,7 @@ interface User {
     username: string;
     full_name?: string;
     email: string;
-    role: 'admin' | 'supervisor' | 'agent' | 'client';
+    role: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
     status: 'active' | 'inactive';
     company_name?: string;
     department_name?: string;
@@ -55,7 +55,7 @@ const AdminUsersPage: React.FC = () => {
     // Formulario
     const [formData, setFormData] = useState<{
         username: string; full_name: string; email: string; password: string;
-        role: 'admin' | 'supervisor' | 'agent' | 'client';
+        role: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
         status: 'active' | 'inactive';
         company_id: string; department_id: string;
         permissions: string[];
@@ -254,7 +254,7 @@ const AdminUsersPage: React.FC = () => {
                                         <td className="p-5">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                                                    user.role === 'admin' ? 'bg-red-500' : user.role === 'supervisor' ? 'bg-amber-500' : user.role === 'agent' ? 'bg-purple-500' : 'bg-blue-500'
+                                                    user.role === 'admin' ? 'bg-red-500' : user.role === 'supervisor' ? 'bg-amber-500' : user.role === 'agent' ? 'bg-purple-500' : user.role === 'viewer' ? 'bg-gray-500' : 'bg-blue-500'
                                                 }`}>
                                                     {(user.username || '?').charAt(0).toUpperCase()}
                                                 </div>
@@ -292,7 +292,7 @@ const AdminUsersPage: React.FC = () => {
                                                         {user.company_name || 'Sin Empresa Asignada'}
                                                     </div>
                                                 </div>
-                                            ) : user.role === 'agent' || user.role === 'supervisor' || user.role === 'admin' ? (
+                                            ) : user.role === 'agent' || user.role === 'supervisor' || user.role === 'admin' || user.role === 'viewer' ? (
                                                 <span className="text-gray-400 text-sm italic">Interno (Schettini)</span>
                                             ) : null}
                                         </td>
@@ -373,6 +373,7 @@ const AdminUsersPage: React.FC = () => {
                             viewUser.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-orange-500' :
                             viewUser.role === 'supervisor' ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
                             viewUser.role === 'agent' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                            viewUser.role === 'viewer' ? 'bg-gradient-to-r from-gray-500 to-slate-600' :
                             'bg-gradient-to-r from-blue-500 to-cyan-500'
                         }`}>
                             <button onClick={() => setViewUser(null)} className="absolute top-4 right-4 text-white hover:text-gray-200 text-2xl font-bold">&times;</button>
@@ -382,7 +383,7 @@ const AdminUsersPage: React.FC = () => {
                         <div className="px-8 pb-8 -mt-12 text-center">
                             <div className="bg-white p-2 rounded-full inline-block shadow-lg">
                                 <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold text-white ${
-                                    viewUser.role === 'admin' ? 'bg-red-500' : viewUser.role === 'supervisor' ? 'bg-amber-500' : viewUser.role === 'agent' ? 'bg-purple-500' : 'bg-blue-500'
+                                    viewUser.role === 'admin' ? 'bg-red-500' : viewUser.role === 'supervisor' ? 'bg-amber-500' : viewUser.role === 'agent' ? 'bg-purple-500' : viewUser.role === 'viewer' ? 'bg-gray-500' : 'bg-blue-500'
                                 }`}>
                                     {(viewUser.full_name || viewUser.username || '?').charAt(0).toUpperCase()}
                                 </div>
@@ -399,6 +400,7 @@ const AdminUsersPage: React.FC = () => {
                                     viewUser.role === 'admin' ? 'bg-red-100 text-red-700' :
                                     viewUser.role === 'supervisor' ? 'bg-amber-100 text-amber-700' :
                                     viewUser.role === 'agent' ? 'bg-purple-100 text-purple-700' :
+                                    viewUser.role === 'viewer' ? 'bg-gray-100 text-gray-700' :
                                     'bg-blue-100 text-blue-700'
                                 }`}>
                                     {viewUser.role}
@@ -512,7 +514,7 @@ const AdminUsersPage: React.FC = () => {
                                         className="w-full border border-gray-300 p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={formData.role}
                                         onChange={e => {
-                                            const newRole = e.target.value as 'admin'|'supervisor'|'agent'|'client';
+                                            const newRole = e.target.value as 'admin'|'supervisor'|'agent'|'client'|'viewer';
                                             const perms = (newRole === 'agent' || newRole === 'supervisor') && (!formData.permissions?.length)
                                                 ? DEFAULT_AGENT_PERMISSIONS : (formData.permissions?.length ? formData.permissions : []);
                                             setFormData({...formData, role: newRole, permissions: perms});
@@ -521,6 +523,7 @@ const AdminUsersPage: React.FC = () => {
                                         <option value="client">Cliente</option>
                                         <option value="agent">Agente</option>
                                         <option value="supervisor">Supervisor</option>
+                                        <option value="viewer">Vista (solo lectura)</option>
                                         <option value="admin">Administrador</option>
                                     </select>
                                 </div>
