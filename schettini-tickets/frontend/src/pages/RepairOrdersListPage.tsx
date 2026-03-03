@@ -231,39 +231,39 @@ const RepairOrdersListPage: React.FC = () => {
       </div>
 
       <SectionCard title="Filtros">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="flex flex-wrap gap-3 min-w-0">
           <input
             type="text"
             placeholder="Nº Orden"
             value={filters.orderNumber}
             onChange={(e) => setFilters((f) => ({ ...f, orderNumber: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           />
           <input
             type="text"
             placeholder="Marca"
             value={filters.brand}
             onChange={(e) => setFilters((f) => ({ ...f, brand: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           />
           <input
             type="text"
             placeholder="Modelo"
             value={filters.model}
             onChange={(e) => setFilters((f) => ({ ...f, model: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           />
           <input
             type="text"
             placeholder="Nº Serie"
             value={filters.serial}
             onChange={(e) => setFilters((f) => ({ ...f, serial: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           />
           <select
             value={filters.clientId}
             onChange={(e) => setFilters((f) => ({ ...f, clientId: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           >
             <option value="">Cliente</option>
             {clients.map((c) => (
@@ -273,7 +273,7 @@ const RepairOrdersListPage: React.FC = () => {
           <select
             value={filters.technicianId}
             onChange={(e) => setFilters((f) => ({ ...f, technicianId: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           >
             <option value="">Técnico</option>
             {technicians.map((t) => (
@@ -283,27 +283,25 @@ const RepairOrdersListPage: React.FC = () => {
           <select
             value={filters.status}
             onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           >
             <option value="">Estado</option>
             {Object.entries(STATUS_LABELS).map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}
           </select>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-              className="px-3 py-2 border rounded-lg text-sm"
-            />
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-              className="px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
+          <input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
+          />
+          <input
+            type="date"
+            value={filters.dateTo}
+            onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+            className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
+          />
         </div>
       </SectionCard>
 

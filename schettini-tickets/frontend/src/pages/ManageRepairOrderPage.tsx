@@ -937,16 +937,23 @@ const ManageRepairOrderPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra</label>
-                      <select value={isOficialFabricante ? '0' : laborValue} onChange={(e) => setLaborValue(e.target.value)} disabled={isOficialFabricante} className={`w-full px-3 py-2 border rounded-lg ${isOficialFabricante ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                        <option value="">Seleccionar...</option>
-                        <option value="0">$0</option>
+                      <input
+                        type="number"
+                        list="labor-options-cotizador"
+                        min={0}
+                        step="0.01"
+                        value={isOficialFabricante ? '0' : laborValue}
+                        onChange={(e) => setLaborValue(e.target.value)}
+                        disabled={isOficialFabricante}
+                        placeholder="Ej: 12500 o seleccionar de la lista"
+                        className={`w-full px-3 py-2 border rounded-lg ${isOficialFabricante ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      />
+                      <datalist id="labor-options-cotizador">
+                        <option value="0" />
                         {laborOptions.map((o) => (
-                          <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                          <option key={o.id} value={o.value} />
                         ))}
-                        {laborValue && !laborOptions.some((o) => o.value === laborValue) && (
-                          <option value={laborValue}>${parseFloat(laborValue || '0').toLocaleString('es-AR')} (guardado)</option>
-                        )}
-                      </select>
+                      </datalist>
                     </div>
                     <div className="pt-3 border-t border-gray-200 space-y-1 text-sm">
                       <p className="flex justify-between"><span>Subtotal neto:</span> <strong>${effectiveSubtotalNeto.toLocaleString('es-AR')}</strong></p>
@@ -989,16 +996,21 @@ const ManageRepairOrderPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Mano de Obra</label>
-                      <select
+                      <input
+                        type="number"
+                        list="labor-options-manual"
+                        min={0}
+                        step="0.01"
                         value={manualLaborValue}
                         onChange={(e) => setManualLaborValue(e.target.value)}
+                        placeholder="Ej: 12500 o seleccionar de la lista"
                         className="w-full px-3 py-2 border rounded-lg bg-white"
-                      >
-                        <option value="">Seleccionar...</option>
+                      />
+                      <datalist id="labor-options-manual">
                         {laborOptions.map((o) => (
-                          <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                          <option key={o.id} value={o.value} />
                         ))}
-                      </select>
+                      </datalist>
                     </div>
                     <div className="pt-3 border-t border-gray-300 space-y-1 text-sm bg-white p-3 rounded">
                       <p className="flex justify-between text-gray-600"><span>Costo Base Pesos:</span> <strong>${costoBasePesosManual.toLocaleString('es-AR')}</strong></p>

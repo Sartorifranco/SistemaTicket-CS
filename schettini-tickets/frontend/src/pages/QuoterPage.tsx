@@ -654,16 +654,21 @@ const QuoterPage: React.FC = () => {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Mano de Obra</label>
-              <select
+              <input
+                type="number"
+                list="labor-options-quoter"
+                min={0}
+                step="0.01"
                 value={manualLaborValue}
                 onChange={(e) => setManualLaborValue(e.target.value)}
+                placeholder="Ej: 12500 o seleccionar de la lista"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
-              >
-                <option value="">Seleccionar...</option>
+              />
+              <datalist id="labor-options-quoter">
                 {laborOptions.map((o) => (
-                  <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
+                  <option key={o.id} value={o.value} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div className="p-4 bg-white rounded-lg border border-gray-300 space-y-2">
