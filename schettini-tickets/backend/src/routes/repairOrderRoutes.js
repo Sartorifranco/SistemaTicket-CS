@@ -5,6 +5,7 @@ const path = require('path');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const {
   getRepairOrders,
+  getMonitorOrders,
   getMyRepairOrders,
   getRepairOrderById,
   createRepairOrder,
@@ -38,8 +39,9 @@ const upload = multer({
 
 router.use(protect);
 
-// CRUD (my-orders debe ir ANTES de :id)
+// CRUD (my-orders y monitor deben ir ANTES de :id)
 router.get('/my-orders', getMyRepairOrders);
+router.get('/monitor', getMonitorOrders);
 router.get('/', getRepairOrders);
 router.get('/:id', getRepairOrderById);
 router.post(

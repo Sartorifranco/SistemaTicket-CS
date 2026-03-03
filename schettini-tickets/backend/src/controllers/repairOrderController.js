@@ -48,6 +48,58 @@ const generateOrderNumber = async () => {
   return `REP-${String(nextNum).padStart(4, '0')}`;
 };
 
+const PENDING_STATUSES = ['ingresado', 'cotizado', 'aceptado', 'no_aceptado', 'en_espera', 'sin_reparacion', 'listo'];
+
+// GET - Órdenes pendientes para Monitor KDS (pantalla de cocina)
+const getMonitorOrders = async (req, res) => {
+  try {
+    if (req.user.role === 'client') {
+      return res.status(403).json({ success: false, message: 'Acceso denegado' });
+    }
+    const [rows] = await pool.query(
+      `SELECT ro.id, ro.order_number, ro.entry_date, ro.status, ro.promised_date,
+        COALESCE(ro.priority, 'Normal') AS priority,
+        u.username AS client_name, u.business_name AS client_business_name,
+        t.username AS technician_name, t.full_name AS technician_full_name
+       FROM repair_orders ro
+       LEFT JOIN Users u ON ro.client_id = u.id
+       LEFT JOIN Users t ON ro.technician_id = t.id
+       WHERE ro.status IN (${PENDING_STATUSES.map(() => '?').join(',')})
+       ORDER BY
+         CASE COALESCE(ro.priority, 'Normal')
+           WHEN 'Urgente' THEN 1 WHEN 'Critico' THEN 2 ELSE 3 END,
+         ro.entry_date ASC`,
+      [...PENDING_STATUSES]
+    );
+    const ids = rows.map((r) => r.id);
+    const itemsMap = {};
+    if (ids.length > 0) {
+      const [items] = await pool.query(
+        'SELECT repair_order_id, equipment_type, brand, model FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
+        [ids]
+      );
+      items.forEach((it) => {
+        if (!itemsMap[it.repair_order_id]) itemsMap[it.repair_order_id] = [];
+        itemsMap[it.repair_order_id].push(it);
+      });
+    }
+    const data = rows.map((r) => {
+      const items = itemsMap[r.id] || [];
+      const first = items[0] || {};
+      return {
+        ...r,
+        equipment_type: first.equipment_type,
+        brand: first.brand,
+        model: first.model
+      };
+    });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error getMonitorOrders:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener órdenes' });
+  }
+};
+
 // GET - Listar todas las órdenes
 const getRepairOrders = async (req, res) => {
   try {
@@ -430,6 +482,9 @@ const createRepairOrder = async (req, res) => {
       );
     }
 
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
     res.status(201).json({
       success: true,
       message: 'Orden creada',
@@ -642,6 +697,9 @@ const updateRepairOrder = async (req, res) => {
       }
     }
 
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
     res.json({ success: true, message: 'Orden actualizada' });
   } catch (error) {
     console.error('Error updateRepairOrder:', error);
@@ -662,6 +720,9 @@ const deleteRepairOrder = async (req, res) => {
     await pool.query('DELETE FROM repair_order_items WHERE repair_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_orders WHERE id = ?', [id]);
 
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
     res.json({ success: true, message: 'Orden eliminada' });
   } catch (error) {
     console.error('Error deleteRepairOrder:', error);
@@ -787,6 +848,9 @@ const processRecyclingToAbandoned = async (req, res) => {
       ['abandonado', recyclingNotes, recyclingPhotosJson, id]
     );
 
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
     res.json({ success: true, message: 'Orden procesada a reciclaje (abandonado)' });
   } catch (error) {
     console.error('Error processRecyclingToAbandoned:', error);
@@ -796,6 +860,7 @@ const processRecyclingToAbandoned = async (req, res) => {
 
 module.exports = {
   getRepairOrders,
+  getMonitorOrders,
   getMyRepairOrders,
   getRepairOrderById,
   createRepairOrder,
