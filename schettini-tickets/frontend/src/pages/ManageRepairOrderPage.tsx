@@ -212,6 +212,11 @@ const ManageRepairOrderPage: React.FC = () => {
   const [showSparePartsDropdown, setShowSparePartsDropdown] = useState(false);
   const [laborOptions, setLaborOptions] = useState<LaborOption[]>([]);
   const [laborValue, setLaborValue] = useState('');
+  const [accessoriesOptions, setAccessoriesOptions] = useState<string[]>([]);
+  const [accessoriesArray, setAccessoriesArray] = useState<string[]>([]);
+  const [otherAccessoryInput, setOtherAccessoryInput] = useState('');
+  const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<string[]>([]);
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
   const [manualPartNombre, setManualPartNombre] = useState('');
   const [manualPartPrecio, setManualPartPrecio] = useState('');
   const [manualCostInput, setManualCostInput] = useState('');
@@ -228,6 +233,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const [form, setForm] = useState({
     status: '',
     equipmentType: '',
+    brand: '',
     model: '',
     serialNumber: '',
     reportedFault: '',
@@ -262,13 +268,18 @@ const ManageRepairOrderPage: React.FC = () => {
       .then((res) => {
         const o = res.data.data;
         setOrder(o);
+        const rawAccessories = (o.items?.[0]?.included_accessories ?? o.included_accessories ?? '') || '';
+        const parsedAccessories = rawAccessories.split(',').map((s: string) => s.trim()).filter(Boolean);
+        setAccessoriesArray(parsedAccessories);
+
         setForm({
           status: o.status || '',
           equipmentType: o.equipment_type || '',
+          brand: (o.items?.[0]?.brand ?? o.brand ?? '') || '',
           model: o.model || '',
           serialNumber: o.serial_number || '',
           reportedFault: o.reported_fault || '',
-          includedAccessories: o.included_accessories || '',
+          includedAccessories: rawAccessories,
           technicalReport: o.technical_report || '',
           laborCost: o.labor_cost != null ? String(o.labor_cost) : '',
           sparePartsCost: o.spare_parts_cost != null ? String(o.spare_parts_cost) : '',
@@ -329,6 +340,24 @@ const ManageRepairOrderPage: React.FC = () => {
   useEffect(() => {
     api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=labor_price').then((res) => {
       setLaborOptions((res.data.data || []).map((o) => ({ id: o.id, value: o.value })));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=accessories').then((res) => {
+      setAccessoriesOptions((res.data.data || []).map((o) => o.value));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=equipment_type').then((res) => {
+      setEquipmentTypeOptions((res.data.data || []).map((o) => o.value));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=brand').then((res) => {
+      setBrandOptions((res.data.data || []).map((o) => o.value));
     }).catch(() => {});
   }, []);
 
@@ -406,6 +435,26 @@ const ManageRepairOrderPage: React.FC = () => {
   };
 
   const removeSparePart = (idx: number) => setSparePartsList((p) => p.filter((_, i) => i !== idx));
+
+  const toggleAccessory = (value: string) => {
+    setAccessoriesArray((prev) =>
+      prev.includes(value) ? prev.filter((a) => a !== value) : [...prev, value]
+    );
+  };
+
+  const addOtherAccessory = () => {
+    const val = otherAccessoryInput.trim();
+    if (!val) {
+      toast.warn('Ingresá un accesorio');
+      return;
+    }
+    if (accessoriesArray.includes(val)) {
+      toast.warn('Ya está agregado');
+      return;
+    }
+    setAccessoriesArray((prev) => [...prev, val]);
+    setOtherAccessoryInput('');
+  };
 
   const openWhatsAppModal = () => {
     if (!order) return;
@@ -497,10 +546,11 @@ const ManageRepairOrderPage: React.FC = () => {
       await api.put(`/api/repair-orders/${id}`, {
         status: form.status || null,
         equipmentType: form.equipmentType || null,
+        brand: form.brand || null,
         model: form.model || null,
         serialNumber: form.serialNumber || null,
         reportedFault: form.reportedFault || null,
-        includedAccessories: form.includedAccessories || null,
+        includedAccessories: accessoriesArray.length > 0 ? accessoriesArray.join(', ') : null,
         technicalReport: form.technicalReport || null,
         laborCost: isOficialFabricante ? 0 : (effectiveLaborNum || null),
         sparePartsCost: isOficialFabricante ? 0 : (effectiveSparePartsTotal || null),
@@ -646,7 +696,37 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
-                <input name="equipmentType" value={form.equipmentType} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                <input
+                  name="equipmentType"
+                  list="equipment-type-list"
+                  value={form.equipmentType}
+                  onChange={handleChange}
+                  disabled={!canEditEquipment}
+                  placeholder="Seleccionar o escribir..."
+                  className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                />
+                <datalist id="equipment-type-list">
+                  {equipmentTypeOptions.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                <input
+                  name="brand"
+                  list="brand-list"
+                  value={form.brand}
+                  onChange={handleChange}
+                  disabled={!canEditEquipment}
+                  placeholder="Seleccionar o escribir..."
+                  className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                />
+                <datalist id="brand-list">
+                  {brandOptions.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
@@ -715,7 +795,64 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Accesorios incluidos</label>
-                <textarea name="includedAccessories" value={form.includedAccessories} onChange={handleChange} rows={2} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                {!canEditEquipment ? (
+                  <div className="text-gray-600 py-2">{accessoriesArray.length > 0 ? accessoriesArray.join(', ') : '—'}</div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                      {accessoriesOptions.map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={accessoriesArray.includes(opt)}
+                            onChange={() => toggleAccessory(opt)}
+                            className="w-4 h-4 text-indigo-600 rounded border-gray-300"
+                          />
+                          <span className="text-sm">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {accessoriesArray.filter((a) => !accessoriesOptions.includes(a)).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className="text-xs text-gray-500 font-medium">Otros (manuales):</span>
+                        {accessoriesArray
+                          .filter((a) => !accessoriesOptions.includes(a))
+                          .map((a) => (
+                            <span
+                              key={a}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm"
+                            >
+                              {a}
+                              <button
+                                type="button"
+                                onClick={() => toggleAccessory(a)}
+                                className="text-indigo-600 hover:text-indigo-800 ml-0.5"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={otherAccessoryInput}
+                        onChange={(e) => setOtherAccessoryInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOtherAccessory())}
+                        placeholder="Otro accesorio (especificar)..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={addOtherAccessory}
+                        className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 text-sm"
+                      >
+                        Agregar
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Informe Técnico / Solución</label>
