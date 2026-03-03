@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
 import { FaPlus, FaEye, FaPrint, FaWhatsapp } from 'react-icons/fa';
@@ -112,8 +113,10 @@ function getAlertBadge(order: RepairOrderRow): { text: string; className: string
 const RepairOrdersListPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const isAdmin = location.pathname.startsWith('/admin');
   const basePath = isAdmin ? '/admin/repair-orders' : '/agent/repair-orders';
+  const isViewer = user?.role === 'viewer';
 
   const [orders, setOrders] = useState<RepairOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,12 +220,14 @@ const RepairOrdersListPage: React.FC = () => {
     <div className="space-y-6 print:hidden">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Órdenes de Reparación</h1>
-        <button
-          onClick={() => navigate(`${basePath}/new`)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
-        >
-          <FaPlus /> Nueva Orden
-        </button>
+        {!isViewer && (
+          <button
+            onClick={() => navigate(`${basePath}/new`)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
+          >
+            <FaPlus /> Nueva Orden
+          </button>
+        )}
       </div>
 
       <SectionCard title="Filtros">

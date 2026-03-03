@@ -203,6 +203,8 @@ const getRepairOrderById = async (req, res) => {
     const data = { ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault };
     if (userRole === 'client') {
       delete data.internal_notes;
+      delete data.recycling_notes;
+      delete data.recycling_photos;
     }
     res.json({
       success: true,
@@ -396,7 +398,9 @@ const updateRepairOrder = async (req, res) => {
       deliveryAddress,
       paymentMethod,
       paymentOperationNumber,
-      priority
+      priority,
+      recyclingNotes,
+      recyclingPhotos
     } = req.body;
 
     const [existing] = await pool.query('SELECT id FROM repair_orders WHERE id = ?', [id]);
@@ -439,6 +443,11 @@ const updateRepairOrder = async (req, res) => {
     if (paymentMethod !== undefined) add('payment_method', paymentMethod);
     if (paymentOperationNumber !== undefined) add('payment_operation_number', paymentOperationNumber);
     if (priority !== undefined) add('priority', priority);
+    if (recyclingNotes !== undefined) add('recycling_notes', recyclingNotes);
+    if (recyclingPhotos !== undefined) {
+      const val = typeof recyclingPhotos === 'string' ? (recyclingPhotos ? JSON.parse(recyclingPhotos) : null) : recyclingPhotos;
+      add('recycling_photos', val ? JSON.stringify(val) : null);
+    }
     if (setClause.length > 0) {
       setParams.push(id);
       await pool.query(`UPDATE repair_orders SET ${setClause.join(', ')} WHERE id = ?`, setParams);
@@ -583,6 +592,33 @@ const deleteRepairOrderPhoto = async (req, res) => {
   }
 };
 
+// POST - Procesar a reciclaje (estado abandonado): recycling_notes + fotos
+const processRecyclingToAbandoned = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const files = req.files || [];
+    const recyclingNotes = req.body.recycling_notes || req.body.recyclingNotes || null;
+
+    const [existing] = await pool.query('SELECT id FROM repair_orders WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Orden no encontrada' });
+    }
+
+    const recyclingPhotoUrls = files.map((f) => `/uploads/${f.filename}`);
+    const recyclingPhotosJson = recyclingPhotoUrls.length > 0 ? JSON.stringify(recyclingPhotoUrls) : null;
+
+    await pool.query(
+      'UPDATE repair_orders SET status = ?, recycling_notes = ?, recycling_photos = ? WHERE id = ?',
+      ['abandonado', recyclingNotes, recyclingPhotosJson, id]
+    );
+
+    res.json({ success: true, message: 'Orden procesada a reciclaje (abandonado)' });
+  } catch (error) {
+    console.error('Error processRecyclingToAbandoned:', error);
+    res.status(500).json({ success: false, message: 'Error al procesar reciclaje' });
+  }
+};
+
 module.exports = {
   getRepairOrders,
   getMyRepairOrders,
@@ -592,5 +628,6 @@ module.exports = {
   deleteRepairOrder,
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,
-  requestInvoice
+  requestInvoice,
+  processRecyclingToAbandoned
 };

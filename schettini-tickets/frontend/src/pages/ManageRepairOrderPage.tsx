@@ -196,6 +196,11 @@ const ManageRepairOrderPage: React.FC = () => {
   const sparePartsDropdownRef = useRef<HTMLDivElement>(null);
   useReceiptPrintPortal();
 
+  const [showRecyclingModal, setShowRecyclingModal] = useState(false);
+  const [recyclingNotes, setRecyclingNotes] = useState('');
+  const [recyclingPhotos, setRecyclingPhotos] = useState<File[]>([]);
+  const [savingRecycling, setSavingRecycling] = useState(false);
+
   const [form, setForm] = useState({
     status: '',
     equipmentType: '',
@@ -454,7 +459,44 @@ const ManageRepairOrderPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'status' && value === 'abandonado') {
+      if (user?.role === 'agent' && order?.entry_date) {
+        const entry = new Date(order.entry_date).getTime();
+        const now = Date.now();
+        const days = (now - entry) / (24 * 60 * 60 * 1000);
+        if (days < 90) {
+          toast.error('Debe cumplir 90 días para declarar abandono.');
+          return;
+        }
+      }
+      setRecyclingNotes('');
+      setRecyclingPhotos([]);
+      setShowRecyclingModal(true);
+      return;
+    }
     setForm((p) => ({ ...p, [name]: value }));
+  };
+
+  const handleRecyclingSave = async () => {
+    if (!id) return;
+    setSavingRecycling(true);
+    try {
+      const formData = new FormData();
+      formData.append('recycling_notes', recyclingNotes);
+      recyclingPhotos.forEach((f) => formData.append('photos', f));
+      await api.post(`/api/repair-orders/${id}/recycling`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Orden procesada a reciclaje (abandonado).');
+      setShowRecyclingModal(false);
+      setRecyclingNotes('');
+      setRecyclingPhotos([]);
+      fetchOrder();
+    } catch {
+      toast.error('Error al procesar reciclaje.');
+    } finally {
+      setSavingRecycling(false);
+    }
   };
 
   if (loading) {
@@ -770,6 +812,52 @@ const ManageRepairOrderPage: React.FC = () => {
             ))}
           </div>
         </SectionCard>
+      )}
+
+      {/* Modal Procesar a Reciclaje */}
+      {showRecyclingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-xl font-bold text-gray-800">Procesar a Reciclaje</h2>
+              <button onClick={() => setShowRecyclingModal(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600">La orden pasará a estado <strong>Abandonado/Reciclaje</strong>. Complete las observaciones y fotos del equipo (internas, no visibles para el cliente).</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones de Reciclaje (internas)</label>
+                <textarea
+                  value={recyclingNotes}
+                  onChange={(e) => setRecyclingNotes(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Estado del equipo, motivo del reciclaje..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Imágenes del estado del equipo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => setRecyclingPhotos(e.target.files ? Array.from(e.target.files) : [])}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+                {recyclingPhotos.length > 0 && <p className="text-xs text-gray-500 mt-1">{recyclingPhotos.length} archivo(s) seleccionado(s)</p>}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button type="button" onClick={() => setShowRecyclingModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button type="button" onClick={handleRecyclingSave} disabled={savingRecycling} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                {savingRecycling ? 'Guardando...' : 'Guardar y pasar a Abandonado'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal WhatsApp */}

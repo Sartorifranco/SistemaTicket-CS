@@ -35,6 +35,15 @@ const protect = asyncHandler(async (req, res, next) => {
                 throw new Error('Cuenta desactivada');
             }
 
+            // Rol Vista (viewer): solo lectura; rechazar POST, PUT, PATCH, DELETE excepto login
+            if (req.user.role === 'viewer' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+                const isLogin = req.originalUrl.includes('/api/auth/login') || req.path.endsWith('/login');
+                if (!isLogin) {
+                    res.status(403).json({ message: 'Rol Vista: solo lectura. No puede realizar esta acción.' });
+                    return;
+                }
+            }
+
             next();
         } catch (error) {
             console.error('❌ [Auth] Error:', error.message);

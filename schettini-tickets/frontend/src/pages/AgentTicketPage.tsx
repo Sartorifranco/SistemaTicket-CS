@@ -31,6 +31,7 @@ const AgentTicketsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { user } = useAuth();
+    const isViewer = user?.role === 'viewer';
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -195,12 +196,14 @@ const AgentTicketsPage: React.FC = () => {
             <div className="container mx-auto p-4 sm:p-6 lg:p-8">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold text-gray-800">Panel de Agente</h1>
-                    <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
-                    >
-                        Crear Nuevo Ticket
-                    </button>
+                    {!isViewer && (
+                        <button 
+                            onClick={() => setIsModalOpen(true)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
+                        >
+                            Crear Nuevo Ticket
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex space-x-2 mb-6 p-1 bg-gray-200 rounded-lg">
@@ -272,30 +275,38 @@ const AgentTicketsPage: React.FC = () => {
                                             {formatLocalDate(ticket.created_at)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <select 
-                                                value={ticket.status} 
-                                                onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
-                                                className={getStatusSelectClasses(ticket.status as TicketStatus)}
-                                            >
-                                                {Object.entries(ticketStatusTranslations).map(([key, value]) => (
-                                                    <option key={key} value={key}>{value}</option>
-                                                ))}
-                                            </select>
+                                            {isViewer ? (
+                                                <span className={getStatusSelectClasses(ticket.status as TicketStatus)}>{ticketStatusTranslations[ticket.status as TicketStatus] || ticket.status}</span>
+                                            ) : (
+                                                <select 
+                                                    value={ticket.status} 
+                                                    onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
+                                                    className={getStatusSelectClasses(ticket.status as TicketStatus)}
+                                                >
+                                                    {Object.entries(ticketStatusTranslations).map(([key, value]) => (
+                                                        <option key={key} value={key}>{value}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <select 
-                                                value={ticket.priority} 
-                                                onChange={(e) => handlePriorityChange(ticket.id, e.target.value as TicketPriority)}
-                                                className="w-full p-1 border rounded-md text-sm bg-white"
-                                            >
-                                                {Object.entries(ticketPriorityTranslations).map(([key, value]) => (
-                                                    <option key={key} value={key}>{value}</option>
-                                                ))}
-                                            </select>
+                                            {isViewer ? (
+                                                <span className="text-sm">{ticketPriorityTranslations[ticket.priority as TicketPriority] || ticket.priority}</span>
+                                            ) : (
+                                                <select 
+                                                    value={ticket.priority} 
+                                                    onChange={(e) => handlePriorityChange(ticket.id, e.target.value as TicketPriority)}
+                                                    className="w-full p-1 border rounded-md text-sm bg-white"
+                                                >
+                                                    {Object.entries(ticketPriorityTranslations).map(([key, value]) => (
+                                                        <option key={key} value={key}>{value}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                                             {view === 'assigned' && (
-                                                <Link to={`/agent/tickets/${ticket.id}`} className="text-indigo-600 hover:underline font-semibold">Gestionar</Link>
+                                                <Link to={`/agent/tickets/${ticket.id}`} className="text-indigo-600 hover:underline font-semibold">{isViewer ? 'Ver' : 'Gestionar'}</Link>
                                             )}
                                             {view === 'unassigned' && (
                                                 <div className="flex gap-4 justify-end items-center">
@@ -305,7 +316,7 @@ const AgentTicketsPage: React.FC = () => {
                                                     >
                                                         Ver
                                                     </Link>
-                                                    <button onClick={() => handleTakeTicket(ticket.id)} className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600">Tomar</button>
+                                                    {!isViewer && <button onClick={() => handleTakeTicket(ticket.id)} className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600">Tomar</button>}
                                                 </div>
                                             )}
                                             {view === 'all' && (

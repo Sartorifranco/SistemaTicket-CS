@@ -38,7 +38,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles, permission
         return <div className="p-8 text-center text-red-500">No tienes permiso para acceder a esta página.</div>;
     }
 
-    if (permission && (user?.role === 'agent' || user?.role === 'supervisor')) {
+    if (permission && (user?.role === 'agent' || user?.role === 'supervisor' || user?.role === 'viewer')) {
         const perms = user.permissions || [];
         if (!hasRequiredPermission(perms, permission)) {
             return <div className="p-8 text-center text-red-500">No tienes permiso para acceder a esta página.</div>;

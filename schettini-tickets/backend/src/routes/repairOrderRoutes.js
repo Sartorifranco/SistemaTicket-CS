@@ -12,7 +12,8 @@ const {
   deleteRepairOrder,
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,
-  requestInvoice
+  requestInvoice,
+  processRecyclingToAbandoned
 } = require('../controllers/repairOrderController');
 
 // Configuración de subida de imágenes
@@ -50,6 +51,7 @@ router.post(
 router.put('/:id', authorize('admin', 'agent', 'supervisor'), updateRepairOrder);
 router.delete('/:id', authorize('admin', 'agent', 'supervisor'), deleteRepairOrder);
 
+router.post('/:id/recycling', authorize('admin', 'agent', 'supervisor'), upload.array('photos', 10), processRecyclingToAbandoned);
 router.post('/:id/request-invoice', requestInvoice);
 
 // Fotos

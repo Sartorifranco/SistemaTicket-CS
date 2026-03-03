@@ -29,6 +29,7 @@ const AgentTicketDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const isViewer = user?.role === 'viewer';
     
     const [ticket, setTicket] = useState<TicketData | null>(null);
     const [agents, setAgents] = useState<User[]>([]);
@@ -227,7 +228,7 @@ const AgentTicketDetailPage: React.FC = () => {
                         </div>
                         
                         <div className="mt-4 pt-4 border-t">
-                            {user && <CommentForm onAddComment={handleAddComment} userRole={user.role} />}
+                            {user && !isViewer && <CommentForm onAddComment={handleAddComment} userRole={user.role} />}
                         </div>
                     </SectionCard>
                 </div>
@@ -246,17 +247,21 @@ const AgentTicketDetailPage: React.FC = () => {
                             </div>
                             <div>
                                 <label htmlFor="priority-select" className="block text-sm font-medium text-gray-700">Prioridad</label>
-                                <select 
-                                    id="priority-select"
-                                    value={ticket.priority}
-                                    onChange={(e) => handlePriorityChange(e.target.value as TicketPriority)}
-                                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
-                                    disabled={ticket.status === 'closed'}
-                                >
-                                    {Object.entries(ticketPriorityTranslations).map(([key, value]) => (
-                                        <option key={key} value={key}>{value}</option>
-                                    ))}
-                                </select>
+                                {isViewer ? (
+                                    <p className="mt-1 text-gray-800">{ticketPriorityTranslations[ticket.priority] || ticket.priority}</p>
+                                ) : (
+                                    <select 
+                                        id="priority-select"
+                                        value={ticket.priority}
+                                        onChange={(e) => handlePriorityChange(e.target.value as TicketPriority)}
+                                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+                                        disabled={ticket.status === 'closed'}
+                                    >
+                                        {Object.entries(ticketPriorityTranslations).map(([key, value]) => (
+                                            <option key={key} value={key}>{value}</option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                         </div>
                     </SectionCard>
