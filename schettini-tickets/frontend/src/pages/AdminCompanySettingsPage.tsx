@@ -3,7 +3,28 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
-import { FaSave, FaBuilding, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaPercent, FaFileAlt, FaPalette, FaImage, FaTicketAlt, FaTrash, FaPlus, FaCalculator, FaFileExcel, FaBalanceScale } from 'react-icons/fa';
+import {
+  FaSave,
+  FaBuilding,
+  FaMapMarkerAlt,
+  FaPhone,
+  FaEnvelope,
+  FaGlobe,
+  FaPercent,
+  FaFileAlt,
+  FaPalette,
+  FaImage,
+  FaTicketAlt,
+  FaTrash,
+  FaPlus,
+  FaCalculator,
+  FaFileExcel,
+  FaBalanceScale,
+  FaCog,
+  FaTags,
+  FaToolbox,
+  FaList
+} from 'react-icons/fa';
 
 interface CompanySettings {
   company_name: string;
@@ -37,7 +58,122 @@ const defaultSettings: CompanySettings = {
   list_price_surcharge_percent: null,
 };
 
+type TabId = 'empresa' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'categorias-tickets';
+
+const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'empresa', label: 'Datos de la Empresa', icon: <FaBuilding /> },
+  { id: 'accesorios', label: 'Accesorios', icon: <FaToolbox /> },
+  { id: 'marcas', label: 'Marcas', icon: <FaTags /> },
+  { id: 'tipos-equipo', label: 'Tipos de Equipo', icon: <FaList /> },
+  { id: 'categorias-tickets', label: 'Categorías de Tickets', icon: <FaTicketAlt /> },
+];
+
+/** Componente genérico para gestionar listas de system_options por categoría */
+const OptionsListManager: React.FC<{
+  category: string;
+  title: string;
+  description: string;
+  placeholder?: string;
+}> = ({ category, title, description, placeholder = 'Escribir y agregar...' }) => {
+  const [items, setItems] = useState<{ id: number; value: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newValue, setNewValue] = useState('');
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>(
+        `/api/settings/system-options?category=${encodeURIComponent(category)}`
+      );
+      setItems((res.data.data || []).map((o) => ({ id: o.id, value: o.value })));
+    } catch {
+      toast.error(`No se pudieron cargar los datos de ${title}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, [category]);
+
+  const handleAdd = async () => {
+    const val = newValue.trim();
+    if (!val) {
+      toast.warn('Ingresá un valor');
+      return;
+    }
+    try {
+      await api.post('/api/settings/system-options', { category, value: val });
+      toast.success('Agregado correctamente');
+      setNewValue('');
+      fetchItems();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al agregar';
+      toast.error(msg);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('¿Eliminar este elemento?')) return;
+    try {
+      await api.delete(`/api/settings/system-options/${id}`);
+      toast.success('Eliminado');
+      fetchItems();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar';
+      toast.error(msg);
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+      <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">{title}</h3>
+      <p className="text-sm text-gray-500 mb-4">{description}</p>
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAdd())}
+          placeholder={placeholder}
+          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+        >
+          <FaPlus /> Agregar
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-gray-500">Cargando...</p>
+      ) : items.length === 0 ? (
+        <p className="text-gray-500 italic">No hay elementos. Agregá uno nuevo arriba.</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="font-medium text-gray-800">{item.value}</span>
+              <button
+                type="button"
+                onClick={() => handleDelete(item.id)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                title="Eliminar"
+              >
+                <FaTrash />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const AdminCompanySettingsPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabId>('empresa');
   const [formData, setFormData] = useState<CompanySettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -250,310 +386,351 @@ const AdminCompanySettingsPage: React.FC = () => {
   return (
     <div className="container mx-auto p-6 animate-fade-in-up max-w-3xl">
       <h1 className="text-3xl font-bold mb-6 text-gray-800 flex items-center gap-3 border-l-4 border-indigo-600 pl-4">
-        <FaBuilding className="text-indigo-600" /> Datos de Mi Empresa
+        <FaCog className="text-indigo-600" /> Configuración Central
       </h1>
 
       <p className="text-gray-500 mb-6">
-        Esta información aparecerá en los PDFs de cotizaciones y órdenes de taller. Personalizala según tu negocio.
+        Centralizá todas las configuraciones, listas desplegables y datos de tu empresa en un solo lugar.
       </p>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200 space-y-6">
-        {/* Logo */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaImage className="text-blue-600" /> Logo de la Empresa
-          </label>
-          <div className="flex flex-wrap items-start gap-4">
-            {(logoPreview || logoFile) && (
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-32 h-20 border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
-                  <img
-                    src={logoPreview || ''}
-                    alt="Logo actual"
-                    className="max-w-full max-h-full object-contain"
-                  />
+      {/* Pestañas */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex flex-wrap gap-1 -mb-px">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+                activeTab === tab.id
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab: Datos de la Empresa */}
+      {activeTab === 'empresa' && (
+        <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200 space-y-6">
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaImage className="text-blue-600" /> Logo de la Empresa
+            </label>
+            <div className="flex flex-wrap items-start gap-4">
+              {(logoPreview || logoFile) && (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-32 h-20 border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+                    <img src={logoPreview || ''} alt="Logo actual" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <span className="text-xs text-gray-500">Vista previa</span>
                 </div>
-                <span className="text-xs text-gray-500">Vista previa</span>
+              )}
+              <div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleLogoChange}
+                  className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100 cursor-pointer"
+                />
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF o WebP. Máx. 5 MB.</p>
               </div>
-            )}
-            <div>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                onChange={handleLogoChange}
-                className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100 cursor-pointer"
-              />
-              <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF o WebP. Máx. 5 MB.</p>
             </div>
           </div>
-        </div>
 
-        {/* Nombre */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaBuilding className="text-indigo-600" /> Nombre de la Empresa
-          </label>
-          <input
-            type="text"
-            value={formData.company_name}
-            onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            placeholder="Ej: Tu Empresa S.A."
-          />
-        </div>
-
-        {/* Dirección */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaMapMarkerAlt className="text-red-500" /> Dirección
-          </label>
-          <input
-            type="text"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            placeholder="Ej: Av. Corrientes 1234, CABA"
-          />
-        </div>
-
-        {/* Teléfono y Email */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <FaPhone className="text-green-600" /> Teléfono
+              <FaBuilding className="text-indigo-600" /> Nombre de la Empresa
             </label>
             <input
               type="text"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              value={formData.company_name}
+              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="Ej: (011) 1234-5678"
+              placeholder="Ej: Tu Empresa S.A."
             />
           </div>
+
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <FaEnvelope className="text-orange-500" /> Email
+              <FaMapMarkerAlt className="text-red-500" /> Dirección
             </label>
             <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="contacto@tuempresa.com"
+              placeholder="Ej: Av. Corrientes 1234, CABA"
             />
           </div>
-        </div>
 
-        {/* Sitio Web */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaGlobe className="text-blue-500" /> Sitio Web
-          </label>
-          <input
-            type="text"
-            value={formData.website}
-            onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            placeholder="Ej: www.tuempresa.com.ar"
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <FaPhone className="text-green-600" /> Teléfono
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Ej: (011) 1234-5678"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <FaEnvelope className="text-orange-500" /> Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="contacto@tuempresa.com"
+              />
+            </div>
+          </div>
 
-        {/* Términos y Condiciones Legales */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaBalanceScale className="text-indigo-600" /> Términos y Condiciones Legales
-          </label>
-          <textarea
-            value={formData.legal_footer_text}
-            onChange={(e) => setFormData({ ...formData, legal_footer_text: e.target.value })}
-            rows={8}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
-            placeholder="Términos y condiciones que aparecerán en los PDFs de órdenes de taller y cotizaciones..."
-          />
-          <p className="text-xs text-gray-400 mt-1">Aparece en el pie de los PDFs. Podés usar saltos de línea.</p>
-        </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaGlobe className="text-blue-500" /> Sitio Web
+            </label>
+            <input
+              type="text"
+              value={formData.website}
+              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="Ej: www.tuempresa.com.ar"
+            />
+          </div>
 
-        {/* Configuración del Cotizador */}
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <FaCalculator className="text-amber-600" /> Cotizador Integrado (Órdenes de Taller)
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaBalanceScale className="text-indigo-600" /> Términos y Condiciones Legales
+            </label>
+            <textarea
+              value={formData.legal_footer_text}
+              onChange={(e) => setFormData({ ...formData, legal_footer_text: e.target.value })}
+              rows={8}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
+              placeholder="Términos y condiciones que aparecerán en los PDFs de órdenes de taller y cotizaciones..."
+            />
+            <p className="text-xs text-gray-400 mt-1">Aparece en el pie de los PDFs. Podés usar saltos de línea.</p>
+          </div>
+
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FaCalculator className="text-amber-600" /> Cotizador Integrado (Órdenes de Taller)
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Estos valores se usan en la edición de órdenes para calcular precios. El técnico no puede modificarlos.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cotización USD</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={formData.usd_exchange_rate ?? ''}
+                  onChange={(e) => setFormData({ ...formData, usd_exchange_rate: e.target.value ? parseFloat(e.target.value) : null })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="Ej: 1200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">IVA por defecto (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={100}
+                  value={formData.default_iva_percent ?? ''}
+                  onChange={(e) => setFormData({ ...formData, default_iva_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="21"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Recargo Lista (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={formData.list_price_surcharge_percent ?? ''}
+                  onChange={(e) => setFormData({ ...formData, list_price_surcharge_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="Tarjetas/Link"
+                />
+                <p className="text-xs text-gray-500 mt-1">Recargo para precio de lista (tarjetas, link de pago)</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-amber-200">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <FaFileExcel className="text-green-600" /> Catálogo de Repuestos (Excel)
+              </label>
+              <p className="text-xs text-gray-500 mb-2">Subí un archivo Excel con columnas: nombre, precio_usd (opcional), precio_ars (opcional)</p>
+              <div className="flex gap-2 items-center">
+                <input
+                  ref={sparePartsInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleSparePartsExcel}
+                  disabled={sparePartsUploading}
+                  className="block text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-green-100 file:text-green-700 file:font-medium hover:file:bg-green-200 cursor-pointer disabled:opacity-50"
+                />
+                {sparePartsUploading && <span className="text-sm text-gray-500">Importando...</span>}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaPercent className="text-purple-600" /> Porcentaje IVA / Impuesto (%)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.01}
+              value={formData.tax_percentage}
+              onChange={(e) => setFormData({ ...formData, tax_percentage: parseFloat(e.target.value) || 0 })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[120px]"
+              placeholder="21"
+            />
+            <p className="text-xs text-gray-400 mt-1">Usado en presupuestos y cotizaciones (ej: 21 o 0).</p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaPalette className="text-pink-500" /> Color Principal (encabezados PDF)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={formData.primary_color}
+                onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                className="w-12 h-10 rounded border border-gray-300 cursor-pointer p-1"
+              />
+              <input
+                type="text"
+                value={formData.primary_color}
+                onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                className="w-28 p-2 border border-gray-300 rounded-lg font-mono text-sm"
+                placeholder="#000000"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaFileAlt className="text-teal-600" /> Texto legal (pie de página del presupuesto)
+            </label>
+            <textarea
+              value={formData.quote_footer_text}
+              onChange={(e) => setFormData({ ...formData, quote_footer_text: e.target.value })}
+              rows={4}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="Ej: Presupuesto válido por 15 días. Precios sujetos a variación del dólar."
+            />
+          </div>
+
+          <div className="pt-4 border-t">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md transition"
+            >
+              <FaSave /> {saving ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Tab: Accesorios */}
+      {activeTab === 'accesorios' && (
+        <OptionsListManager
+          category="accessories"
+          title="Accesorios"
+          description="Lista de accesorios que se ofrecen en las órdenes de taller (ej: Cargador, Mouse, Bolso, Cable). Se muestran en el selector de accesorios incluidos."
+          placeholder="Ej: Cargador, Mouse..."
+        />
+      )}
+
+      {/* Tab: Marcas */}
+      {activeTab === 'marcas' && (
+        <OptionsListManager
+          category="brand"
+          title="Marcas"
+          description="Marcas de equipos que podés seleccionar al crear órdenes de reparación."
+          placeholder="Ej: HP, Epson, Canon..."
+        />
+      )}
+
+      {/* Tab: Tipos de Equipo */}
+      {activeTab === 'tipos-equipo' && (
+        <OptionsListManager
+          category="equipment_type"
+          title="Tipos de Equipo"
+          description="Tipos de equipo (Impresora, PC, Monitor, etc.) que aparecen en los formularios de órdenes de taller y remotas."
+          placeholder="Ej: Impresora, Monitor..."
+        />
+      )}
+
+      {/* Tab: Categorías de Tickets */}
+      {activeTab === 'categorias-tickets' && (
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+          <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+            <FaTicketAlt className="text-teal-600" /> Categorías de Tickets
           </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Estos valores se usan en la edición de órdenes para calcular precios. El técnico no puede modificarlos.
+          <p className="text-sm text-gray-500 mb-4">
+            Estas categorías se muestran como &quot;Tipo de Problema&quot; cuando el cliente crea un ticket. El título del ticket se genera automáticamente a partir de la categoría seleccionada.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cotización USD</label>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={formData.usd_exchange_rate ?? ''}
-                onChange={(e) => setFormData({ ...formData, usd_exchange_rate: e.target.value ? parseFloat(e.target.value) : null })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="Ej: 1200"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">IVA por defecto (%)</label>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                max={100}
-                value={formData.default_iva_percent ?? ''}
-                onChange={(e) => setFormData({ ...formData, default_iva_percent: e.target.value ? parseFloat(e.target.value) : null })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="21"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Recargo Lista (%)</label>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={formData.list_price_surcharge_percent ?? ''}
-                onChange={(e) => setFormData({ ...formData, list_price_surcharge_percent: e.target.value ? parseFloat(e.target.value) : null })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="Tarjetas/Link"
-              />
-              <p className="text-xs text-gray-500 mt-1">Recargo para precio de lista (tarjetas, link de pago)</p>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-amber-200">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <FaFileExcel className="text-green-600" /> Catálogo de Repuestos (Excel)
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Subí un archivo Excel con columnas: nombre, precio_usd (opcional), precio_ars (opcional)</p>
-            <div className="flex gap-2 items-center">
-              <input
-                ref={sparePartsInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleSparePartsExcel}
-                disabled={sparePartsUploading}
-                className="block text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-green-100 file:text-green-700 file:font-medium hover:file:bg-green-200 cursor-pointer disabled:opacity-50"
-              />
-              {sparePartsUploading && <span className="text-sm text-gray-500">Importando...</span>}
-            </div>
-          </div>
-        </div>
-
-        {/* IVA / Impuesto */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaPercent className="text-purple-600" /> Porcentaje IVA / Impuesto (%)
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.01}
-            value={formData.tax_percentage}
-            onChange={(e) => setFormData({ ...formData, tax_percentage: parseFloat(e.target.value) || 0 })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[120px]"
-            placeholder="21"
-          />
-          <p className="text-xs text-gray-400 mt-1">Usado en presupuestos y cotizaciones (ej: 21 o 0).</p>
-        </div>
-
-        {/* Color principal */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaPalette className="text-pink-500" /> Color Principal (encabezados PDF)
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={formData.primary_color}
-              onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-              className="w-12 h-10 rounded border border-gray-300 cursor-pointer p-1"
-            />
+          <div className="flex gap-2 mb-4">
             <input
               type="text"
-              value={formData.primary_color}
-              onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-              className="w-28 p-2 border border-gray-300 rounded-lg font-mono text-sm"
-              placeholder="#000000"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+              placeholder="Ej: Consulta de Precios"
+              className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
             />
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              className="px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 flex items-center gap-2"
+            >
+              <FaPlus /> Agregar
+            </button>
           </div>
+          {categoriesLoading ? (
+            <p className="text-gray-500">Cargando categorías...</p>
+          ) : ticketCategories.length === 0 ? (
+            <p className="text-gray-500 italic">No hay categorías. Agregá al menos una para que los clientes puedan crear tickets.</p>
+          ) : (
+            <ul className="space-y-2">
+              {ticketCategories.map((cat) => (
+                <li key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="font-medium text-gray-800">{cat.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                    title="Eliminar"
+                  >
+                    <FaTrash />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-
-        {/* Pie de página presupuesto */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <FaFileAlt className="text-teal-600" /> Texto legal (pie de página del presupuesto)
-          </label>
-          <textarea
-            value={formData.quote_footer_text}
-            onChange={(e) => setFormData({ ...formData, quote_footer_text: e.target.value })}
-            rows={4}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            placeholder="Ej: Presupuesto válido por 15 días. Precios sujetos a variación del dólar."
-          />
-        </div>
-
-        <div className="pt-4 border-t">
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md transition"
-          >
-            <FaSave /> {saving ? 'Guardando...' : 'Guardar Cambios'}
-          </button>
-        </div>
-      </form>
-
-      <section className="mt-8 bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 border-l-4 border-teal-500 pl-3">
-          <FaTicketAlt className="text-teal-600" /> Categorías de Tickets
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Estas categorías se muestran como &quot;Tipo de Problema&quot; cuando el cliente crea un ticket. El título del ticket se genera automáticamente a partir de la categoría seleccionada.
-        </p>
-
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-            placeholder="Ej: Consulta de Precios"
-            className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleAddCategory}
-            className="px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 flex items-center gap-2"
-          >
-            <FaPlus /> Agregar
-          </button>
-        </div>
-
-        {categoriesLoading ? (
-          <p className="text-gray-500">Cargando categorías...</p>
-        ) : ticketCategories.length === 0 ? (
-          <p className="text-gray-500 italic">No hay categorías. Agregá al menos una para que los clientes puedan crear tickets.</p>
-        ) : (
-          <ul className="space-y-2">
-            {ticketCategories.map((cat) => (
-              <li key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <span className="font-medium text-gray-800">{cat.name}</span>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteCategory(cat.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                  title="Eliminar"
-                >
-                  <FaTrash />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      )}
     </div>
   );
 };

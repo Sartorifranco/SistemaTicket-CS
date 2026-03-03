@@ -68,7 +68,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>
                         <li><NavLink to="/admin/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
-                        <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Mi Empresa</NavLink></li>
+                        <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
                         <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config. Global</NavLink></li>
