@@ -57,6 +57,24 @@ interface RepairOrderItem {
   included_accessories?: string | null;
 }
 
+const WARRANTY_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'oficial_fabricante', label: 'Oficial fabricante' },
+  { value: 'garantia_propia', label: 'Garantía propia' },
+  { value: 'garantia_proveedor', label: 'Garantía proveedor' }
+];
+
+const WARRANTY_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'ingresado_garantia', label: 'Ingresado en garantía' },
+  { value: 'en_diagnostico', label: 'En diagnóstico' },
+  { value: 'espera_aprobacion_proveedor', label: 'En espera aprobación proveedor' },
+  { value: 'enviado_fabrica', label: 'Enviado a fábrica' },
+  { value: 'aprobado_cambio', label: 'Aprobado cambio' },
+  { value: 'reparado_garantia', label: 'Reparado en garantía' },
+  { value: 'rechazado_mal_uso', label: 'Rechazado por mal uso' },
+  { value: 'finalizado', label: 'Finalizado' },
+  { value: 'entregado', label: 'Entregado' }
+];
+
 interface RepairOrder {
   id: number;
   order_number: string;
@@ -91,6 +109,12 @@ interface RepairOrder {
   spare_parts_detail?: string | null;
   created_at?: string;
   photos?: { id: number; photo_url: string; perspective_label: string }[];
+  warranty_type?: string | null;
+  purchase_invoice_number?: string | null;
+  purchase_date?: string | null;
+  original_supplier?: string | null;
+  requires_factory_shipping?: number;
+  warranty_status?: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -220,7 +244,14 @@ const ManageRepairOrderPage: React.FC = () => {
     publicNotes: '',
     sparePartsDetail: '',
     technicianId: '',
-    internalNotes: ''
+    internalNotes: '',
+    isWarranty: false,
+    warrantyType: '',
+    purchaseInvoiceNumber: '',
+    purchaseDate: '',
+    originalSupplier: '',
+    requiresFactoryShipping: false,
+    warrantyStatus: ''
   });
 
   const fetchOrder = () => {
@@ -250,7 +281,14 @@ const ManageRepairOrderPage: React.FC = () => {
           publicNotes: o.public_notes || '',
           sparePartsDetail: o.spare_parts_detail || '',
           technicianId: o.technician_id ? String(o.technician_id) : '',
-          internalNotes: o.internal_notes || ''
+          internalNotes: o.internal_notes || '',
+          isWarranty: !!o.is_warranty,
+          warrantyType: o.warranty_type || '',
+          purchaseInvoiceNumber: o.purchase_invoice_number || '',
+          purchaseDate: formatDate(o.purchase_date) || '',
+          originalSupplier: o.original_supplier || '',
+          requiresFactoryShipping: !!o.requires_factory_shipping,
+          warrantyStatus: o.warranty_status || ''
         });
         setLaborValue(o.labor_cost != null ? String(o.labor_cost) : '');
         try {
@@ -410,9 +448,38 @@ const ManageRepairOrderPage: React.FC = () => {
     setShowWhatsAppModal(false);
   };
 
+  const isOficialFabricante = form.isWarranty && form.warrantyType === 'oficial_fabricante';
+  const effectiveLaborNum = isOficialFabricante ? 0 : laborNum;
+  const effectiveSparePartsTotal = isOficialFabricante ? 0 : sparePartsTotal;
+  const effectiveSubtotalNeto = effectiveLaborNum + effectiveSparePartsTotal;
+  const effectiveIvaAmount = effectiveSubtotalNeto * (ivaPct / 100);
+  const effectiveTotalEfectivo = effectiveSubtotalNeto + effectiveIvaAmount;
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    if (form.isWarranty) {
+      if (!form.warrantyType?.trim()) {
+        toast.error('Seleccioná el tipo de garantía');
+        return;
+      }
+      if (!form.purchaseInvoiceNumber?.trim()) {
+        toast.error('Ingresá el número de factura de compra');
+        return;
+      }
+      if (!form.purchaseDate?.trim()) {
+        toast.error('Ingresá la fecha de compra');
+        return;
+      }
+      if (!form.originalSupplier?.trim()) {
+        toast.error('Ingresá el proveedor original');
+        return;
+      }
+      if (!form.serialNumber?.trim()) {
+        toast.error('El Nº de serie del equipo es obligatorio en órdenes por garantía');
+        return;
+      }
+    }
     const originalTechId = order?.technician_id ? String(order.technician_id) : '';
     const newTechId = form.technicianId || '';
     let finalInternalNotes = form.internalNotes || '';
@@ -435,9 +502,9 @@ const ManageRepairOrderPage: React.FC = () => {
         reportedFault: form.reportedFault || null,
         includedAccessories: form.includedAccessories || null,
         technicalReport: form.technicalReport || null,
-        laborCost: laborNum || null,
-        sparePartsCost: sparePartsTotal || null,
-        totalCost: totalEfectivo || null,
+        laborCost: isOficialFabricante ? 0 : (effectiveLaborNum || null),
+        sparePartsCost: isOficialFabricante ? 0 : (effectiveSparePartsTotal || null),
+        totalCost: isOficialFabricante ? 0 : (effectiveTotalEfectivo || null),
         depositPaid: form.depositPaid ? parseFloat(form.depositPaid) : null,
         acceptedDate: form.acceptedDate || null,
         promisedDate: form.promisedDate || null,
@@ -446,7 +513,14 @@ const ManageRepairOrderPage: React.FC = () => {
         publicNotes: form.publicNotes || null,
         sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
         technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null,
-        internalNotes: finalInternalNotes || null
+        internalNotes: finalInternalNotes || null,
+        isWarranty: form.isWarranty,
+        warrantyType: form.isWarranty ? form.warrantyType || null : null,
+        purchaseInvoiceNumber: form.isWarranty ? form.purchaseInvoiceNumber?.trim() || null : null,
+        purchaseDate: form.isWarranty ? form.purchaseDate || null : null,
+        originalSupplier: form.isWarranty ? form.originalSupplier?.trim() || null : null,
+        requiresFactoryShipping: form.isWarranty ? form.requiresFactoryShipping : undefined,
+        warrantyStatus: form.isWarranty && form.warrantyStatus ? form.warrantyStatus : null
       });
       toast.success('Orden actualizada');
       fetchOrder();
@@ -458,7 +532,10 @@ const ManageRepairOrderPage: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    const value = 'checked' in e.target && typeof (e.target as HTMLInputElement).checked === 'boolean'
+      ? (e.target as HTMLInputElement).checked
+      : (e.target as HTMLInputElement).value;
     if (name === 'status' && value === 'abandonado') {
       if (user?.role === 'agent' && order?.entry_date) {
         const entry = new Date(order.entry_date).getTime();
@@ -576,9 +653,62 @@ const ManageRepairOrderPage: React.FC = () => {
                 <input name="model" value={form.model} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nº de Serie</label>
-                <input name="serialNumber" value={form.serialNumber} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nº de Serie {form.isWarranty && <span className="text-red-500">*</span>}
+                </label>
+                <input name="serialNumber" value={form.serialNumber} onChange={handleChange} disabled={!canEditEquipment} required={form.isWarranty} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">¿Es un ingreso por Garantía?</label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" name="isWarranty" checked={form.isWarranty} onChange={handleChange} className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
+                  <span className="font-medium text-gray-800">Sí, esta orden es por garantía</span>
+                </label>
+              </div>
+              {form.isWarranty && (
+                <div className="md:col-span-2 p-4 rounded-lg border-2 border-blue-200 bg-blue-50/80 space-y-4">
+                  <h4 className="font-bold text-gray-800">Datos de Garantía</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de garantía <span className="text-red-500">*</span></label>
+                      <select name="warrantyType" value={form.warrantyType} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="">Seleccionar...</option>
+                        {WARRANTY_TYPE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nº de factura de compra <span className="text-red-500">*</span></label>
+                      <input type="text" name="purchaseInvoiceNumber" value={form.purchaseInvoiceNumber} onChange={handleChange} required placeholder="Ej: 001-00001234" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de compra <span className="text-red-500">*</span></label>
+                      <input type="date" name="purchaseDate" value={form.purchaseDate} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor original <span className="text-red-500">*</span></label>
+                      <input type="text" name="originalSupplier" value={form.originalSupplier} onChange={handleChange} required placeholder="Nombre del proveedor o fabricante" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">¿Requiere envío a fábrica?</label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="requiresFactoryShipping" checked={form.requiresFactoryShipping} onChange={handleChange} className="w-4 h-4 text-indigo-600 rounded border-gray-300" />
+                        <span>Sí</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Estado de garantía</label>
+                      <select name="warrantyStatus" value={form.warrantyStatus} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="">Seleccionar...</option>
+                        {WARRANTY_STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Falla / Problema Reportado</label>
                 <textarea name="reportedFault" value={form.reportedFault} onChange={handleChange} rows={3} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
@@ -593,6 +723,11 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div className="md:col-span-2">
                 <h4 className="text-sm font-bold text-gray-700 mb-3">Costos / Cotización</h4>
+                {isOficialFabricante && (
+                  <div className="mb-4 px-4 py-2.5 rounded-lg bg-green-100 border border-green-300 text-green-800 text-sm font-medium flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" /> Costo cubierto por Garantía Oficial (Mano de obra y repuestos $0)
+                  </div>
+                )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* COLUMNA IZQUIERDA: Cotizador Automático */}
                   <div className="space-y-4 p-4 bg-white rounded-lg border border-gray-200">
@@ -606,7 +741,8 @@ const ManageRepairOrderPage: React.FC = () => {
                           onChange={(e) => setSparePartsSearch(e.target.value)}
                           onFocus={() => sparePartsSearch && setShowSparePartsDropdown(true)}
                           placeholder="Buscar en catálogo..."
-                          className="w-full px-3 py-2 border rounded-lg mb-2"
+                          disabled={isOficialFabricante}
+                          className={`w-full px-3 py-2 border rounded-lg mb-2 ${isOficialFabricante ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         />
                         {showSparePartsDropdown && sparePartsSuggestions.length > 0 && (
                           <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
@@ -629,7 +765,8 @@ const ManageRepairOrderPage: React.FC = () => {
                           value={manualPartNombre}
                           onChange={(e) => setManualPartNombre(e.target.value)}
                           placeholder="Agregar manual: nombre"
-                          className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                          disabled={isOficialFabricante}
+                          className={`flex-1 px-3 py-2 border rounded-lg text-sm ${isOficialFabricante ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         />
                         <input
                           type="number"
@@ -637,9 +774,10 @@ const ManageRepairOrderPage: React.FC = () => {
                           value={manualPartPrecio}
                           onChange={(e) => setManualPartPrecio(e.target.value)}
                           placeholder="$"
-                          className="w-24 px-3 py-2 border rounded-lg text-sm"
+                          disabled={isOficialFabricante}
+                          className={`w-24 px-3 py-2 border rounded-lg text-sm ${isOficialFabricante ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         />
-                        <button type="button" onClick={addManualSparePart} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
+                        <button type="button" onClick={addManualSparePart} disabled={isOficialFabricante} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
                           <FaPlus /> Agregar
                         </button>
                       </div>
@@ -661,8 +799,9 @@ const ManageRepairOrderPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra</label>
-                      <select value={laborValue} onChange={(e) => setLaborValue(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
+                      <select value={isOficialFabricante ? '0' : laborValue} onChange={(e) => setLaborValue(e.target.value)} disabled={isOficialFabricante} className={`w-full px-3 py-2 border rounded-lg ${isOficialFabricante ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
                         <option value="">Seleccionar...</option>
+                        <option value="0">$0</option>
                         {laborOptions.map((o) => (
                           <option key={o.id} value={o.value}>${parseFloat(o.value || '0').toLocaleString('es-AR')}</option>
                         ))}
@@ -672,10 +811,10 @@ const ManageRepairOrderPage: React.FC = () => {
                       </select>
                     </div>
                     <div className="pt-3 border-t border-gray-200 space-y-1 text-sm">
-                      <p className="flex justify-between"><span>Subtotal neto:</span> <strong>${subtotalNeto.toLocaleString('es-AR')}</strong></p>
-                      <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> ${ivaAmount.toLocaleString('es-AR')}</p>
-                      <p className="flex justify-between text-green-700 font-bold"><span>Total Efectivo:</span> ${totalEfectivo.toLocaleString('es-AR')}</p>
-                      {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>Total Lista ({surchargePct}%):</span> ${totalLista.toLocaleString('es-AR')}</p>}
+                      <p className="flex justify-between"><span>Subtotal neto:</span> <strong>${effectiveSubtotalNeto.toLocaleString('es-AR')}</strong></p>
+                      <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> ${effectiveIvaAmount.toLocaleString('es-AR')}</p>
+                      <p className="flex justify-between text-green-700 font-bold"><span>Total Efectivo:</span> ${effectiveTotalEfectivo.toLocaleString('es-AR')}</p>
+                      {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>Total Lista ({surchargePct}%):</span> ${(effectiveTotalEfectivo * (1 + surchargePct / 100)).toLocaleString('es-AR')}</p>}
                     </div>
                   </div>
 

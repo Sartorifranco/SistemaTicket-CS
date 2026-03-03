@@ -11,6 +11,24 @@ import { FaSave, FaSearch, FaPlus, FaTrash } from 'react-icons/fa';
 type OrderType = 'Taller' | 'Domicilio' | 'Remoto';
 type Priority = 'Normal' | 'Urgente' | 'Critico';
 
+const WARRANTY_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'oficial_fabricante', label: 'Oficial fabricante' },
+  { value: 'garantia_propia', label: 'Garantía propia' },
+  { value: 'garantia_proveedor', label: 'Garantía proveedor' }
+];
+
+const WARRANTY_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'ingresado_garantia', label: 'Ingresado en garantía' },
+  { value: 'en_diagnostico', label: 'En diagnóstico' },
+  { value: 'espera_aprobacion_proveedor', label: 'En espera aprobación proveedor' },
+  { value: 'enviado_fabrica', label: 'Enviado a fábrica' },
+  { value: 'aprobado_cambio', label: 'Aprobado cambio' },
+  { value: 'reparado_garantia', label: 'Reparado en garantía' },
+  { value: 'rechazado_mal_uso', label: 'Rechazado por mal uso' },
+  { value: 'finalizado', label: 'Finalizado' },
+  { value: 'entregado', label: 'Entregado' }
+];
+
 interface SystemOption {
   id: number;
   category: string;
@@ -67,6 +85,15 @@ const NewRepairOrderPage: React.FC = () => {
   const [visitTime, setVisitTime] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [remotePlatform, setRemotePlatform] = useState('');
+
+  // Garantía (orden completa)
+  const [isWarranty, setIsWarranty] = useState(false);
+  const [warrantyType, setWarrantyType] = useState('');
+  const [purchaseInvoiceNumber, setPurchaseInvoiceNumber] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [originalSupplier, setOriginalSupplier] = useState('');
+  const [requiresFactoryShipping, setRequiresFactoryShipping] = useState(false);
+  const [warrantyStatus, setWarrantyStatus] = useState('');
 
   // Equipos
   const [items, setItems] = useState<RepairOrderItem[]>([{ ...DEFAULT_ITEM }]);
@@ -177,6 +204,29 @@ const NewRepairOrderPage: React.FC = () => {
       toast.error('Agregá al menos un equipo con tipo, modelo, serie o falla');
       return;
     }
+    if (isWarranty) {
+      if (!warrantyType?.trim()) {
+        toast.error('Seleccioná el tipo de garantía');
+        return;
+      }
+      if (!purchaseInvoiceNumber?.trim()) {
+        toast.error('Ingresá el número de factura de compra');
+        return;
+      }
+      if (!purchaseDate?.trim()) {
+        toast.error('Ingresá la fecha de compra');
+        return;
+      }
+      if (!originalSupplier?.trim()) {
+        toast.error('Ingresá el proveedor original');
+        return;
+      }
+      const hasSerial = validItems.some((it) => it.serial_number?.trim());
+      if (!hasSerial) {
+        toast.error('En garantía al menos un equipo debe tener Nº de serie');
+        return;
+      }
+    }
     for (let i = 0; i < validItems.length; i++) {
       if (validItems[i].is_warranty && !validItems[i].warranty_invoice?.trim()) {
         toast.error(`Equipo ${i + 1}: Si es garantía, indicá el Nº de Comprobante/Factura`);
@@ -212,6 +262,15 @@ const NewRepairOrderPage: React.FC = () => {
       formData.append('depositPaid', depositPaid);
       if (paymentMethod) formData.append('paymentMethod', paymentMethod);
       if (paymentOperationNumber) formData.append('paymentOperationNumber', paymentOperationNumber);
+    }
+    if (isWarranty) {
+      formData.append('isWarranty', 'true');
+      formData.append('warrantyType', warrantyType);
+      formData.append('purchaseInvoiceNumber', purchaseInvoiceNumber.trim());
+      formData.append('purchaseDate', purchaseDate);
+      formData.append('originalSupplier', originalSupplier.trim());
+      formData.append('requiresFactoryShipping', requiresFactoryShipping ? 'true' : 'false');
+      if (warrantyStatus) formData.append('warrantyStatus', warrantyStatus);
     }
 
     formData.append('items', JSON.stringify(validItems));
@@ -361,6 +420,63 @@ const NewRepairOrderPage: React.FC = () => {
           </div>
         </SectionCard>
 
+        {/* ¿Es Garantía? + Datos de Garantía */}
+        <SectionCard title="Garantía">
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={isWarranty} onChange={(e) => setIsWarranty(e.target.checked)} className="w-5 h-5 text-indigo-600 rounded border-gray-300" />
+              <span className="font-medium text-gray-800">¿Es un ingreso por Garantía?</span>
+            </label>
+            {isWarranty && (
+              <div className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50/80 space-y-4">
+                <h4 className="font-bold text-gray-800">Datos de Garantía</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de garantía <span className="text-red-500">*</span></label>
+                    <select value={warrantyType} onChange={(e) => setWarrantyType(e.target.value)} required={isWarranty} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+                      <option value="">Seleccionar...</option>
+                      {WARRANTY_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nº de factura de compra <span className="text-red-500">*</span></label>
+                    <input type="text" value={purchaseInvoiceNumber} onChange={(e) => setPurchaseInvoiceNumber(e.target.value)} required={isWarranty} placeholder="Ej: 001-00001234" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de compra <span className="text-red-500">*</span></label>
+                    <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} required={isWarranty} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor original <span className="text-red-500">*</span></label>
+                    <input type="text" value={originalSupplier} onChange={(e) => setOriginalSupplier(e.target.value)} required={isWarranty} placeholder="Nombre del proveedor o fabricante" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">¿Requiere envío a fábrica?</label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={requiresFactoryShipping} onChange={(e) => setRequiresFactoryShipping(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded border-gray-300" />
+                      <span>Sí</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado de garantía</label>
+                    <select value={warrantyStatus} onChange={(e) => setWarrantyStatus(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+                      <option value="">Seleccionar...</option>
+                      {WARRANTY_STATUS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {isWarranty && (
+                  <p className="text-sm text-amber-700 font-medium">Al menos un equipo debe tener Nº de serie para órdenes por garantía.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
         {/* Equipos (múltiples) */}
         <SectionCard title="Equipos">
           <div className="space-y-6">
@@ -388,7 +504,9 @@ const NewRepairOrderPage: React.FC = () => {
                     <SelectOption category="model" value={item.model} onChange={(v) => updateItem(idx, 'model', v)} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Serie N°</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Serie N° {isWarranty && <span className="text-red-500">* (obligatorio en garantía)</span>}
+                    </label>
                     <input type="text" value={item.serial_number} onChange={(e) => updateItem(idx, 'serial_number', e.target.value)} placeholder="Texto libre" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                   </div>
                 </div>

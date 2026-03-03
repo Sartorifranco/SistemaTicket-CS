@@ -326,3 +326,59 @@ export interface Module {
     description: string;
     price: number;
 }
+
+// ====================================================================
+// REPAIR ORDER TYPES (Órdenes de Taller + Módulo Garantías)
+// ====================================================================
+export interface RepairOrderItemType {
+    equipment_type?: string | null;
+    brand?: string | null;
+    model?: string | null;
+    serial_number?: string | null;
+    reported_fault?: string | null;
+    included_accessories?: string | null;
+    is_warranty?: boolean | number;
+    warranty_invoice?: string | null;
+}
+
+export interface RepairOrder {
+    id: number;
+    order_number: string;
+    client_id: number;
+    client_name?: string;
+    client_business_name?: string;
+    client_email?: string;
+    client_phone?: string;
+    client_address?: string | null;
+    technician_id?: number | null;
+    technician_name?: string | null;
+    status: string;
+    equipment_type?: string;
+    model?: string;
+    serial_number?: string;
+    reported_fault?: string;
+    items?: RepairOrderItemType[];
+    labor_cost?: number | null;
+    spare_parts_cost?: number | null;
+    total_cost?: number | null;
+    deposit_paid?: number | null;
+    technical_report?: string | null;
+    internal_notes?: string;
+    entry_date?: string;
+    accepted_date?: string | null;
+    promised_date?: string | null;
+    delivered_date?: string | null;
+    warranty_expiration_date?: string | null;
+    public_notes?: string | null;
+    spare_parts_detail?: string | null;
+    created_at?: string;
+    photos?: { id: number; photo_url: string; perspective_label: string }[];
+    // Módulo Garantías
+    is_warranty?: boolean | number;
+    warranty_type?: string | null;
+    purchase_invoice_number?: string | null;
+    purchase_date?: string | null;
+    original_supplier?: string | null;
+    requires_factory_shipping?: boolean | number;
+    warranty_status?: string | null;
+}
