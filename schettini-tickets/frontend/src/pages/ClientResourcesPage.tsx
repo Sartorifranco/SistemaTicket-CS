@@ -144,7 +144,7 @@ const ClientResourcesPage: React.FC = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-bold text-gray-800 text-lg mb-2">{s.name}</h3>
-                                        <p className="text-sm text-gray-600 line-clamp-3 mb-4">
+                                        <p className="text-sm text-gray-600 whitespace-normal break-words mb-4">
                                             {getSectionDescription(s)}
                                         </p>
                                         <p className="text-xs text-gray-500 font-medium">
@@ -175,9 +175,9 @@ const ClientResourcesPage: React.FC = () => {
                                     <div 
                                         key={res.id} 
                                         onClick={() => handleCardClick(res)}
-                                        className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg hover:border-red-300 transition overflow-hidden cursor-pointer group"
+                                        className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg hover:border-red-300 transition overflow-hidden cursor-pointer group h-auto"
                                     >
-                                        <div className="aspect-video bg-gray-800 relative overflow-hidden">
+                                        <div className="aspect-video bg-gray-800 relative overflow-hidden shrink-0">
                                             {thumb ? (
                                                 <img src={thumb} alt={res.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                                             ) : (
@@ -201,11 +201,11 @@ const ClientResourcesPage: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="p-4">
-                                            <h3 className="font-bold text-gray-800 group-hover:text-red-600 transition line-clamp-2">{res.title}</h3>
+                                        <div className="p-4 min-h-0 flex flex-col">
+                                            <h3 className="font-bold text-gray-800 group-hover:text-red-600 transition whitespace-normal break-words">{res.title}</h3>
                                             <p className="text-xs text-red-600 mt-1 font-medium">Ver {isVideo ? 'video' : res.type === 'download' ? 'descargar' : 'recurso'}</p>
                                             {res.system_name && (
-                                                <p className="text-xs text-gray-500 mt-1">{res.system_name}</p>
+                                                <p className="text-xs text-gray-500 mt-1 whitespace-normal break-words">{res.system_name}</p>
                                             )}
                                         </div>
                                     </div>
