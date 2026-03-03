@@ -22,6 +22,7 @@ interface CompanySettings {
   usd_exchange_rate?: number | null;
   default_iva_percent?: number | null;
   list_price_surcharge_percent?: number | null;
+  profit_margin_percent?: number | null;
 }
 
 interface LaborOption {
@@ -189,6 +190,7 @@ const QuoterPage: React.FC = () => {
           usd_exchange_rate: d.usd_exchange_rate != null ? Number(d.usd_exchange_rate) : null,
           default_iva_percent: d.default_iva_percent != null ? Number(d.default_iva_percent) : 21,
           list_price_surcharge_percent: d.list_price_surcharge_percent != null ? Number(d.list_price_surcharge_percent) : null,
+          profit_margin_percent: d.profit_margin_percent != null ? Number(d.profit_margin_percent) : 30,
         });
         if (d.usd_exchange_rate != null && Number(d.usd_exchange_rate) > 0) {
           setDolarActual(Number(d.usd_exchange_rate));
@@ -304,7 +306,7 @@ const QuoterPage: React.FC = () => {
   const clearQuote = () => { setQuoteItems([]); toast.info('Cotización vaciada.'); };
 
   const effectiveDolar = isAgentBlind ? (companySettings?.usd_exchange_rate ?? dolarActual) : dolarActual;
-  const effectiveMargen = isAgentBlind ? 30 : margenGanancia;
+  const effectiveMargen = isAgentBlind ? (companySettings?.profit_margin_percent ?? 30) : margenGanancia;
 
   const costoBase = (item: PriceItem): number => (item.costoConIva > 0 ? item.costoConIva : item.costoSinIva);
 
@@ -337,10 +339,13 @@ const QuoterPage: React.FC = () => {
   const usdRate = companySettings?.usd_exchange_rate ?? 0;
   const ivaPct = companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21;
   const surchargePct = companySettings?.list_price_surcharge_percent ?? 0;
+  const profitMarginPct = companySettings?.profit_margin_percent ?? 30;
+
   const manualCostNum = parseFloat(manualCostInput) || 0;
   const costoBaseManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
+  const costoConMargen = costoBaseManual * (1 + profitMarginPct / 100);
   const manualLaborNum = parseFloat(manualLaborValue) || 0;
-  const subtotalManual = costoBaseManual + manualLaborNum;
+  const subtotalManual = costoConMargen + manualLaborNum;
   const ivaManual = subtotalManual * (ivaPct / 100);
   const totalEfectivoManual = subtotalManual + ivaManual;
   const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
@@ -721,8 +726,7 @@ const QuoterPage: React.FC = () => {
           </SectionCard>
         </div>
 
-        {/* COLUMNA DERECHA: Calculadora Manual POSVENTA - oculta para agent (basada en costos) */}
-        {!isAgentBlind && (
+        {/* COLUMNA DERECHA: Calculadora Manual - variables globales (Dólar, IVA, Margen) */}
         <div className="space-y-4">
           <div className="p-6 rounded-xl border-2 border-indigo-200 bg-gray-50 shadow-sm">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Calculadora Manual (Repuestos Externos)</h3>
@@ -758,7 +762,7 @@ const QuoterPage: React.FC = () => {
                 placeholder="0"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
               />
-              <p className="text-xs text-gray-500 mt-0.5">Dólar: ${usdRate.toLocaleString('es-AR')} (solo lectura)</p>
+              {!isAgentBlind && <p className="text-xs text-gray-500 mt-0.5">Dólar: ${usdRate.toLocaleString('es-AR')} (Config. Central)</p>}
             </div>
 
             <div className="mb-4">
@@ -781,16 +785,19 @@ const QuoterPage: React.FC = () => {
             </div>
 
             <div className="p-4 bg-white rounded-lg border border-gray-300 space-y-2">
-              <p className="flex justify-between text-sm text-gray-600"><span>COSTO BASE:</span> <strong>${costoBaseManual.toLocaleString('es-AR')}</strong></p>
-              <p className="flex justify-between text-sm text-gray-600"><span>SUBTOTAL:</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
-              <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
-              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO (35% Desc):</span> ${totalEfectivoManual.toLocaleString('es-AR')}</p>
+              {!isAgentBlind && (
+                <>
+                  <p className="flex justify-between text-sm text-gray-600"><span>COSTO BASE (ARS):</span> <strong>${costoBaseManual.toLocaleString('es-AR')}</strong></p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>SUBTOTAL (costo + margen + mano obra):</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+                </>
+              )}
+              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO:</span> ${totalEfectivoManual.toLocaleString('es-AR')}</p>
               <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL LISTA (Tarjetas):</span> ${totalListaManual.toLocaleString('es-AR')}</p>
-              <p className="text-xs text-gray-400 mt-2">IVA ({ivaPct}%), Recargo ({surchargePct}%), Dólar: solo lectura desde empresa</p>
+              {!isAgentBlind && <p className="text-xs text-gray-400 mt-2">IVA ({ivaPct}%), Margen ({profitMarginPct}%), Recargo ({surchargePct}%), Dólar: Config. Central</p>}
             </div>
           </div>
         </div>
-        )}
       </div>
 
       {/* Modal WhatsApp */}

@@ -54,6 +54,13 @@ if [[ -f "backend/scripts/migrate-spare-parts-catalog.js" ]]; then
     echo ""
 fi
 
+# Margen de ganancia para Calculadora Manual
+if [[ -f "backend/scripts/add-profit-margin.js" ]]; then
+    echo ">>> Ejecutando migración profit_margin_percent..."
+    (cd backend && node scripts/add-profit-margin.js) || true
+    echo ""
+fi
+
 # Estado abandonado en repair_orders
 if [[ -f "backend/scripts/run-alter-status-enum.js" ]]; then
     echo ">>> Actualizando ENUM status (abandonado)..."

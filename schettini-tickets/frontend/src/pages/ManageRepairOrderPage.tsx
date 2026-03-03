@@ -21,6 +21,7 @@ interface CompanySettings {
   usd_exchange_rate?: number | null;
   default_iva_percent?: number | null;
   list_price_surcharge_percent?: number | null;
+  profit_margin_percent?: number | null;
   legal_footer_text?: string | null;
 }
 
@@ -395,10 +396,12 @@ const ManageRepairOrderPage: React.FC = () => {
   const totalLista = surchargePct > 0 ? totalEfectivo * (1 + surchargePct / 100) : totalEfectivo;
 
   const usdRate = companySettings?.usd_exchange_rate ?? 0;
+  const profitMarginPct = companySettings?.profit_margin_percent ?? 30;
   const manualCostNum = parseFloat(manualCostInput) || 0;
   const costoBasePesosManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
+  const costoConMargen = costoBasePesosManual * (1 + profitMarginPct / 100);
   const manualLaborNum = parseFloat(manualLaborValue) || 0;
-  const subtotalManual = costoBasePesosManual + manualLaborNum;
+  const subtotalManual = costoConMargen + manualLaborNum;
   const ivaManual = subtotalManual * (ivaPct / 100);
   const totalEfectivoManual = subtotalManual + ivaManual;
   const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
@@ -408,7 +411,7 @@ const ManageRepairOrderPage: React.FC = () => {
       toast.warn('Ingresá un costo válido');
       return;
     }
-    setSparePartsList((p) => [...p, { nombre: 'Repuesto Externo / Manual', precio_ars: costoBasePesosManual }]);
+    setSparePartsList((p) => [...p, { nombre: 'Repuesto Externo / Manual', precio_ars: totalEfectivoManual }]);
     setLaborValue(manualLaborValue || laborValue);
     setManualCostInput('');
     setManualLaborValue('');
@@ -867,7 +870,7 @@ const ManageRepairOrderPage: React.FC = () => {
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500" /> Costo cubierto por Garantía Oficial (Mano de obra y repuestos $0)
                   </div>
                 )}
-                <div className={`grid gap-4 ${isAgentBlind ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* COLUMNA IZQUIERDA: Cotizador Automático */}
                   <div className="space-y-4 p-4 bg-white rounded-lg border border-gray-200">
                     <h5 className="text-sm font-semibold text-indigo-700">Cotizador Automático</h5>
@@ -964,8 +967,7 @@ const ManageRepairOrderPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* COLUMNA DERECHA: Calculadora Manual (Repuestos Externos) - oculta para agent (costos) */}
-                  {!isAgentBlind && (
+                  {/* COLUMNA DERECHA: Calculadora Manual - variables desde Config. Central */}
                   <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <h5 className="text-sm font-semibold text-gray-800">Calculadora Manual (Repuestos Externos)</h5>
                     <div>
@@ -992,9 +994,11 @@ const ManageRepairOrderPage: React.FC = () => {
                           <span className={!manualCostIsUsd ? 'font-bold text-indigo-700' : 'text-gray-500'}>PESOS</span>
                         </label>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {manualCostIsUsd ? 'USD' : 'PESOS'} — Dólar: ${usdRate.toLocaleString('es-AR')} (solo lectura)
-                      </p>
+                      {!isAgentBlind && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {manualCostIsUsd ? 'USD' : 'PESOS'} — Dólar: ${usdRate.toLocaleString('es-AR')} (Config. Central)
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Mano de Obra</label>
@@ -1015,9 +1019,13 @@ const ManageRepairOrderPage: React.FC = () => {
                       </datalist>
                     </div>
                     <div className="pt-3 border-t border-gray-300 space-y-1 text-sm bg-white p-3 rounded">
-                      <p className="flex justify-between text-gray-600"><span>Costo Base Pesos:</span> <strong>${costoBasePesosManual.toLocaleString('es-AR')}</strong></p>
-                      <p className="flex justify-between text-gray-600"><span>Subtotal:</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
-                      <p className="flex justify-between text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+                      {!isAgentBlind && (
+                        <>
+                          <p className="flex justify-between text-gray-600"><span>Costo Base (ARS):</span> <strong>${costoBasePesosManual.toLocaleString('es-AR')}</strong></p>
+                          <p className="flex justify-between text-gray-600"><span>Subtotal (costo + margen + mano obra):</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
+                          <p className="flex justify-between text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+                        </>
+                      )}
                       <p className="flex justify-between text-green-700 font-bold"><span>TOTAL EFECTIVO:</span> ${totalEfectivoManual.toLocaleString('es-AR')}</p>
                       {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>TOTAL LISTA ({surchargePct}%):</span> ${totalListaManual.toLocaleString('es-AR')}</p>}
                     </div>
@@ -1029,7 +1037,6 @@ const ManageRepairOrderPage: React.FC = () => {
                       Aplicar Cotización Manual a la Orden
                     </button>
                   </div>
-                  )}
                 </div>
               </div>
               <div>

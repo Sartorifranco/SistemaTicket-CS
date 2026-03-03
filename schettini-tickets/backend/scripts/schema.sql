@@ -371,6 +371,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
   usd_exchange_rate DECIMAL(12,4) NULL,
   list_price_surcharge_percent DECIMAL(5,2) NULL COMMENT 'Recargo % para tarjetas',
   default_iva_percent DECIMAL(5,2) NULL,
+  profit_margin_percent DECIMAL(5,2) NULL DEFAULT 30 COMMENT 'Margen % cotizador manual',
   legal_footer_text TEXT NULL COMMENT 'Términos y condiciones PDF',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -378,8 +379,8 @@ CREATE TABLE IF NOT EXISTS company_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Registro por defecto (ID 1) para configuración de empresa
-INSERT IGNORE INTO company_settings (id, company_name, address, phone, email, website, logo_url, tax_percentage, quote_footer_text, primary_color, usd_exchange_rate, list_price_surcharge_percent, default_iva_percent, legal_footer_text)
-VALUES (1, 'Tu Empresa S.A.', 'Av. Ejemplo 1234, CABA', '(011) 1234-5678', 'contacto@tuempresa.com', 'www.tuempresa.com.ar', NULL, 21.00, 'Presupuesto válido por 15 días. Precios sujetos a variación del dólar.', '#000000', NULL, NULL, 21.00, NULL);
+INSERT IGNORE INTO company_settings (id, company_name, address, phone, email, website, logo_url, tax_percentage, quote_footer_text, primary_color, usd_exchange_rate, list_price_surcharge_percent, default_iva_percent, profit_margin_percent, legal_footer_text)
+VALUES (1, 'Tu Empresa S.A.', 'Av. Ejemplo 1234, CABA', '(011) 1234-5678', 'contacto@tuempresa.com', 'www.tuempresa.com.ar', NULL, 21.00, 'Presupuesto válido por 15 días. Precios sujetos a variación del dólar.', '#000000', NULL, NULL, 21.00, 30.00, NULL);
 
 -- Catálogo de repuestos (cotizador integrado)
 CREATE TABLE IF NOT EXISTS spare_parts_catalog (

@@ -42,6 +42,9 @@ const updateCompanySettings = async (req, res) => {
     const defaultIvaPercent = body.default_iva_percent != null && body.default_iva_percent !== ''
       ? parseFloat(body.default_iva_percent)
       : null;
+    const profitMarginPercent = body.profit_margin_percent != null && body.profit_margin_percent !== ''
+      ? parseFloat(body.profit_margin_percent)
+      : null;
     const legalFooterText = (body.legal_footer_text ?? '').trim() || null;
 
     let logoUrl = null;
@@ -52,9 +55,9 @@ const updateCompanySettings = async (req, res) => {
     const updates = [
       'company_name = ?', 'address = ?', 'phone = ?', 'email = ?', 'website = ?',
       'tax_percentage = ?', 'quote_footer_text = ?', 'primary_color = ?',
-      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'legal_footer_text = ?'
+      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'profit_margin_percent = ?', 'legal_footer_text = ?'
     ];
-    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, legalFooterText];
+    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, profitMarginPercent, legalFooterText];
 
     if (logoUrl !== null) {
       updates.splice(5, 0, 'logo_url = ?');

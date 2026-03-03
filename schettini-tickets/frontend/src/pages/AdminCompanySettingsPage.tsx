@@ -40,6 +40,7 @@ interface CompanySettings {
   usd_exchange_rate?: number | null;
   default_iva_percent?: number | null;
   list_price_surcharge_percent?: number | null;
+  profit_margin_percent?: number | null;
 }
 
 const defaultSettings: CompanySettings = {
@@ -56,6 +57,7 @@ const defaultSettings: CompanySettings = {
   usd_exchange_rate: null,
   default_iva_percent: 21,
   list_price_surcharge_percent: null,
+  profit_margin_percent: 30,
 };
 
 type TabId = 'empresa' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'categorias-tickets';
@@ -303,6 +305,7 @@ const AdminCompanySettingsPage: React.FC = () => {
           usd_exchange_rate: data.usd_exchange_rate != null ? Number(data.usd_exchange_rate) : null,
           default_iva_percent: data.default_iva_percent != null ? Number(data.default_iva_percent) : 21,
           list_price_surcharge_percent: data.list_price_surcharge_percent != null ? Number(data.list_price_surcharge_percent) : null,
+          profit_margin_percent: data.profit_margin_percent != null ? Number(data.profit_margin_percent) : 30,
         });
         if (data.logo_url) {
           setLogoPreview(getImageUrl(data.logo_url));
@@ -347,6 +350,7 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append('usd_exchange_rate', formData.usd_exchange_rate != null ? String(formData.usd_exchange_rate) : '');
       form.append('default_iva_percent', formData.default_iva_percent != null ? String(formData.default_iva_percent) : '');
       form.append('list_price_surcharge_percent', formData.list_price_surcharge_percent != null ? String(formData.list_price_surcharge_percent) : '');
+      form.append('profit_margin_percent', formData.profit_margin_percent != null ? String(formData.profit_margin_percent) : '');
 
       if (logoFile) {
         form.append('logo', logoFile);
@@ -530,7 +534,7 @@ const AdminCompanySettingsPage: React.FC = () => {
             <p className="text-sm text-gray-600 mb-4">
               Estos valores se usan en la edición de órdenes para calcular precios. El técnico no puede modificarlos.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cotización USD</label>
                 <input
@@ -557,6 +561,19 @@ const AdminCompanySettingsPage: React.FC = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Margen de Ganancia (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={formData.profit_margin_percent ?? ''}
+                  onChange={(e) => setFormData({ ...formData, profit_margin_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="30"
+                />
+                <p className="text-xs text-gray-500 mt-1">Calculadora manual: costo × (1 + margen)</p>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Recargo Lista (%)</label>
                 <input
                   type="number"
@@ -567,7 +584,7 @@ const AdminCompanySettingsPage: React.FC = () => {
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="Tarjetas/Link"
                 />
-                <p className="text-xs text-gray-500 mt-1">Recargo para precio de lista (tarjetas, link de pago)</p>
+                <p className="text-xs text-gray-500 mt-1">Recargo para precio de lista (tarjetas, link)</p>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t border-amber-200">
