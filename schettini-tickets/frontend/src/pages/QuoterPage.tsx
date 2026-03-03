@@ -6,6 +6,7 @@ import autoTable from 'jspdf-autotable';
 import SectionCard from '../components/Common/SectionCard';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
+import { useAuth } from '../context/AuthContext';
 import { FaFileExcel, FaSearch, FaPlus, FaTrash, FaCopy, FaWhatsapp, FaFilePdf, FaTimes } from 'react-icons/fa';
 
 interface CompanySettings {
@@ -149,6 +150,9 @@ function parseSheet(rows: unknown[][]): PriceItem[] {
 }
 
 const QuoterPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAgentBlind = user?.role === 'agent';
+
   const [items, setItems] = useState<PriceItem[]>([]);
   const [search, setSearch] = useState('');
   const [quoteItems, setQuoteItems] = useState<PriceItem[]>([]);
@@ -186,6 +190,9 @@ const QuoterPage: React.FC = () => {
           default_iva_percent: d.default_iva_percent != null ? Number(d.default_iva_percent) : 21,
           list_price_surcharge_percent: d.list_price_surcharge_percent != null ? Number(d.list_price_surcharge_percent) : null,
         });
+        if (d.usd_exchange_rate != null && Number(d.usd_exchange_rate) > 0) {
+          setDolarActual(Number(d.usd_exchange_rate));
+        }
       }
     }).catch(() => {});
   }, []);
@@ -296,6 +303,9 @@ const QuoterPage: React.FC = () => {
   const removeFromQuote = (idx: number) => setQuoteItems((prev) => prev.filter((_, i) => i !== idx));
   const clearQuote = () => { setQuoteItems([]); toast.info('Cotización vaciada.'); };
 
+  const effectiveDolar = isAgentBlind ? (companySettings?.usd_exchange_rate ?? dolarActual) : dolarActual;
+  const effectiveMargen = isAgentBlind ? 30 : margenGanancia;
+
   const costoBase = (item: PriceItem): number => (item.costoConIva > 0 ? item.costoConIva : item.costoSinIva);
 
   const precioACobrar = (item: PriceItem): number => {
@@ -304,12 +314,12 @@ const QuoterPage: React.FC = () => {
 
     let costoUsd: number;
     if (costoEnPesos) {
-      costoUsd = costo / dolarActual;
+      costoUsd = costo / effectiveDolar;
     } else {
       costoUsd = costo;
     }
-    const precioUsd = costoUsd * (1 + margenGanancia / 100);
-    return costoEnPesos ? precioUsd * dolarActual : precioUsd * dolarActual;
+    const precioUsd = costoUsd * (1 + effectiveMargen / 100);
+    return costoEnPesos ? precioUsd * effectiveDolar : precioUsd * effectiveDolar;
   };
 
   const totales = useMemo(() => {
@@ -322,7 +332,7 @@ const QuoterPage: React.FC = () => {
       totalACobrar += precioACobrar(i);
     });
     return { totalPesosExcel, totalUsdExcel, totalACobrar };
-  }, [quoteItems, dolarActual, margenGanancia, costoEnPesos]);
+  }, [quoteItems, effectiveDolar, effectiveMargen, costoEnPesos]);
 
   const usdRate = companySettings?.usd_exchange_rate ?? 0;
   const ivaPct = companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21;
@@ -346,7 +356,7 @@ const QuoterPage: React.FC = () => {
     ];
     quoteItems.forEach((i, idx) => {
       const precio = precioACobrar(i);
-      const precioExcel = i.precioVentaPesos > 0 ? i.precioVentaPesos : i.precioVentaUsd * dolarActual;
+      const precioExcel = i.precioVentaPesos > 0 ? i.precioVentaPesos : i.precioVentaUsd * effectiveDolar;
       const usar = precio > 0 ? precio : precioExcel;
       lines.push(`${idx + 1}. ${i.descripcion || i.codigo || 'Sin nombre'}`);
       if (i.codigo) lines.push(`   Código: ${i.codigo}`);
@@ -356,7 +366,7 @@ const QuoterPage: React.FC = () => {
     lines.push('───────────────────────────────────');
     lines.push(`TOTAL: $${Math.round(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel).toLocaleString('es-AR')}`);
     lines.push('');
-    lines.push(`Dólar: $${dolarActual}`);
+    lines.push(`Dólar: $${effectiveDolar}`);
     lines.push('═══════════════════════════════════════');
     return lines.join('\n');
   };
@@ -453,7 +463,7 @@ const QuoterPage: React.FC = () => {
 
     const tableData = quoteItems.map((i) => {
       const precio = precioACobrar(i);
-      const precioExcel = i.precioVentaPesos > 0 ? i.precioVentaPesos : i.precioVentaUsd * dolarActual;
+      const precioExcel = i.precioVentaPesos > 0 ? i.precioVentaPesos : i.precioVentaUsd * effectiveDolar;
       const unitario = precio > 0 ? precio : precioExcel;
       const desc = `${i.descripcion || i.codigo || 'Sin nombre'}${i.codigo ? ` (${i.codigo})` : ''}`;
       return [1, desc, `$ ${Math.round(unitario).toLocaleString('es-AR')}`, `$ ${Math.round(unitario).toLocaleString('es-AR')}`];
@@ -546,7 +556,7 @@ const QuoterPage: React.FC = () => {
                         onMouseDown={() => addCatalogItemToQuote(s)}
                       >
                         <span className="truncate">{s.nombre}{s.codigo ? ` (${s.codigo})` : ''}</span>
-                        <span className="text-gray-600 ml-2 shrink-0">${(s.precio_ars ?? s.precio_usd ?? 0).toLocaleString('es-AR')}</span>
+                        {!isAgentBlind && <span className="text-gray-600 ml-2 shrink-0">${(s.precio_ars ?? s.precio_usd ?? 0).toLocaleString('es-AR')}</span>}
                       </li>
                     ))}
                   </ul>
@@ -578,8 +588,8 @@ const QuoterPage: React.FC = () => {
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Código</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Descripción</th>
-                        <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Precio Pesos</th>
-                        <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Precio USD</th>
+                        {!isAgentBlind && <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Precio Pesos</th>}
+                        {!isAgentBlind && <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Precio USD</th>}
                         <th className="px-4 py-2 w-24 text-center text-xs font-semibold text-gray-600 uppercase">Agregar</th>
                       </tr>
                     </thead>
@@ -588,8 +598,8 @@ const QuoterPage: React.FC = () => {
                         <tr key={idx} className="hover:bg-indigo-50/50 cursor-pointer" onClick={() => addToQuote(item)}>
                           <td className="px-4 py-2 text-sm">{item.codigo}</td>
                           <td className="px-4 py-2 text-sm">{item.descripcion}</td>
-                          <td className="px-4 py-2 text-sm text-right">${item.precioVentaPesos.toLocaleString('es-AR')}</td>
-                          <td className="px-4 py-2 text-sm text-right">${item.precioVentaUsd.toFixed(2)}</td>
+                          {!isAgentBlind && <td className="px-4 py-2 text-sm text-right">${item.precioVentaPesos.toLocaleString('es-AR')}</td>}
+                          {!isAgentBlind && <td className="px-4 py-2 text-sm text-right">${item.precioVentaUsd.toFixed(2)}</td>}
                           <td className="px-4 py-2 text-center">
                             <button type="button" onClick={(ev) => { ev.stopPropagation(); addToQuote(item); }} className="p-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
                               <FaPlus size={14} />
@@ -606,34 +616,37 @@ const QuoterPage: React.FC = () => {
 
           <SectionCard title="Cotización Actual">
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dólar Actual (ARS)</label>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={dolarActual}
-                  onChange={(e) => setDolarActual(Number(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Margen de Ganancia (%)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  value={margenGanancia}
-                  onChange={(e) => setMargenGanancia(Number(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={costoEnPesos} onChange={(e) => setCostoEnPesos(e.target.checked)} className="rounded" />
-                <span>COSTO + IVA está en Pesos</span>
-              </label>
-
-              <hr className="border-gray-200" />
+              {!isAgentBlind && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dólar Actual (ARS)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={dolarActual}
+                      onChange={(e) => setDolarActual(Number(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Margen de Ganancia (%)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={margenGanancia}
+                      onChange={(e) => setMargenGanancia(Number(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={costoEnPesos} onChange={(e) => setCostoEnPesos(e.target.checked)} className="rounded" />
+                    <span>COSTO + IVA está en Pesos</span>
+                  </label>
+                  <hr className="border-gray-200" />
+                </>
+              )}
 
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {quoteItems.length === 0 ? (
@@ -646,9 +659,11 @@ const QuoterPage: React.FC = () => {
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">{item.descripcion || item.codigo}</p>
-                            <p className="text-xs text-gray-500">
-                              Pesos: ${item.precioVentaPesos.toLocaleString('es-AR')} | USD: ${item.precioVentaUsd.toFixed(2)}
-                            </p>
+                            {!isAgentBlind && (
+                              <p className="text-xs text-gray-500">
+                                Pesos: ${item.precioVentaPesos.toLocaleString('es-AR')} | USD: ${item.precioVentaUsd.toFixed(2)}
+                              </p>
+                            )}
                             <p className="text-xs font-semibold text-indigo-600 mt-0.5">
                               Precio a Cobrar: ${Math.round(precio || item.precioVentaPesos).toLocaleString('es-AR')}
                             </p>
@@ -667,8 +682,12 @@ const QuoterPage: React.FC = () => {
                 <>
                   <hr className="border-gray-200" />
                   <div className="text-sm">
-                    <p className="flex justify-between"><span>Total (Excel Pesos):</span> <strong>${totales.totalPesosExcel.toLocaleString('es-AR')}</strong></p>
-                    <p className="flex justify-between"><span>Total (Excel USD):</span> <strong>${totales.totalUsdExcel.toFixed(2)}</strong></p>
+                    {!isAgentBlind && (
+                      <>
+                        <p className="flex justify-between"><span>Total (Excel Pesos):</span> <strong>${totales.totalPesosExcel.toLocaleString('es-AR')}</strong></p>
+                        <p className="flex justify-between"><span>Total (Excel USD):</span> <strong>${totales.totalUsdExcel.toFixed(2)}</strong></p>
+                      </>
+                    )}
                     <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Final:</span> ${Math.round(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel).toLocaleString('es-AR')}</p>
                   </div>
 
@@ -702,7 +721,8 @@ const QuoterPage: React.FC = () => {
           </SectionCard>
         </div>
 
-        {/* COLUMNA DERECHA: Calculadora Manual POSVENTA */}
+        {/* COLUMNA DERECHA: Calculadora Manual POSVENTA - oculta para agent (basada en costos) */}
+        {!isAgentBlind && (
         <div className="space-y-4">
           <div className="p-6 rounded-xl border-2 border-indigo-200 bg-gray-50 shadow-sm">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Calculadora Manual (Repuestos Externos)</h3>
@@ -770,6 +790,7 @@ const QuoterPage: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Modal WhatsApp */}

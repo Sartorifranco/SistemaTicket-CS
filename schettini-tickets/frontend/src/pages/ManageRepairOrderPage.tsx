@@ -199,6 +199,7 @@ const ManageRepairOrderPage: React.FC = () => {
 
   const canEdit = user?.role === 'admin' || user?.role === 'agent' || user?.role === 'supervisor';
   const canEditEquipment = user?.role === 'admin';
+  const isAgentBlind = user?.role === 'agent';
 
   const [order, setOrder] = useState<RepairOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -866,7 +867,7 @@ const ManageRepairOrderPage: React.FC = () => {
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500" /> Costo cubierto por Garantía Oficial (Mano de obra y repuestos $0)
                   </div>
                 )}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={`grid gap-4 ${isAgentBlind ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
                   {/* COLUMNA IZQUIERDA: Cotizador Automático */}
                   <div className="space-y-4 p-4 bg-white rounded-lg border border-gray-200">
                     <h5 className="text-sm font-semibold text-indigo-700">Cotizador Automático</h5>
@@ -891,7 +892,7 @@ const ManageRepairOrderPage: React.FC = () => {
                                 onClick={() => addSparePartFromCatalog(s)}
                                 className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm"
                               >
-                                {s.nombre} — ${(s.precio_ars ?? 0).toLocaleString('es-AR')}
+                                {s.nombre}{!isAgentBlind && ` — $${(s.precio_ars ?? 0).toLocaleString('es-AR')}`}
                               </button>
                             ))}
                           </div>
@@ -963,7 +964,8 @@ const ManageRepairOrderPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* COLUMNA DERECHA: Calculadora Manual (Repuestos Externos) */}
+                  {/* COLUMNA DERECHA: Calculadora Manual (Repuestos Externos) - oculta para agent (costos) */}
+                  {!isAgentBlind && (
                   <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <h5 className="text-sm font-semibold text-gray-800">Calculadora Manual (Repuestos Externos)</h5>
                     <div>
@@ -1027,6 +1029,7 @@ const ManageRepairOrderPage: React.FC = () => {
                       Aplicar Cotización Manual a la Orden
                     </button>
                   </div>
+                  )}
                 </div>
               </div>
               <div>
