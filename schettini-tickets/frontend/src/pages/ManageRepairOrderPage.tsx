@@ -347,9 +347,13 @@ const ManageRepairOrderPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=accessories').then((res) => {
-      setAccessoriesOptions((res.data.data || []).map((o) => o.value));
-    }).catch(() => {});
+    const loadAccessories = (cat: string) =>
+      api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>(`/api/settings/system-options?category=${cat}`)
+        .then((res) => (res.data.data || []).map((o) => o.value));
+    loadAccessories('accessory').then((opts) => {
+      setAccessoriesOptions(opts);
+      if (opts.length === 0) loadAccessories('accessories').then((o) => setAccessoriesOptions(o)).catch(() => {});
+    }).catch(() => loadAccessories('accessories').then((o) => setAccessoriesOptions(o)).catch(() => {}));
   }, []);
 
   useEffect(() => {
@@ -816,6 +820,9 @@ const ManageRepairOrderPage: React.FC = () => {
                           <span className="text-sm">{opt}</span>
                         </label>
                       ))}
+                      {accessoriesOptions.length === 0 && (
+                        <p className="text-xs text-gray-500 col-span-full py-1">Sin opciones predefinidas. Agregá manualmente abajo.</p>
+                      )}
                     </div>
                     {accessoriesArray.filter((a) => !accessoriesOptions.includes(a)).length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
@@ -851,9 +858,9 @@ const ManageRepairOrderPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={addOtherAccessory}
-                        className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 text-sm"
+                        className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 text-sm flex items-center gap-1"
                       >
-                        Agregar
+                        <FaPlus size={12} /> Agregar
                       </button>
                     </div>
                   </>
