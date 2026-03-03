@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 
 const VALID_STATUSES = [
   'ingresado',
@@ -577,11 +578,31 @@ const updateRepairOrder = async (req, res) => {
     if (purchaseInvoiceNumber !== undefined) add('purchase_invoice_number', purchaseInvoiceNumber ? String(purchaseInvoiceNumber).trim() : null);
     if (purchaseDate !== undefined) add('purchase_date', purchaseDate || null);
     if (originalSupplier !== undefined) add('original_supplier', originalSupplier ? String(originalSupplier).trim() : null);
-    if (requiresFactoryShipping !== undefined) add('requires_factory_shipping', requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1 ? 1 : 0);
+    const newRequiresFactory = requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1;
+    if (requiresFactoryShipping !== undefined) add('requires_factory_shipping', newRequiresFactory ? 1 : 0);
     if (warrantyStatus !== undefined) add('warranty_status', warrantyStatus || null);
     if (setClause.length > 0) {
       setParams.push(id);
       await pool.query(`UPDATE repair_orders SET ${setClause.join(', ')} WHERE id = ?`, setParams);
+    }
+
+    if (requiresFactoryShipping !== undefined && newRequiresFactory && !existing.requires_factory_shipping) {
+      const [orderData] = await pool.query(
+        `SELECT ro.order_number, ro.equipment_type, ro.model, ro.serial_number, ro.original_supplier,
+                (SELECT serial_number FROM repair_order_items WHERE repair_order_id = ro.id LIMIT 1) AS item_serial,
+                (SELECT brand FROM repair_order_items WHERE repair_order_id = ro.id LIMIT 1) AS item_brand,
+                (SELECT model FROM repair_order_items WHERE repair_order_id = ro.id LIMIT 1) AS item_model
+         FROM repair_orders ro WHERE ro.id = ?`,
+        [id]
+      );
+      const od = orderData[0] || {};
+      await createDraftFromRepairOrder(id, {
+        order_number: od.order_number,
+        serial_number: od.item_serial || od.serial_number,
+        brand: od.item_brand || od.equipment_type,
+        model: od.item_model || od.model,
+        original_supplier: od.original_supplier
+      });
     }
 
     const userId = req.user?.id || null;
