@@ -139,7 +139,26 @@ const getTicketById = async (req, res) => {
         const [comments] = await pool.query('SELECT c.*, u.username as username FROM comments c JOIN Users u ON c.user_id = u.id WHERE ticket_id = ? ORDER BY created_at ASC', [req.params.id]);
         const [attachments] = await pool.query('SELECT * FROM ticket_attachments WHERE ticket_id = ?', [req.params.id]);
 
-        res.json({ success: true, data: { ...ticket, comments, attachments } });
+        const [activations] = await pool.query(
+            'SELECT id, form_type, form_data, invoice_number FROM activations WHERE ticket_id = ? LIMIT 1',
+            [req.params.id]
+        );
+        let activation_data = null;
+        if (activations.length > 0) {
+            const act = activations[0];
+            let formData = act.form_data;
+            if (typeof formData === 'string') {
+                try { formData = JSON.parse(formData); } catch (e) { formData = {}; }
+            }
+            activation_data = {
+                id: act.id,
+                form_type: act.form_type,
+                invoice_number: act.invoice_number,
+                form_data: formData || {}
+            };
+        }
+
+        res.json({ success: true, data: { ...ticket, comments, attachments, activation_data } });
     } catch (error) { res.status(500).json({ message: 'Error server' }); }
 };
 

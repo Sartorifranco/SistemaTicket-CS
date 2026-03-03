@@ -9,6 +9,7 @@ import { formatLocalDate } from '../utils/dateFormatter';
 import { getImageUrl } from '../utils/imageUrl';
 import CommentForm from '../components/Common/CommentForm';
 import SectionCard from '../components/Common/SectionCard';
+import ActivationPlanillaCard from '../components/Tickets/ActivationPlanillaCard';
 
 type DetailedTicketData = TicketData & {
     ticket_category_name?: string;
@@ -148,6 +149,10 @@ const AdminTicketDetailPage: React.FC = () => {
                             <h3 className="text-lg font-semibold mt-4 mb-2">Descripción</h3>
                             <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
                         </SectionCard>
+
+                        {ticket.activation_data && (
+                            <ActivationPlanillaCard activationData={ticket.activation_data} />
+                        )}
 
                         {(() => {
                             try {

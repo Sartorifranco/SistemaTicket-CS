@@ -10,6 +10,7 @@ import { formatLocalDate } from '../utils/dateFormatter';
 import { getImageUrl } from '../utils/imageUrl';
 import CommentForm from '../components/Common/CommentForm';
 import SectionCard from '../components/Common/SectionCard';
+import ActivationPlanillaCard from '../components/Tickets/ActivationPlanillaCard';
 
 // ✅ AÑADIDO: Icono de Archivo Genérico
 const FileIcon: React.FC<{ className?: string }> = ({ className = "w-16 h-16" }) => (
@@ -150,6 +151,10 @@ const AgentTicketDetailPage: React.FC = () => {
                             </div>
                         </div>
                     </SectionCard>
+
+                    {ticket.activation_data && (
+                        <ActivationPlanillaCard activationData={ticket.activation_data} />
+                    )}
                     
                     {/* Sección de Archivos Adjuntos */}
                     {ticket.attachments && ticket.attachments.length > 0 && (

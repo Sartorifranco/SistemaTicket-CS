@@ -140,6 +140,12 @@ export interface TicketData {
     comments?: Comment[];
     attachments?: Attachment[];
     feedback?: Feedback | null;
+    activation_data?: {
+        id: number;
+        form_type: string;
+        invoice_number?: string;
+        form_data: Record<string, unknown>;
+    } | null;
 }
 
 // ====================================================================

@@ -9,6 +9,7 @@ import { formatLocalDate } from '../utils/dateFormatter';
 import { getImageUrl } from '../utils/imageUrl';
 import CommentForm from '../components/Common/CommentForm';
 import SectionCard from '../components/Common/SectionCard';
+import ActivationPlanillaCard from '../components/Tickets/ActivationPlanillaCard';
 
 const Badge: React.FC<{ color: string; children: React.ReactNode }> = ({ color, children }) => (
     <span className={`px-3 py-1 text-xs font-semibold rounded-full ${color}`}>
@@ -132,6 +133,12 @@ const ClientTicketDetailPage: React.FC = () => {
                 <SectionCard title="Descripción" className="lg:col-span-2">
                     <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
                 </SectionCard>
+
+                {ticket.activation_data && (
+                    <div className="lg:col-span-3">
+                        <ActivationPlanillaCard activationData={ticket.activation_data} />
+                    </div>
+                )}
 
                 <SectionCard title="Información" className="lg:col-span-1">
                     <div className="space-y-3 text-sm">
