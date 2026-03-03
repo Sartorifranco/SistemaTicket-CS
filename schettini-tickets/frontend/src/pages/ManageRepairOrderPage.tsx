@@ -88,6 +88,7 @@ interface RepairOrder {
   technician_name?: string | null;
   status: string;
   equipment_type?: string;
+  brand?: string;
   model?: string;
   serial_number?: string;
   reported_fault?: string;
