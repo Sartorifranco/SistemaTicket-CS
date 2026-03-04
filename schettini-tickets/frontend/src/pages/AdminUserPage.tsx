@@ -8,6 +8,11 @@ import {
     FaCreditCard, FaUserShield, FaEye, FaCheckCircle, FaTimesCircle, FaEnvelope, FaIdBadge,
     FaBan, FaChevronDown, FaTicketAlt, FaWrench, FaCalculator, FaChartBar
 } from 'react-icons/fa';
+
+interface AfipResponse {
+    success: boolean;
+    data?: { razonSocial?: string | null; domicilio?: string | null; condicionIVA?: string | null; cuit?: string };
+}
 import { PERMISSION_GROUPS, migrateOldPermissions, DEFAULT_AGENT_PERMISSIONS } from '../utils/permissions';
 
 interface User {
@@ -54,7 +59,7 @@ const AdminUsersPage: React.FC = () => {
 
     // Formulario
     const [formData, setFormData] = useState<{
-        username: string; full_name: string; email: string; password: string;
+        username: string; full_name: string; email: string; password: string; cuit: string;
         role: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
         status: 'active' | 'inactive';
         company_id: string; department_id: string;
@@ -64,12 +69,14 @@ const AdminUsersPage: React.FC = () => {
         full_name: '',
         email: '',
         password: '',
+        cuit: '',
         role: 'client',
         status: 'active',
         company_id: '',
         department_id: '',
         permissions: DEFAULT_AGENT_PERMISSIONS,
     });
+    const [loadingAfip, setLoadingAfip] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -104,7 +111,7 @@ const AdminUsersPage: React.FC = () => {
     };
 
     const handleOpenCreate = () => {
-        setFormData({ username: '', full_name: '', email: '', password: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS });
+        setFormData({ username: '', full_name: '', email: '', password: '', cuit: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS });
         setIsEditMode(false);
         setIsModalOpen(true);
     };
@@ -113,11 +120,13 @@ const AdminUsersPage: React.FC = () => {
         if(e) e.stopPropagation();
         const raw = Array.isArray(user.permissions) ? user.permissions : [];
         const perms = raw.length > 0 ? migrateOldPermissions(raw) : (user.role === 'agent' || user.role === 'supervisor' ? DEFAULT_AGENT_PERMISSIONS : []);
+        const u = user as User & { cuit?: string };
         setFormData({
             username: user.username,
             full_name: user.full_name ?? user.username ?? '',
             email: user.email,
-            password: '', 
+            password: '',
+            cuit: u.cuit ?? '',
             role: user.role,
             status: user.status || 'active',
             company_id: user.company_id ? user.company_id.toString() : '',
@@ -159,6 +168,33 @@ const AdminUsersPage: React.FC = () => {
             fetchData();
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Error al eliminar');
+        }
+    };
+
+    const fetchAfip = async () => {
+        const cuitDigits = (formData.cuit || '').replace(/\D/g, '');
+        if (cuitDigits.length !== 11) {
+            toast.warn('Ingresá un CUIT de 11 dígitos para buscar en AFIP.');
+            return;
+        }
+        setLoadingAfip(true);
+        try {
+            const res = await api.get<AfipResponse>(`/api/clients/afip/${cuitDigits}`);
+            const d = res.data?.data;
+            if (d?.razonSocial) {
+                setFormData(prev => ({
+                    ...prev,
+                    full_name: d.razonSocial,
+                    cuit: d.cuit || prev.cuit,
+                }));
+                toast.success('Datos de AFIP cargados. Revisá Nombre y apellido.');
+            } else {
+                toast.info('No se encontró razón social para ese CUIT.');
+            }
+        } catch {
+            toast.error('No se pudieron obtener datos para ese CUIT. Verificá el número o intentá más tarde.');
+        } finally {
+            setLoadingAfip(false);
         }
     };
 
@@ -479,11 +515,32 @@ const AdminUsersPage: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Nombre y apellido</label>
                                 <input 
-                                    type="text" placeholder="Ej. Agustín Ortega"
+                                    type="text" placeholder="Ej. Agustín Ortega o Razón Social"
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                     value={formData.full_name}
                                     onChange={e => setFormData({...formData, full_name: e.target.value})}
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">CUIT</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text"
+                                        placeholder="20-12345678-9"
+                                        className="flex-1 border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        value={formData.cuit}
+                                        onChange={e => setFormData({...formData, cuit: e.target.value})}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={fetchAfip}
+                                        disabled={loadingAfip || !(formData.cuit || '').replace(/\D/g, '').trim()}
+                                        className="px-4 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2 shrink-0"
+                                        title="Buscar en AFIP y autocompletar Razón Social"
+                                    >
+                                        <FaSearch /> {loadingAfip ? 'Buscando...' : 'Buscar AFIP'}
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Correo Electrónico</label>
