@@ -8,12 +8,12 @@ import {
     FaCreditCard, FaUserShield, FaEye, FaCheckCircle, FaTimesCircle, FaEnvelope, FaIdBadge,
     FaBan, FaChevronDown, FaTicketAlt, FaWrench, FaCalculator, FaChartBar
 } from 'react-icons/fa';
+import { PERMISSION_GROUPS, migrateOldPermissions, DEFAULT_AGENT_PERMISSIONS } from '../utils/permissions';
 
 interface AfipResponse {
     success: boolean;
     data?: { razonSocial?: string | null; domicilio?: string | null; condicionIVA?: string | null; cuit?: string };
 }
-import { PERMISSION_GROUPS, migrateOldPermissions, DEFAULT_AGENT_PERMISSIONS } from '../utils/permissions';
 
 interface User {
     id: number;
