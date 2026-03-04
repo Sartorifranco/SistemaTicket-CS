@@ -41,6 +41,10 @@ const getImageFromRequest = (req) => {
     if (req.files && req.files.image && req.files.image[0]) return req.files.image[0];
     return null;
 };
+const getThumbnailFromRequest = (req) => {
+    if (req.files && req.files.thumbnail && req.files.thumbnail[0]) return req.files.thumbnail[0];
+    return null;
+};
 
 const createResource = async (req, res) => {
     try {
@@ -48,6 +52,7 @@ const createResource = async (req, res) => {
         let finalContent = content || '';
         const file = getFileFromRequest(req);
         const imageFile = getImageFromRequest(req);
+        const thumbnailFile = getThumbnailFromRequest(req);
 
         if (type === 'video' || type === 'image') {
             if (!file) {
@@ -60,7 +65,8 @@ const createResource = async (req, res) => {
 
         const finalFolder = (folder_name && String(folder_name).trim()) ? String(folder_name).trim() : 'General';
         let imageUrl = null;
-        if (imageFile) imageUrl = `/uploads/${imageFile.filename}`;
+        if (thumbnailFile) imageUrl = `/uploads/${thumbnailFile.filename}`;
+        else if (imageFile) imageUrl = `/uploads/${imageFile.filename}`;
 
         if (!title) {
             return res.status(400).json({ message: 'El título es obligatorio' });
@@ -94,6 +100,7 @@ const updateResource = async (req, res) => {
         const { section_id, system_id, title, type, content, category, description, folder_name } = req.body;
         const file = getFileFromRequest(req);
         const imageFile = getImageFromRequest(req);
+        const thumbnailFile = getThumbnailFromRequest(req);
 
         const parseId = (v) => {
             if (v == null || v === '') return null;
@@ -122,7 +129,10 @@ const updateResource = async (req, res) => {
             updates.push('content = ?');
             values.push(`/uploads/${file.filename}`);
         }
-        if (imageFile) {
+        if (thumbnailFile) {
+            updates.push('image_url = ?');
+            values.push(`/uploads/${thumbnailFile.filename}`);
+        } else if (imageFile) {
             updates.push('image_url = ?');
             values.push(`/uploads/${imageFile.filename}`);
         }

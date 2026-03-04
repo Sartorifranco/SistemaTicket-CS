@@ -42,6 +42,7 @@ const AdminResourcesPage: React.FC = () => {
     const [sectionId, setSectionId] = useState<string>('');
     const [systemId, setSystemId] = useState<string>('');
     const [file, setFile] = useState<File | null>(null);
+    const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
     const [showSectionsManager, setShowSectionsManager] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
     const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
@@ -102,6 +103,7 @@ const AdminResourcesPage: React.FC = () => {
             if (!content) return toast.error('La URL es obligatoria para enlaces');
             formData.append('content', content);
         }
+        if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
 
         try {
             await api.post('/api/resources', formData, {
@@ -112,6 +114,7 @@ const AdminResourcesPage: React.FC = () => {
             setType('video');
             setContent('');
             setFile(null);
+            setThumbnailFile(null);
             setSectionId('');
             setSystemId('');
             fetchResources();
@@ -325,6 +328,17 @@ const AdminResourcesPage: React.FC = () => {
                                     required 
                                 />
                             )}
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Imagen de Portada / Miniatura (Opcional)</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={e => setThumbnailFile(e.target.files ? e.target.files[0] : null)}
+                                className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Se usará como miniatura en listados.</p>
                         </div>
 
                         <button 

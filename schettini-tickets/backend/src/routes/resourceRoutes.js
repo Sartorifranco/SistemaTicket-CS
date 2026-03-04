@@ -22,7 +22,8 @@ const upload = multer({
 
 const uploadFields = upload.fields([
     { name: 'file', maxCount: 1 },
-    { name: 'image', maxCount: 1 }
+    { name: 'image', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
 ]);
 
 // Aplicar protección general (Token requerido)
