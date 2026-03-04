@@ -20,16 +20,20 @@ const upload = multer({
     limits: { fileSize: 100 * 1024 * 1024 } // 100MB para videos
 });
 
+const uploadFields = upload.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'image', maxCount: 1 }
+]);
+
 // Aplicar protección general (Token requerido)
 router.use(protect);
 
 // ✅ RUTA PÚBLICA (Para Admin, Agente y Cliente)
-// Esta es la ruta que da el error si tiene authorize('admin')
 router.get('/', getResources);
 
-// ✅ RUTAS DE ADMIN, SUPERVISOR Y AGENT (Crear, editar y borrar)
-router.post('/', authorize('admin', 'supervisor', 'agent'), upload.single('file'), createResource);
-router.put('/:id', authorize('admin', 'supervisor', 'agent'), updateResource);
+// ✅ RUTAS DE ADMIN, SUPERVISOR Y AGENT (Crear, editar y borrar). POST acepta file + image; PUT acepta opcional file + image.
+router.post('/', authorize('admin', 'supervisor', 'agent'), uploadFields, createResource);
+router.put('/:id', authorize('admin', 'supervisor', 'agent'), uploadFields, updateResource);
 router.delete('/:id', authorize('admin', 'supervisor', 'agent'), deleteResource);
 
 module.exports = router;

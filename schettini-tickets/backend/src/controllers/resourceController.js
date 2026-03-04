@@ -9,20 +9,20 @@ const getResources = async (req, res) => {
             FROM knowledge_base kb
             LEFT JOIN resource_sections rs ON kb.section_id = rs.id
             LEFT JOIN ticket_systems ts ON kb.system_id = ts.id
-            ORDER BY rs.sort_order, kb.created_at DESC
+            ORDER BY rs.sort_order, kb.folder_name ASC, kb.created_at DESC
         `;
         const params = [];
         const conditions = [];
         if (section_id) { conditions.push('kb.section_id = ?'); params.push(section_id); }
         if (system_id) { conditions.push('kb.system_id = ?'); params.push(system_id); }
         if (conditions.length) {
-            sql = sql.replace('ORDER BY', 'WHERE ' + conditions.join(' AND ') + ' ORDER BY');
+            sql = sql.replace('ORDER BY', 'WHERE ' + conditions.join(' AND ') + ' ORDER BY rs.sort_order, kb.folder_name ASC, kb.created_at DESC');
         }
         let rows;
         try {
             [rows] = await pool.query(sql, params);
         } catch (e) {
-            if (e.message && (e.message.includes('resource_sections') || e.message.includes('section_id'))) {
+            if (e.message && (e.message.includes('resource_sections') || e.message.includes('section_id') || e.message.includes('folder_name'))) {
                 [rows] = await pool.query('SELECT * FROM knowledge_base ORDER BY created_at DESC');
             } else throw e;
         }
@@ -32,20 +32,35 @@ const getResources = async (req, res) => {
     }
 };
 
+const getFileFromRequest = (req) => {
+    if (req.file) return req.file;
+    if (req.files && req.files.file && req.files.file[0]) return req.files.file[0];
+    return null;
+};
+const getImageFromRequest = (req) => {
+    if (req.files && req.files.image && req.files.image[0]) return req.files.image[0];
+    return null;
+};
+
 const createResource = async (req, res) => {
     try {
-        const { title, type, content, category, section_id, system_id, description } = req.body;
+        const { title, type, content, category, section_id, system_id, description, folder_name } = req.body;
         let finalContent = content || '';
+        const file = getFileFromRequest(req);
+        const imageFile = getImageFromRequest(req);
 
-        // Para video e image: archivo obligatorio. Para link: content obligatorio.
         if (type === 'video' || type === 'image') {
-            if (!req.file) {
+            if (!file) {
                 return res.status(400).json({ message: 'Debes subir un archivo para este tipo de recurso' });
             }
-            finalContent = `/uploads/${req.file.filename}`;
-        } else if (req.file) {
-            finalContent = `/uploads/${req.file.filename}`;
+            finalContent = `/uploads/${file.filename}`;
+        } else if (file) {
+            finalContent = `/uploads/${file.filename}`;
         }
+
+        const finalFolder = (folder_name && String(folder_name).trim()) ? String(folder_name).trim() : 'General';
+        let imageUrl = null;
+        if (imageFile) imageUrl = `/uploads/${imageFile.filename}`;
 
         if (!title) {
             return res.status(400).json({ message: 'El título es obligatorio' });
@@ -55,11 +70,11 @@ const createResource = async (req, res) => {
         const sysId = system_id ? parseInt(system_id) : null;
         try {
             await pool.query(
-                'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [title, type, finalContent, category || 'General', secId, sysId, description || null]
+                'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description, folder_name, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [title, type, finalContent, category || 'General', secId, sysId, description || null, finalFolder, imageUrl]
             );
         } catch (e) {
-            if (e.message && (e.message.includes('section_id') || e.message.includes('Unknown column'))) {
+            if (e.message && (e.message.includes('section_id') || e.message.includes('folder_name') || e.message.includes('image_url') || e.message.includes('Unknown column'))) {
                 await pool.query(
                     'INSERT INTO knowledge_base (title, type, content, category) VALUES (?, ?, ?, ?)',
                     [title, type, finalContent, category || 'General']
@@ -76,25 +91,55 @@ const createResource = async (req, res) => {
 const updateResource = async (req, res) => {
     try {
         const { id } = req.params;
-        const { section_id, system_id } = req.body;
-        // Usar != null para incluir null y undefined; evitar parseInt(null) = NaN
+        const { section_id, system_id, title, type, content, category, description, folder_name } = req.body;
+        const file = getFileFromRequest(req);
+        const imageFile = getImageFromRequest(req);
+
         const parseId = (v) => {
             if (v == null || v === '') return null;
             const n = parseInt(v);
             return isNaN(n) ? null : n;
         };
+
+        const [rows] = await pool.query('SELECT id, content, image_url FROM knowledge_base WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ success: false, message: 'Recurso no encontrado' });
+
+        const updates = [];
+        const values = [];
+
         const secId = parseId(section_id);
         const sysId = parseId(system_id);
+        updates.push('section_id = ?', 'system_id = ?');
+        values.push(secId, sysId);
+
+        if (title !== undefined) { updates.push('title = ?'); values.push(title); }
+        if (type !== undefined) { updates.push('type = ?'); values.push(type); }
+        if (category !== undefined) { updates.push('category = ?'); values.push(category || 'General'); }
+        if (description !== undefined) { updates.push('description = ?'); values.push(description || null); }
+        if (folder_name !== undefined) { updates.push('folder_name = ?'); values.push((folder_name && String(folder_name).trim()) ? String(folder_name).trim() : 'General'); }
+
+        if (file) {
+            updates.push('content = ?');
+            values.push(`/uploads/${file.filename}`);
+        }
+        if (imageFile) {
+            updates.push('image_url = ?');
+            values.push(`/uploads/${imageFile.filename}`);
+        }
+
+        values.push(id);
         try {
             await pool.query(
-                'UPDATE knowledge_base SET section_id = ?, system_id = ? WHERE id = ?',
-                [secId, sysId, id]
+                `UPDATE knowledge_base SET ${updates.join(', ')} WHERE id = ?`,
+                values
             );
         } catch (e) {
-            if (e.message && (e.message.includes('section_id') || e.message.includes('Unknown column'))) {
-                return res.status(400).json({ message: 'La base de datos no tiene las columnas section_id/system_id. Ejecutá la migración.' });
-            }
-            throw e;
+            if (e.message && (e.message.includes('section_id') || e.message.includes('folder_name') || e.message.includes('image_url') || e.message.includes('Unknown column'))) {
+                await pool.query(
+                    'UPDATE knowledge_base SET section_id = ?, system_id = ? WHERE id = ?',
+                    [secId, sysId, id]
+                );
+            } else throw e;
         }
         res.json({ success: true, message: 'Recurso actualizado' });
     } catch (error) {
