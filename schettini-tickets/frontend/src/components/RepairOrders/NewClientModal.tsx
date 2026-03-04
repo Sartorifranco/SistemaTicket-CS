@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../../config/axiosConfig';
+import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types';
 import { toast } from 'react-toastify';
 import { FaSearch } from 'react-icons/fa';
@@ -14,6 +15,7 @@ interface NewClientModalProps {
 }
 
 const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClientCreated }) => {
+  const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingAfip, setLoadingAfip] = useState(false);
   const [form, setForm] = useState({
@@ -40,9 +42,15 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
       toast.error('Ingresá un CUIT de 11 dígitos para buscar en AFIP');
       return;
     }
+    if (!token) {
+      toast.error('Debés iniciar sesión para buscar en AFIP.');
+      return;
+    }
     setLoadingAfip(true);
     try {
-      const res = await api.get<{ success: boolean; data: { razonSocial?: string; domicilio?: string; condicionIVA?: string } }>(`/api/clients/afip/${cuitDigits}`);
+      const res = await api.get<{ success: boolean; data: { razonSocial?: string; domicilio?: string; condicionIVA?: string } }>(`/api/clients/afip/${cuitDigits}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const d = res.data?.data;
       if (d) {
         setForm((p) => ({

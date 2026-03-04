@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { getPlanLabel } from '../utils/traslations';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +44,7 @@ interface Department {
 
 const AdminUsersPage: React.FC = () => {
     const navigate = useNavigate();
+    const { token } = useAuth();
     
     // Datos
     const [users, setUsers] = useState<User[]>([]);
@@ -178,9 +180,15 @@ const AdminUsersPage: React.FC = () => {
             toast.warn('Ingresá un CUIT de 11 dígitos para buscar en AFIP.');
             return;
         }
+        if (!token) {
+            toast.error('Debés iniciar sesión para buscar en AFIP.');
+            return;
+        }
         setLoadingAfip(true);
         try {
-            const res = await api.get<AfipResponse>(`/api/clients/afip/${cuitDigits}`);
+            const res = await api.get<AfipResponse>(`/api/clients/afip/${cuitDigits}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
             const d = res.data?.data;
             if (d?.razonSocial) {
                 setFormData(prev => ({
