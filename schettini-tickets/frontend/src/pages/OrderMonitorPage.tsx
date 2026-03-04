@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/axiosConfig';
 import { useNotification } from '../context/NotificationContext';
-import { FaWrench, FaUser, FaClock, FaExclamationTriangle } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaWrench, FaUser, FaClock, FaExclamationTriangle, FaArrowLeft } from 'react-icons/fa';
 
 interface MonitorOrder {
   id: number;
@@ -81,6 +82,7 @@ const OrderMonitorPage: React.FC = () => {
   const [orders, setOrders] = useState<MonitorOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const { socket } = useNotification();
+  const navigate = useNavigate();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -134,6 +136,15 @@ const OrderMonitorPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-slate-700/80 hover:bg-slate-600 text-slate-300 hover:text-white text-sm font-medium rounded-lg border border-slate-600 backdrop-blur-sm transition-all"
+        title="Volver al sistema"
+      >
+        <FaArrowLeft size={12} />
+        Volver
+      </button>
+
       <header className="mb-6 border-b border-slate-600 pb-4">
         <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
           <FaWrench className="text-amber-400" />

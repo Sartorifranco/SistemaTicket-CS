@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { toast } from 'react-toastify';
@@ -14,6 +14,8 @@ const Layout: React.FC = () => {
     const { user, logout } = useAuth();
     const { socket } = useNotification();
     const navigate = useNavigate();
+    const location = useLocation();
+    const isMonitor = location.pathname.endsWith('/monitor');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [delayedOrdersAlert, setDelayedOrdersAlert] = useState<{ message: string; count: number } | null>(null);
 
@@ -238,6 +240,10 @@ const Layout: React.FC = () => {
     };
 
     const isPremium = String(realTimePlan).toLowerCase().includes('enterprise') || String(realTimePlan).toLowerCase().includes('premium');
+
+    if (isMonitor) {
+        return <Outlet />;
+    }
 
     return (
         <div className="flex h-screen bg-gray-100 font-sans print:hidden">
