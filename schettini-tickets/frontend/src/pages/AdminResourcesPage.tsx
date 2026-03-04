@@ -213,7 +213,7 @@ const AdminResourcesPage: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setViewMode('drivers')}
-                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${viewMode === 'drivers' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${viewMode !== 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                     <FaFolderOpen /> Descargas / Drivers
                 </button>
