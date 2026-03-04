@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp, FaFolderOpen, FaBook, FaChevronRight } from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
+import DriversPage from './DriversPage';
 
 interface Resource {
     id: number;
@@ -30,6 +31,7 @@ interface System {
 }
 
 const AdminResourcesPage: React.FC = () => {
+    const [viewMode, setViewMode] = useState<'resources' | 'drivers'>('resources');
     const [resources, setResources] = useState<Resource[]>([]);
     const [sections, setSections] = useState<ResourceSection[]>([]);
     const [systems, setSystems] = useState<System[]>([]);
@@ -183,8 +185,39 @@ const AdminResourcesPage: React.FC = () => {
         }
     };
 
+    if (viewMode === 'drivers') {
+        return (
+            <div className="min-h-screen">
+                <div className="container mx-auto px-4 py-4">
+                    <button
+                        onClick={() => setViewMode('resources')}
+                        className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
+                    >
+                        <FaChevronRight className="rotate-180" /> Volver a Base de Conocimiento
+                    </button>
+                </div>
+                <DriversPage />
+            </div>
+        );
+    }
+
     return (
         <div className="container mx-auto p-6">
+            {/* Tabs: Base de Conocimiento | Descargas */}
+            <div className="flex gap-2 mb-6">
+                <button
+                    onClick={() => setViewMode('resources')}
+                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${viewMode === 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                    <FaBook /> Base de Conocimiento
+                </button>
+                <button
+                    onClick={() => setViewMode('drivers')}
+                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${viewMode === 'drivers' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                    <FaFolderOpen /> Descargas / Drivers
+                </button>
+            </div>
             <h1 className="text-3xl font-bold mb-6 text-gray-800">Gestión de Base de Conocimientos</h1>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

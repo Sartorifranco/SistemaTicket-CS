@@ -41,7 +41,7 @@ const registerUser = async (req, res) => {
             business_name, fantasy_name, 
             role, status, company_id, department_id, plan,
             accepted_confidentiality_agreement,
-            permissions 
+            permissions, can_manage_tech_finances
         } = req.body;
 
         // 0. Acuerdo de confidencialidad (solo registro público; admin/supervisor eximidos)
@@ -121,15 +121,18 @@ const registerUser = async (req, res) => {
             : (userRole === 'agent' || userRole === 'supervisor') ? '["tickets_view","tickets_reply"]' : null;
 
         const hasPermissions = permsVal !== null;
+        const hasTechFinances = (userRole === 'agent' && can_manage_tech_finances === true);
         const sql = `
             INSERT INTO Users (
                 username, full_name, email, password, role, is_active, 
                 phone, cuit, business_name, fantasy_name, 
                 company_id, department_id, plan, last_login
                 ${hasPermissions ? ', permissions' : ''}
+                ${hasTechFinances ? ', can_manage_tech_finances' : ''}
             ) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
                 ${hasPermissions ? ', ?' : ''}
+                ${hasTechFinances ? ', ?' : ''}
             )
         `;
         const insertValues = [
@@ -137,6 +140,7 @@ const registerUser = async (req, res) => {
             finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan
         ];
         if (hasPermissions) insertValues.push(permsVal);
+        if (hasTechFinances) insertValues.push(1);
         
         try {
             await pool.query(sql, insertValues);
@@ -214,7 +218,8 @@ const loginUser = async (req, res) => {
             user: {
                 id: user.id, username: user.username, full_name: user.full_name, email: user.email,
                 role: user.role, business_name: user.business_name, plan: user.plan,
-                permissions: perms
+                permissions: perms,
+                can_manage_tech_finances: Boolean(user.can_manage_tech_finances)
             },
         });
     } catch (error) {
@@ -228,20 +233,23 @@ const getMe = async (req, res) => {
         if (!req.user) return res.status(404).json({ message: 'Usuario no encontrado.' });
         let users;
         try {
-            [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions FROM Users WHERE id = ?', [req.user.id]);
+            [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions, can_manage_tech_finances FROM Users WHERE id = ?', [req.user.id]);
         } catch (colErr) {
             if (colErr.code === 'ER_BAD_FIELD_ERROR') {
-                if (colErr.sqlMessage?.includes('full_name')) {
-                    [users] = await pool.query('SELECT id, username, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions FROM Users WHERE id = ?', [req.user.id]);
+                if (colErr.sqlMessage?.includes('can_manage_tech_finances')) {
+                    [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions FROM Users WHERE id = ?', [req.user.id]);
+                    if (users[0]) users[0].can_manage_tech_finances = false;
+                } else if (colErr.sqlMessage?.includes('full_name')) {
+                    [users] = await pool.query('SELECT id, username, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, permissions, can_manage_tech_finances FROM Users WHERE id = ?', [req.user.id]);
                     if (users[0]) users[0].full_name = users[0].username;
                 } else if (colErr.sqlMessage?.includes('permissions')) {
-                    [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id FROM Users WHERE id = ?', [req.user.id]);
+                    [users] = await pool.query('SELECT id, username, full_name, email, role, phone, business_name, fantasy_name, cuit, plan, company_id, can_manage_tech_finances FROM Users WHERE id = ?', [req.user.id]);
                 } else throw colErr;
             } else throw colErr;
         }
         const u = users[0];
         if (!u) return res.status(404).json({ message: 'Usuario no encontrado.' });
-        res.json({ success: true, user: { ...u, permissions: parsePermissions(u.permissions) } });
+        res.json({ success: true, user: { ...u, permissions: parsePermissions(u.permissions), can_manage_tech_finances: Boolean(u.can_manage_tech_finances) } });
     } catch (error) { res.status(500).json({ message: 'Error.' }); }
 };
 

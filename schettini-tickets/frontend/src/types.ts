@@ -69,6 +69,9 @@ export interface User {
 
     // Permisos granulares (solo para agent/supervisor): tickets, repair_orders, cotizador
     permissions?: string[];
+
+    // Acceso a Finanzas Técnicas (solo agent con este permiso; admin/supervisor siempre)
+    can_manage_tech_finances?: boolean;
 }
 
 // ====================================================================

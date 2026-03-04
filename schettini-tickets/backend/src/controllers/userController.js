@@ -45,7 +45,7 @@ const getUsers = async (req, res) => {
             [users] = await pool.query(`
                 SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
                     u.plan, u.phone, u.cuit, u.company_id, u.department_id,
-                    u.permissions,
+                    u.permissions, u.can_manage_tech_finances,
                     u.business_name as business_name_text,
                     c.name as company_name_linked, d.name as department_name
                 FROM Users u
@@ -58,6 +58,18 @@ const getUsers = async (req, res) => {
                 [users] = await pool.query(`
                     SELECT u.id, u.username, u.username as full_name, u.email, u.role, u.status, u.is_active,
                         u.plan, u.phone, u.cuit, u.company_id, u.department_id,
+                        u.permissions, u.can_manage_tech_finances,
+                        u.business_name as business_name_text,
+                        c.name as company_name_linked, d.name as department_name
+                    FROM Users u
+                    LEFT JOIN Companies c ON u.company_id = c.id
+                    LEFT JOIN Departments d ON u.department_id = d.id
+                    ORDER BY u.id DESC
+                `);
+            } else if (colErr.message?.includes('can_manage_tech_finances')) {
+                [users] = await pool.query(`
+                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
+                        u.plan, u.phone, u.cuit, u.company_id, u.department_id,
                         u.permissions,
                         u.business_name as business_name_text,
                         c.name as company_name_linked, d.name as department_name
@@ -66,6 +78,7 @@ const getUsers = async (req, res) => {
                     LEFT JOIN Departments d ON u.department_id = d.id
                     ORDER BY u.id DESC
                 `);
+                users.forEach(u => { u.can_manage_tech_finances = 0; });
             } else throw colErr;
         }
 
@@ -77,7 +90,8 @@ const getUsers = async (req, res) => {
             ...user,
             business_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada',
             company_name: user.company_name_linked || user.business_name_text || 'Sin Empresa Asignada',
-            permissions: parsePermissions(user.permissions)
+            permissions: parsePermissions(user.permissions),
+            can_manage_tech_finances: Boolean(user.can_manage_tech_finances)
         }));
 
         res.json({ success: true, data: formattedUsers });
@@ -164,7 +178,7 @@ const createUser = async (req, res) => {
 // --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
-        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, iva_condition, address, city, province, zip_code } = req.body;
+        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, can_manage_tech_finances, iva_condition, address, city, province, zip_code } = req.body;
         const userId = req.params.id;
 
         const cuitNorm = (cuit || '').replace(/\D/g, '');
@@ -193,13 +207,15 @@ const updateUser = async (req, res) => {
             'username = ?', 'full_name = ?', 'email = ?', 'role = ?', 'status = ?', 'is_active = ?',
             'department_id = ?', 'company_id = ?', 'plan = ?',
             'phone = ?', 'cuit = ?', 'business_name = ?', 'fantasy_name = ?',
-            'iva_condition = ?', 'address = ?', 'city = ?', 'province = ?', 'zip_code = ?'
+            'iva_condition = ?', 'address = ?', 'city = ?', 'province = ?', 'zip_code = ?',
+            'can_manage_tech_finances = ?'
         ];
         const values = [
             username, finalFullName, email, role, newStatus, isActive,
             finalDepartmentId, finalCompanyId, plan || 'Free',
             phone || '', cuit || '', business_name || '', fantasy_name || '',
-            (iva_condition || '').trim() || null, (address || '').trim() || null, (city || '').trim() || null, (province || '').trim() || null, (zip_code || '').trim() || null
+            (iva_condition || '').trim() || null, (address || '').trim() || null, (city || '').trim() || null, (province || '').trim() || null, (zip_code || '').trim() || null,
+            (role === 'agent' && can_manage_tech_finances === true) ? 1 : 0
         ];
         if (finalPermissions !== null) {
             updates.push('permissions = ?');

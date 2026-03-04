@@ -75,6 +75,13 @@ if [[ -f "backend/scripts/migrate-repair-orders-advanced.js" ]]; then
     echo ""
 fi
 
+# Columna can_manage_tech_finances (Finanzas Técnicas para agentes)
+if [[ -f "backend/scripts/add-can-manage-tech-finances.js" ]]; then
+    echo ">>> Ejecutando migración can_manage_tech_finances..."
+    (cd backend && node scripts/add-can-manage-tech-finances.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

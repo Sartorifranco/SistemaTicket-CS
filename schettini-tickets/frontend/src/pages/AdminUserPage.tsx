@@ -60,6 +60,7 @@ const AdminUsersPage: React.FC = () => {
         status: 'active' | 'inactive';
         company_id: string; department_id: string;
         permissions: string[];
+        can_manage_tech_finances: boolean;
     }>({
         username: '',
         full_name: '',
@@ -71,6 +72,7 @@ const AdminUsersPage: React.FC = () => {
         company_id: '',
         department_id: '',
         permissions: DEFAULT_AGENT_PERMISSIONS,
+        can_manage_tech_finances: false,
     });
 
     const fetchData = async () => {
@@ -106,7 +108,7 @@ const AdminUsersPage: React.FC = () => {
     };
 
     const handleOpenCreate = () => {
-        setFormData({ username: '', full_name: '', email: '', password: '', cuit: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS });
+        setFormData({ username: '', full_name: '', email: '', password: '', cuit: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS, can_manage_tech_finances: false });
         setIsEditMode(false);
         setIsModalOpen(true);
     };
@@ -115,7 +117,7 @@ const AdminUsersPage: React.FC = () => {
         if(e) e.stopPropagation();
         const raw = Array.isArray(user.permissions) ? user.permissions : [];
         const perms = raw.length > 0 ? migrateOldPermissions(raw) : (user.role === 'agent' || user.role === 'supervisor' ? DEFAULT_AGENT_PERMISSIONS : []);
-        const u = user as User & { cuit?: string };
+        const u = user as User & { cuit?: string; can_manage_tech_finances?: boolean };
         setFormData({
             username: user.username,
             full_name: user.full_name ?? user.username ?? '',
@@ -127,6 +129,7 @@ const AdminUsersPage: React.FC = () => {
             company_id: user.company_id ? user.company_id.toString() : '',
             department_id: user.department_id ? user.department_id.toString() : '',
             permissions: perms,
+            can_manage_tech_finances: Boolean(u.can_manage_tech_finances),
         });
         setCurrentUserId(user.id);
         setIsEditMode(true);
@@ -179,6 +182,7 @@ const AdminUsersPage: React.FC = () => {
                 company_id: formData.company_id ? parseInt(formData.company_id) : null,
                 department_id: formData.department_id ? parseInt(formData.department_id) : null,
                 permissions: (formData.role === 'agent' || formData.role === 'supervisor') ? formData.permissions : undefined,
+                can_manage_tech_finances: formData.role === 'agent' ? formData.can_manage_tech_finances : false,
             };
             if (payload.permissions === undefined) delete payload.permissions;
             if (!isEditMode) payload.accepted_confidentiality_agreement = true;
@@ -576,6 +580,21 @@ const AdminUsersPage: React.FC = () => {
                                     </select>
                                 </div>
                             </div>
+
+                            {formData.role === 'agent' && (
+                                <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <input
+                                        type="checkbox"
+                                        id="can_manage_tech_finances"
+                                        checked={formData.can_manage_tech_finances}
+                                        onChange={e => setFormData({...formData, can_manage_tech_finances: e.target.checked})}
+                                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <label htmlFor="can_manage_tech_finances" className="text-sm font-medium text-gray-800 cursor-pointer">
+                                        Permitir acceso a Finanzas Técnicas (Caja Técnica y Reportes de Deudas)
+                                    </label>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">

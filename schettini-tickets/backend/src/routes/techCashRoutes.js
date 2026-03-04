@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorizeTechFinances } = require('../middleware/authMiddleware');
 const {
   createMovement,
   getMovements,
@@ -10,7 +10,7 @@ const {
 } = require('../controllers/techCashController');
 
 router.use(protect);
-router.use(authorize('admin', 'agent', 'supervisor'));
+router.use(authorizeTechFinances);
 
 router.get('/', getMovements);
 router.get('/:id', getMovementById);

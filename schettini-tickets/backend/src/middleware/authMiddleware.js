@@ -10,12 +10,23 @@ const protect = asyncHandler(async (req, res, next) => {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            const [users] = await pool.query(
-                'SELECT id, username, email, role, status FROM Users WHERE id = ?', 
-                [decoded.id]
-            );
+            let users;
+            try {
+                [users] = await pool.query(
+                    'SELECT id, username, email, role, status, can_manage_tech_finances FROM Users WHERE id = ?', 
+                    [decoded.id]
+                );
+            } catch (colErr) {
+                if (colErr.message?.includes('can_manage_tech_finances')) {
+                    [users] = await pool.query(
+                        'SELECT id, username, email, role, status FROM Users WHERE id = ?',
+                        [decoded.id]
+                    );
+                    if (users[0]) users[0].can_manage_tech_finances = false;
+                } else throw colErr;
+            }
 
-            if (users.length === 0) {
+            if (!users || users.length === 0) {
                 res.status(401);
                 throw new Error('Usuario no encontrado');
             }
@@ -27,7 +38,8 @@ const protect = asyncHandler(async (req, res, next) => {
                 username: String(u.username || ''),
                 email: String(u.email || ''),
                 role: String(u.role || '').toLowerCase().trim(),
-                status: String(u.status || '').toLowerCase().trim()
+                status: String(u.status || '').toLowerCase().trim(),
+                can_manage_tech_finances: Boolean(u.can_manage_tech_finances)
             };
 
             if (req.user.status !== 'active') {
@@ -93,6 +105,19 @@ const authorize = (...roles) => {
     };
 };
 
+/** Finanzas Técnicas: admin y supervisor siempre; agent solo si can_manage_tech_finances */
+const authorizeTechFinances = (req, res, next) => {
+    if (!req.user) {
+        res.status(403);
+        throw new Error('No autorizado');
+    }
+    if (req.user.role === 'admin' || req.user.role === 'supervisor') return next();
+    if (req.user.role === 'agent' && req.user.can_manage_tech_finances === true) return next();
+    console.log(`⛔ [Auth] Finanzas Técnicas denegado. Rol: ${req.user.role}, can_manage_tech_finances: ${req.user.can_manage_tech_finances}`);
+    res.status(403);
+    throw new Error('No tenés permiso para Finanzas Técnicas');
+};
+
 /** Admin siempre; agent/supervisor solo con permiso reports_view */
 const authorizeReports = asyncHandler(async (req, res, next) => {
     if (!req.user) {
@@ -128,4 +153,4 @@ const authorizeReports = asyncHandler(async (req, res, next) => {
     throw new Error('Rol no autorizado para reportes');
 });
 
-module.exports = { protect, optionalProtect, authenticateToken: protect, authorize, authorizeReports };
+module.exports = { protect, optionalProtect, authenticateToken: protect, authorize, authorizeReports, authorizeTechFinances };

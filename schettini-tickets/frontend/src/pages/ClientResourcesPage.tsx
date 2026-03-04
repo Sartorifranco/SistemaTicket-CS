@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
-import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle } from 'react-icons/fa';
+import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle, FaFolderOpen } from 'react-icons/fa';
+import DriversPage from './DriversPage';
 
 interface Resource {
     id: number;
@@ -29,6 +30,7 @@ interface System {
 }
 
 const ClientResourcesPage: React.FC = () => {
+    const [viewMode, setViewMode] = useState<'resources' | 'drivers'>('resources');
     const [resources, setResources] = useState<Resource[]>([]);
     const [sections, setSections] = useState<ResourceSection[]>([]);
     const [systems, setSystems] = useState<System[]>([]);
@@ -87,8 +89,41 @@ const ClientResourcesPage: React.FC = () => {
         return 'Videos y guías paso a paso para aprender a usar los sistemas.';
     };
 
+    if (viewMode === 'drivers') {
+        return (
+            <div className="min-h-screen">
+                <div className="container mx-auto px-4 py-4">
+                    <button
+                        onClick={() => setViewMode('resources')}
+                        className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
+                    >
+                        <FaChevronRight className="rotate-180" /> Volver a Recursos
+                    </button>
+                </div>
+                <DriversPage />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen">
+            {/* Tabs: Recursos | Descargas */}
+            <div className="bg-white border-b border-gray-200 px-4">
+                <div className="container mx-auto flex gap-2 pt-4">
+                    <button
+                        onClick={() => setViewMode('resources')}
+                        className={`px-4 py-2 rounded-t-lg font-medium transition ${viewMode === 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                        <FaBook className="inline mr-2" /> Recursos
+                    </button>
+                    <button
+                        onClick={() => setViewMode('drivers')}
+                        className={`px-4 py-2 rounded-t-lg font-medium transition flex items-center gap-2 ${viewMode === 'drivers' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                        <FaFolderOpen /> Descargas / Drivers
+                    </button>
+                </div>
+            </div>
             {/* Banner con título y búsqueda (estilo SectionCard: gray-900) */}
             <div className="bg-gray-900 text-white px-4 py-8 md:py-10">
                 <div className="container mx-auto max-w-4xl text-center">

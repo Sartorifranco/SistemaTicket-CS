@@ -8,7 +8,7 @@ import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
 import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt, FaDownload, FaCashRegister, FaFileInvoiceDollar } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt, FaCashRegister, FaFileInvoiceDollar } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -77,8 +77,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
                         <li><NavLink to="/admin/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Soporte</li>
-                        <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
-                        <li><NavLink to="/admin/drivers" className={getLinkClassName}><FaDownload /> Descargas / Drivers</NavLink></li>
+                        <li><NavLink to="/admin/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
                         <li><NavLink to="/admin/tasks" className={getLinkClassName}><FaTasks /> Tareas del Equipo</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Área Técnica</li>
                         <li><NavLink to="/admin/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>
@@ -88,9 +87,13 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>
                         <li><NavLink to="/admin/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>
                         <li><NavLink to="/admin/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>
-                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
-                        <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
-                        <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
+                        {(user.role === 'admin' || user.role === 'supervisor' || user.can_manage_tech_finances) && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
+                                <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
+                                <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
+                            </>
+                        )}
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
                         <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
@@ -125,9 +128,17 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
+                                {hasRepairs && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
+                            </>
+                        )}
+                        {user.can_manage_tech_finances && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
+                                <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
+                                <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
                     </>
@@ -182,8 +193,7 @@ const Layout: React.FC = () => {
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
                                 <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
-                                <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Base de Conocimiento</NavLink></li>
-                                <li><NavLink to="/agent/drivers" className={getLinkClassName}><FaDownload /> Descargas / Drivers</NavLink></li>
+                                <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
                                 <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                             </>
                         )}
@@ -199,9 +209,13 @@ const Layout: React.FC = () => {
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
                             </>
                         )}
-                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
-                        <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
-                        <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
+                        {(user.role === 'supervisor' || user.can_manage_tech_finances) && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
+                                <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
+                                <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
+                            </>
+                        )}
                     </>
                 );
             }
@@ -215,7 +229,6 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/client/repairs" className={getLinkClassName}><FaTools /> Mis Reparaciones</NavLink></li>
                         <li><NavLink to="/client/activations" className={getLinkClassName}><FaFileAlt /> Activaciones / Planillas</NavLink></li>
                         <li><NavLink to="/client/help" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
-                        <li><NavLink to="/client/drivers" className={getLinkClassName}><FaDownload /> Descargas / Drivers</NavLink></li>
                         <li><NavLink to="/profile" className={getLinkClassName}><FaUsers /> Mi Perfil</NavLink></li>
                     </>
                 );
