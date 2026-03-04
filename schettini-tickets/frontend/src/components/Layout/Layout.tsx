@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
 import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
 import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
+    const { socket } = useNotification();
+    const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
+    const [delayedOrdersAlert, setDelayedOrdersAlert] = useState<{ message: string; count: number } | null>(null);
+
     const [currentDate, setCurrentDate] = useState(new Date());
     // @ts-ignore
     const [realTimePlan, setRealTimePlan] = useState(user?.plan || 'Gratis');
@@ -33,6 +37,20 @@ const Layout: React.FC = () => {
                 .catch(() => {});
         }
     }, [user]);
+
+    useEffect(() => {
+        if (!socket || (user?.role !== 'agent' && user?.role !== 'supervisor')) return;
+        const handler = (payload: { message?: string; count?: number }) => {
+            setDelayedOrdersAlert({
+                message: payload.message || '¡Atención! Tenés equipos demorados que revisar.',
+                count: payload.count ?? 1
+            });
+        };
+        socket.on('delayed_orders_alert', handler);
+        return () => {
+            socket.off('delayed_orders_alert', handler);
+        };
+    }, [socket, user?.role]);
 
     const handleLogout = () => {
         logout();
@@ -211,6 +229,36 @@ const Layout: React.FC = () => {
             </aside>
 
             <div className="flex-1 flex flex-col overflow-hidden">
+                {delayedOrdersAlert && (user?.role === 'agent' || user?.role === 'supervisor') && (
+                    <div className="flex-shrink-0 flex items-center justify-between gap-4 px-4 py-3 bg-red-600 text-white border-b-2 border-red-700 shadow-md z-20">
+                        <div className="flex items-center gap-3">
+                            <FaExclamationTriangle className="text-2xl shrink-0" />
+                            <div>
+                                <p className="font-bold text-lg">{delayedOrdersAlert.message}</p>
+                                {delayedOrdersAlert.count > 0 && (
+                                    <p className="text-sm text-red-100">{delayedOrdersAlert.count} orden(es) demorada(s)</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/agent/monitor')}
+                                className="px-3 py-1.5 bg-white text-red-700 font-medium rounded-lg hover:bg-red-50 text-sm"
+                            >
+                                Ver monitor
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setDelayedOrdersAlert(null)}
+                                className="p-2 text-white/90 hover:bg-white/20 rounded-lg"
+                                aria-label="Cerrar"
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shadow-sm z-10">
                     <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-gray-500 focus:outline-none">
                         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6H20M4 12H20M4 18H20" strokeLinecap="round" strokeLinejoin="round"/></svg>

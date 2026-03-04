@@ -113,6 +113,12 @@ const createUser = async (req, res) => {
         const [existing] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ message: 'El usuario ya existe' });
 
+        const cuitNorm = (cuit || '').replace(/\D/g, '');
+        if (cuitNorm.length >= 8) {
+            const [existingCuit] = await pool.query('SELECT id FROM Users WHERE REPLACE(REPLACE(REPLACE(cuit, "-", ""), " ", ""), ".", "") = ?', [cuitNorm]);
+            if (existingCuit.length > 0) return res.status(400).json({ message: 'Este CUIT ya está registrado' });
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -160,6 +166,15 @@ const updateUser = async (req, res) => {
     try {
         const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, iva_condition, address, city, province, zip_code } = req.body;
         const userId = req.params.id;
+
+        const cuitNorm = (cuit || '').replace(/\D/g, '');
+        if (cuitNorm.length >= 8) {
+            const [existingCuit] = await pool.query(
+                'SELECT id FROM Users WHERE REPLACE(REPLACE(REPLACE(cuit, "-", ""), " ", ""), ".", "") = ? AND id != ?',
+                [cuitNorm, userId]
+            );
+            if (existingCuit.length > 0) return res.status(400).json({ message: 'Este CUIT ya está registrado' });
+        }
 
         // Lógica corregida: Si 'status' no viene, asumimos 'active'
         const newStatus = status || 'active';

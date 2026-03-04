@@ -45,9 +45,54 @@ const closeOldResolvedTickets = async () => {
 
 const cronTask = cron.schedule('* * * * *', closeOldResolvedTickets);
 
-const startCronJobs = () => {
+const DELAYED_DAYS_THRESHOLD = 3;
+
+const checkDelayedOrdersAndNotify = async (io) => {
+    if (!io) return;
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [rows] = await connection.execute(
+            `SELECT id, order_number, technician_id, promised_date, entry_date, status
+             FROM repair_orders
+             WHERE status NOT IN ('listo', 'entregado', 'entregado_sin_reparacion', 'abandonado')
+               AND (
+                 (promised_date IS NOT NULL AND promised_date < CURDATE())
+                 OR (status IN ('ingresado', 'cotizado') AND entry_date < DATE_SUB(NOW(), INTERVAL ? DAY))
+               )
+             AND technician_id IS NOT NULL`,
+            [DELAYED_DAYS_THRESHOLD]
+        );
+        const byTech = {};
+        for (const row of rows) {
+            const tid = row.technician_id;
+            if (!byTech[tid]) byTech[tid] = [];
+            byTech[tid].push(row);
+        }
+        for (const [technicianId, orders] of Object.entries(byTech)) {
+            io.to(`user-${technicianId}`).emit('delayed_orders_alert', {
+                message: '¡Atención! Tenés equipos demorados que revisar.',
+                count: orders.length,
+                orderNumbers: orders.map((o) => o.order_number)
+            });
+        }
+    } catch (error) {
+        console.error('[Cron Job] Error al revisar órdenes demoradas:', error);
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+let delayedOrdersTask = null;
+
+const startCronJobs = (io) => {
     console.log('Iniciando tareas programadas...');
     cronTask.start();
+    if (io) {
+        checkDelayedOrdersAndNotify(io);
+        delayedOrdersTask = cron.schedule('*/5 * * * *', () => checkDelayedOrdersAndNotify(io));
+        delayedOrdersTask.start();
+    }
 };
 
 module.exports = { startCronJobs };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../../config/axiosConfig';
 import { User } from '../../types';
 import { toast } from 'react-toastify';
+import { FaSearch } from 'react-icons/fa';
 
 const IVA_OPTIONS = ['Inscripto', 'Monotributista', 'Exento'];
 
@@ -13,6 +14,7 @@ interface NewClientModalProps {
 
 const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClientCreated }) => {
   const [loading, setLoading] = useState(false);
+  const [loadingAfip, setLoadingAfip] = useState(false);
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -29,6 +31,33 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  };
+
+  const fetchAfip = async () => {
+    const cuitDigits = (form.cuit || '').replace(/\D/g, '');
+    if (cuitDigits.length !== 11) {
+      toast.error('Ingresá un CUIT de 11 dígitos para buscar en AFIP');
+      return;
+    }
+    setLoadingAfip(true);
+    try {
+      const res = await api.get<{ success: boolean; data: { razonSocial?: string; domicilio?: string; condicionIVA?: string } }>(`/api/clients/afip/${cuitDigits}`);
+      const d = res.data?.data;
+      if (d) {
+        setForm((p) => ({
+          ...p,
+          username: d.razonSocial || p.username,
+          business_name: d.razonSocial || p.business_name,
+          address: d.domicilio || p.address,
+          iva_condition: d.condicionIVA || p.iva_condition
+        }));
+        toast.success('Datos de AFIP cargados');
+      }
+    } catch {
+      toast.error('No se pudieron obtener datos para ese CUIT. Verificá el número o intentá más tarde.');
+    } finally {
+      setLoadingAfip(false);
+    }
   };
 
   const generatePassword = () => {
@@ -151,7 +180,12 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">CUIT</label>
-              <input name="cuit" value={form.cuit} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="20-12345678-9" />
+              <div className="flex gap-2">
+                <input name="cuit" value={form.cuit} onChange={handleChange} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="20-12345678-9" />
+                <button type="button" onClick={fetchAfip} disabled={loadingAfip || !form.cuit?.replace(/\D/g, '').trim()} className="px-4 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2 shrink-0" title="Buscar en AFIP">
+                  <FaSearch /> {loadingAfip ? 'Buscando...' : 'Buscar AFIP'}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Condición IVA</label>
