@@ -657,8 +657,8 @@ const QuoterPage: React.FC = () => {
                         <tr key={idx} className="hover:bg-indigo-50/50 cursor-pointer" onClick={() => addToQuote(item)}>
                           <td className="px-4 py-2 text-sm">{item.codigo}</td>
                           <td className="px-4 py-2 text-sm">{item.descripcion}</td>
-                          {!isAgentBlind && <td className="px-4 py-2 text-sm text-right">${item.precioVentaPesos.toLocaleString('es-AR')}</td>}
-                          {!isAgentBlind && <td className="px-4 py-2 text-sm text-right">${item.precioVentaUsd.toFixed(2)}</td>}
+                          {!isAgentBlind && <td className="px-4 py-2 text-sm text-right">${(Number(item.precioVentaPesos) || 0).toLocaleString('es-AR')}</td>}
+                          {!isAgentBlind && <td className="px-4 py-2 text-sm text-right">${(Number(item.precioVentaUsd) || 0).toFixed(2)}</td>}
                           <td className="px-4 py-2 text-center">
                             <button type="button" onClick={(ev) => { ev.stopPropagation(); addToQuote(item); }} className="p-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
                               <FaPlus size={14} />
@@ -728,11 +728,11 @@ const QuoterPage: React.FC = () => {
                             <p className="text-sm font-medium text-gray-800 truncate">{item.descripcion || item.codigo}</p>
                             {!isAgentBlind && (
                               <p className="text-xs text-gray-500">
-                                Pesos: ${item.precioVentaPesos.toLocaleString('es-AR')} | USD: ${item.precioVentaUsd.toFixed(2)}
+                                Pesos: ${(Number(item.precioVentaPesos) || 0).toLocaleString('es-AR')} | USD: ${(Number(item.precioVentaUsd) || 0).toFixed(2)}
                               </p>
                             )}
                             <p className="text-xs font-semibold text-indigo-600 mt-0.5">
-                              Precio a Cobrar: ${Math.round(precio || item.precioVentaPesos).toLocaleString('es-AR')}
+                              Precio a Cobrar: ${Math.round(Number(precio) || Number(item.precioVentaPesos) || 0).toLocaleString('es-AR')}
                             </p>
                           </div>
                           <button type="button" onClick={() => removeFromQuote(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
