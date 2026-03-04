@@ -412,7 +412,7 @@ const NewRepairOrderPage: React.FC = () => {
               <input type="checkbox" checked={requiresCourier} onChange={(e) => setRequiresCourier(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
               <span>Requiere Cadetería (Retiro/Envío)</span>
             </label>
-            {requiresCourier && !deliveryAddress && orderType !== 'Domicilio' && (
+            {requiresCourier && orderType !== 'Domicilio' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de entrega</label>
                 <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Para retiro/envío" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />

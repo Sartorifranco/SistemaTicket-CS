@@ -32,6 +32,12 @@ const FORM_TYPE_LABELS: Record<FormType, string> = {
   none: 'Sin tipo'
 };
 
+const CONDICION_IVA_OPTIONS = [
+  { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+  { value: 'monotributo', label: 'Monotributo' },
+  { value: 'exento', label: 'Exento' }
+];
+
 function formatDate(d: string | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -257,6 +263,21 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
           </div>
           {isFiscal && (
             <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Condición ante el IVA <span className="text-red-500">*</span></label>
+                <select
+                  name="condicion_iva"
+                  value={form.condicion_iva ?? ''}
+                  onChange={(e) => update('condicion_iva', e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  {CONDICION_IVA_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
               <input type="text" name="tipo_instalacion" value={form.tipo_instalacion ?? ''} onChange={(e) => update('tipo_instalacion', e.target.value)} placeholder="Tipo Instalación" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="tipo_rubro" value={form.tipo_rubro ?? ''} onChange={(e) => update('tipo_rubro', e.target.value)} placeholder="Tipo Rubro" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" className="w-full px-3 py-2 border rounded-lg" />

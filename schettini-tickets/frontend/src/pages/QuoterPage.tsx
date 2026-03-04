@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -174,6 +174,7 @@ const QuoterPage: React.FC = () => {
   const [manualCostIsUsd, setManualCostIsUsd] = useState(false);
   const [manualLaborValue, setManualLaborValue] = useState('');
   const [laborOptions, setLaborOptions] = useState<LaborOption[]>([]);
+  const [savingConfig, setSavingConfig] = useState(false);
 
   useEffect(() => {
     api.get('/api/settings/company').then((res) => {
@@ -197,6 +198,9 @@ const QuoterPage: React.FC = () => {
         if (d.usd_exchange_rate != null && Number(d.usd_exchange_rate) > 0) {
           setDolarActual(Number(d.usd_exchange_rate));
         }
+        if (d.profit_margin_percent != null && Number(d.profit_margin_percent) >= 0) {
+          setMargenGanancia(Number(d.profit_margin_percent));
+        }
       }
     }).catch(() => {});
   }, []);
@@ -206,6 +210,52 @@ const QuoterPage: React.FC = () => {
       setLaborOptions((res.data.data || []).map((o) => ({ id: o.id, value: o.value })));
     }).catch(() => {});
   }, []);
+
+  const fetchSparePartsFromDb = useCallback(() => {
+    if (!canSeeExcelImport) return;
+    api.get<{ success: boolean; data: SparePartCatalogItem[] }>('/api/settings/spare-parts-catalog')
+      .then((res) => {
+        const rows = res.data.data || [];
+        const asPriceItems: PriceItem[] = rows.map((s) => ({
+          codigo: s.codigo || '',
+          descripcion: s.nombre,
+          aptoModelo: '',
+          costoSinIva: 0,
+          costoConIva: 0,
+          precioVentaPesos: s.precio_ars ?? 0,
+          precioVentaUsd: s.precio_usd ?? 0,
+          precioListaCuotas: 0,
+          precioListaDebito: 0
+        }));
+        setItems(asPriceItems);
+        if (asPriceItems.length > 0) setFileName('Catálogo BD');
+      })
+      .catch(() => {});
+  }, [canSeeExcelImport]);
+
+  useEffect(() => {
+    fetchSparePartsFromDb();
+  }, [fetchSparePartsFromDb]);
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true);
+    try {
+      const fd = new FormData();
+      fd.append('usd_exchange_rate', String(dolarActual));
+      fd.append('profit_margin_percent', String(margenGanancia));
+      await api.put('/api/settings/company', fd);
+      setCompanySettings((p) => ({
+        ...p!,
+        usd_exchange_rate: dolarActual,
+        profit_margin_percent: margenGanancia
+      }));
+      toast.success('Dólar y Margen guardados correctamente.');
+    } catch {
+      toast.error('Error al guardar la configuración.');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -227,15 +277,15 @@ const QuoterPage: React.FC = () => {
           toast.error('No se encontró la fila "CODIGO PRODUCTO". Revisá el formato del Excel.');
           return;
         }
-        setItems(parsed);
-        setFileName(file.name);
-        toast.success(`Se importaron ${parsed.length} artículos.`);
-
         try {
           await api.post('/api/settings/spare-parts-catalog/import', { items: parsed });
-          toast.success('Lista de precios actualizada en la base de datos.');
+          toast.success(`Se importaron ${parsed.length} artículos y se guardaron en la base de datos.`);
+          setItems(parsed);
+          setFileName(file.name);
         } catch {
-          toast.warn('Los datos se cargaron localmente, pero no se pudo guardar en el servidor.');
+          toast.error('Error al guardar en el servidor. Revisá el formato del Excel.');
+          setItems([]);
+          setFileName('');
         }
       } catch (err) {
         console.error(err);
@@ -649,6 +699,14 @@ const QuoterPage: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveConfig}
+                    disabled={savingConfig}
+                    className="w-full py-2.5 px-4 bg-indigo-700 text-white font-medium rounded-lg hover:bg-indigo-800 disabled:opacity-50"
+                  >
+                    {savingConfig ? 'Guardando...' : 'Guardar Configuración'}
+                  </button>
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <input type="checkbox" checked={costoEnPesos} onChange={(e) => setCostoEnPesos(e.target.checked)} className="rounded" />
                     <span>COSTO + IVA está en Pesos</span>
