@@ -114,6 +114,8 @@ const NewRepairOrderPage: React.FC = () => {
 
   // System options (selects dinámicos)
   const [systemOptions, setSystemOptions] = useState<SystemOption[]>([]);
+  // Input "Otro" accesorio por equipo (índice -> valor)
+  const [otherAccessoryByIdx, setOtherAccessoryByIdx] = useState<Record<number, string>>({});
 
   const optionsByCategory = useMemo(() => {
     const map: Record<string, SystemOption[]> = {};
@@ -526,7 +528,70 @@ const NewRepairOrderPage: React.FC = () => {
                 </div>
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Accesorios Incluidos</label>
-                  <SelectOption category="accessories" value={item.included_accessories} onChange={(v) => updateItem(idx, 'included_accessories', v)} placeholder="Seleccionar..." />
+                  {(() => {
+                    const accessoryOpts = (optionsByCategory['accessory'] || optionsByCategory['accessories'] || []).map((o) => o.value);
+                    const arr = (item.included_accessories || '').split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
+                    const toggleAccessory = (value: string) => {
+                      const next = arr.includes(value) ? arr.filter((a) => a !== value) : [...arr, value];
+                      updateItem(idx, 'included_accessories', next.join(', '));
+                    };
+                    const addOther = () => {
+                      const val = (otherAccessoryByIdx[idx] ?? '').trim();
+                      if (!val) return;
+                      if (arr.includes(val)) return;
+                      updateItem(idx, 'included_accessories', [...arr, val].join(', '));
+                      setOtherAccessoryByIdx((p) => ({ ...p, [idx]: '' }));
+                    };
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                          {accessoryOpts.map((opt) => (
+                            <label key={opt} className="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={arr.includes(opt)}
+                                onChange={() => toggleAccessory(opt)}
+                                className="w-4 h-4 text-indigo-600 rounded border-gray-300"
+                              />
+                              <span className="text-sm">{opt}</span>
+                            </label>
+                          ))}
+                          {accessoryOpts.length === 0 && (
+                            <p className="text-xs text-gray-500 col-span-full py-1">Sin opciones. Agregá manualmente abajo.</p>
+                          )}
+                        </div>
+                        {arr.filter((a) => !accessoryOpts.includes(a)).length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            <span className="text-xs text-gray-500 font-medium">Otros:</span>
+                            {arr
+                              .filter((a) => !accessoryOpts.includes(a))
+                              .map((a) => (
+                                <span
+                                  key={a}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm"
+                                >
+                                  {a}
+                                  <button type="button" onClick={() => toggleAccessory(a)} className="text-indigo-600 hover:text-indigo-800 ml-0.5">×</button>
+                                </span>
+                              ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={otherAccessoryByIdx[idx] ?? ''}
+                            onChange={(e) => setOtherAccessoryByIdx((p) => ({ ...p, [idx]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOther())}
+                            placeholder="Otro (especificar)..."
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          />
+                          <button type="button" onClick={addOther} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 text-sm flex items-center gap-1">
+                            <FaPlus size={12} /> Agregar
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-4 items-center">
                   <label className="flex items-center gap-2 cursor-pointer">
