@@ -263,7 +263,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
                   Punto de Venta
-                  <HelpTooltip text="El mismo debe ser NUEVO. No se puede repetir un PV usado en otro sistema." />
+                  <HelpTooltip text="Debe ser NUEVO. No repetir un PV usado en otro sistema." />
                 </label>
                 <input type="text" name="punto_venta" value={form.punto_venta ?? ''} onChange={(e) => update('punto_venta', e.target.value)} placeholder="N° Punto Venta" className="w-full px-3 py-2 border rounded-lg" />
               </div>
