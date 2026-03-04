@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
-import { FaPlus, FaEye, FaPrint, FaWhatsapp } from 'react-icons/fa';
+import { FaPlus, FaEye, FaPrint, FaWhatsapp, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 import type { RepairOrderReceiptData } from '../components/RepairOrder/RepairOrderReceipt';
 
@@ -66,6 +66,19 @@ const STATUS_LABELS: Record<string, string> = {
   abandonado: 'Abandonado/Reciclaje'
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  ingresado: 'bg-amber-100 text-amber-800 border-amber-300',
+  cotizado: 'bg-blue-100 text-blue-800 border-blue-300',
+  aceptado: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  no_aceptado: 'bg-red-100 text-red-800 border-red-300',
+  en_espera: 'bg-orange-100 text-orange-800 border-orange-300',
+  sin_reparacion: 'bg-gray-200 text-gray-700 border-gray-400',
+  listo: 'bg-green-100 text-green-800 border-green-300',
+  entregado: 'bg-green-200 text-green-900 border-green-400',
+  entregado_sin_reparacion: 'bg-gray-100 text-gray-700 border-gray-300',
+  abandonado: 'bg-red-200 text-red-900 border-red-500'
+};
+
 function formatDateTime(d?: string | null): string {
   if (!d) return '—';
   const dt = new Date(d);
@@ -124,6 +137,9 @@ const RepairOrdersListPage: React.FC = () => {
   const [clients, setClients] = useState<{ id: number; username: string; business_name?: string }[]>([]);
   const [technicians, setTechnicians] = useState<{ id: number; username: string; full_name?: string }[]>([]);
   const [printOrder, setPrintOrder] = useState<RepairOrderRow | null>(null);
+  const [showAbandonadoModal, setShowAbandonadoModal] = useState(false);
+  const [abandonadoOrder, setAbandonadoOrder] = useState<RepairOrderRow | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   useReceiptPrintPortal();
 
   const [filters, setFilters] = useState({
@@ -201,6 +217,26 @@ const RepairOrdersListPage: React.FC = () => {
     window.addEventListener('afterprint', onAfterPrint);
     return () => window.removeEventListener('afterprint', onAfterPrint);
   }, []);
+
+  const handleStatusChange = async (order: RepairOrderRow, newStatus: string) => {
+    if (newStatus === order.status) return;
+    if (newStatus === 'abandonado') {
+      setAbandonadoOrder(order);
+      setShowAbandonadoModal(true);
+      return;
+    }
+    setUpdatingStatusId(order.id);
+    try {
+      await api.put(`/api/repair-orders/${order.id}/status`, { status: newStatus });
+      toast.success('Estado actualizado correctamente');
+      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o)));
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || 'Error al actualizar estado');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   const enviarWhatsApp = (order: RepairOrderRow) => {
     if (!order.client_phone) {
@@ -340,7 +376,22 @@ const RepairOrdersListPage: React.FC = () => {
                       <td className="px-4 py-2">{o.equipment_type || '—'} {o.model && <span className="text-gray-500 text-sm">/ {o.model}</span>}</td>
                       <td className="px-4 py-2">{o.technician_name || '—'}</td>
                       <td className="px-4 py-2">
-                        <span className="px-2 py-0.5 rounded text-xs bg-gray-200">{STATUS_LABELS[o.status] || o.status}</span>
+                        {isViewer ? (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${STATUS_COLORS[o.status] || 'bg-gray-200 text-gray-700'}`}>
+                            {STATUS_LABELS[o.status] || o.status}
+                          </span>
+                        ) : (
+                          <select
+                            value={o.status}
+                            onChange={(e) => handleStatusChange(o, e.target.value)}
+                            disabled={updatingStatusId === o.id}
+                            className={`px-2 py-1 rounded text-xs font-medium border cursor-pointer min-w-[140px] focus:ring-2 focus:ring-indigo-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${STATUS_COLORS[o.status] || 'bg-gray-200 text-gray-700 border-gray-400'}`}
+                          >
+                            {Object.entries(STATUS_LABELS).map(([val, label]) => (
+                              <option key={val} value={val}>{label}</option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-sm">{formatDateTime(o.entry_date || o.created_at)}</td>
                       <td className="px-4 py-2">
@@ -361,6 +412,53 @@ const RepairOrdersListPage: React.FC = () => {
           </div>
         )}
       </SectionCard>
+
+      {/* Modal: Abandonado requiere ir al detalle */}
+      {showAbandonadoModal && abandonadoOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                <FaExclamationTriangle className="text-amber-600 text-xl" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Área de Reciclaje</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Para declarar abandono debés entrar al detalle de la orden <strong>Nº {abandonadoOrder.order_number}</strong>. 
+                  Se requieren fotos y notas obligatorias del estado del equipo.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAbandonadoModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAbandonadoModal(false);
+                      setAbandonadoOrder(null);
+                      navigate(`${basePath}/${abandonadoOrder.id}`);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Ir al detalle
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowAbandonadoModal(false); setAbandonadoOrder(null); }}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+              >
+                <FaTimes />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {printOrder && (
         <RepairOrderReceipt

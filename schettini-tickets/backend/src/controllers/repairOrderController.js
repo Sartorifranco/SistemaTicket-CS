@@ -707,6 +707,41 @@ const updateRepairOrder = async (req, res) => {
   }
 };
 
+// PUT - Actualizar solo el estado (usado desde el listado)
+const updateRepairOrderStatus = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status: newStatus } = req.body;
+    if (!newStatus || !String(newStatus).trim()) {
+      return res.status(400).json({ success: false, message: 'Se requiere status' });
+    }
+    const s = String(newStatus).toLowerCase();
+    if (!isValidStatus(s)) {
+      return res.status(400).json({ success: false, message: `Estado inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}` });
+    }
+    if (s === 'abandonado') {
+      return res.status(400).json({
+        success: false,
+        message: 'Para declarar abandono debe entrar al detalle de la orden (se requieren fotos y notas obligatorias).'
+      });
+    }
+    const [existing] = await pool.query('SELECT id, status FROM repair_orders WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Orden no encontrada' });
+    }
+    const oldStatus = existing[0].status;
+    await pool.query('UPDATE repair_orders SET status = ?, updated_at = NOW() WHERE id = ?', [s, id]);
+    await logStatusHistory(id, 'status', oldStatus, s, req.user?.id);
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
+    res.json({ success: true, message: 'Estado actualizado correctamente', data: { status: s } });
+  } catch (error) {
+    console.error('Error updateRepairOrderStatus:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar estado' });
+  }
+};
+
 // DELETE - Eliminar orden
 const deleteRepairOrder = async (req, res) => {
   try {
@@ -916,6 +951,7 @@ module.exports = {
   getRepairOrderById,
   createRepairOrder,
   updateRepairOrder,
+  updateRepairOrderStatus,
   deleteRepairOrder,
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,

@@ -10,6 +10,7 @@ const {
   getRepairOrderById,
   createRepairOrder,
   updateRepairOrder,
+  updateRepairOrderStatus,
   deleteRepairOrder,
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,
@@ -62,6 +63,7 @@ router.post(
   upload.array('photos', 10),
   createRepairOrder
 );
+router.put('/:id/status', authorize('admin', 'agent', 'supervisor'), updateRepairOrderStatus);
 router.put('/:id', authorize('admin', 'agent', 'supervisor'), updateRepairOrder);
 router.delete('/:id', authorize('admin', 'agent', 'supervisor'), deleteRepairOrder);
 
