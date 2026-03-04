@@ -355,8 +355,9 @@ const AdminUsersPage: React.FC = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-gray-500">
-                                        No se encontraron usuarios.
+                                    <td colSpan={5} className="p-10 text-center">
+                                        <div className="text-gray-600 font-medium mb-1">Aún no hay registros aquí.</div>
+                                        <div className="text-gray-500 text-sm">Hacé clic en el botón «Nuevo Usuario» arriba a la derecha para comenzar.</div>
                                     </td>
                                 </tr>
                             )}

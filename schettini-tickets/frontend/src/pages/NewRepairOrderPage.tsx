@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
+import HelpTooltip from '../components/Common/HelpTooltip';
 import WebcamCapture, { CapturedPhoto } from '../components/RepairOrders/WebcamCapture';
 import NewClientModal from '../components/RepairOrders/NewClientModal';
 import { User } from '../types';
@@ -426,6 +427,7 @@ const NewRepairOrderPage: React.FC = () => {
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={isWarranty} onChange={(e) => setIsWarranty(e.target.checked)} className="w-5 h-5 text-indigo-600 rounded border-gray-300" />
               <span className="font-medium text-gray-800">¿Es un ingreso por Garantía?</span>
+              <HelpTooltip text="Si se tilda, no se podrá facturar la orden y se requerirá número de serie obligatorio." />
             </label>
             {isWarranty && (
               <div className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50/80 space-y-4">
@@ -548,7 +550,10 @@ const NewRepairOrderPage: React.FC = () => {
         <SectionCard title="Seña">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Monto de seña ($)</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                Monto de seña ($)
+                <HelpTooltip text="Monto que dejó el cliente por adelantado. Se restará automáticamente del total final." />
+              </label>
               <input type="number" step="0.01" min="0" value={depositPaid} onChange={(e) => setDepositPaid(e.target.value)} placeholder="0" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
             </div>
             {hasDeposit && (

@@ -363,7 +363,10 @@ const WarrantiesDashboardPage: React.FC = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-2 border-indigo-500 border-t-transparent" />
               </div>
             ) : filteredByBrand.length === 0 ? (
-              <p className="p-8 text-center text-gray-500">No hay órdenes en garantía con los filtros aplicados.</p>
+              <div className="text-center py-12 px-4">
+                <p className="text-gray-600 font-medium mb-1">Aún no hay registros aquí.</p>
+                <p className="text-gray-500 text-sm">Las órdenes marcadas como garantía aparecerán en esta tabla. Ajustá los filtros si corresponde.</p>
+              </div>
             ) : (
               <table className="w-full text-left">
                 <thead className="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider">

@@ -5,6 +5,7 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
+import HelpTooltip from '../components/Common/HelpTooltip';
 import { FaWhatsapp, FaSave, FaTimes, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 
@@ -748,7 +749,10 @@ const ManageRepairOrderPage: React.FC = () => {
                 <input name="serialNumber" value={form.serialNumber} onChange={handleChange} disabled={!canEditEquipment} required={form.isWarranty} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">¿Es un ingreso por Garantía?</label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  ¿Es un ingreso por Garantía?
+                  <HelpTooltip text="Si se tilda, no se podrá facturar la orden y se requerirá número de serie obligatorio." />
+                </label>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" name="isWarranty" checked={form.isWarranty} onChange={handleChange} className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
                   <span className="font-medium text-gray-800">Sí, esta orden es por garantía</span>
@@ -1041,7 +1045,10 @@ const ManageRepairOrderPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Seña / Pagos ($)</label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  Seña / Pagos ($)
+                  <HelpTooltip text="Monto que dejó el cliente por adelantado. Se restará automáticamente del total final." />
+                </label>
                 <input type="number" step="0.01" name="depositPaid" value={form.depositPaid} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>

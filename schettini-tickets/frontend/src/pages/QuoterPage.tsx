@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SectionCard from '../components/Common/SectionCard';
+import HelpTooltip from '../components/Common/HelpTooltip';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { useAuth } from '../context/AuthContext';
@@ -755,7 +756,10 @@ const QuoterPage: React.FC = () => {
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Precio COSTO sin IVA</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                Precio COSTO sin IVA
+                <HelpTooltip text="Ingresá el costo base sin IVA. El sistema sumará el 21% y tu margen automáticamente." />
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -769,7 +773,10 @@ const QuoterPage: React.FC = () => {
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mano de Obra</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                Mano de Obra
+                <HelpTooltip text="Podés elegir un valor de la lista o tipear un monto personalizado directamente." />
+              </label>
               <input
                 type="number"
                 list="labor-options-quoter"

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
+import HelpTooltip from '../components/Common/HelpTooltip';
 import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
@@ -247,32 +248,65 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="invoice_number" value={form.invoice_number ?? ''} onChange={(e) => update('invoice_number', e.target.value)} placeholder="N° Factura" className="w-full px-3 py-2 border rounded-lg" />
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+              N° Factura/Pedido
+              <HelpTooltip text="Lo encontrás en el margen superior derecho de tu comprobante." />
+            </label>
+            <input type="text" name="invoice_number" value={form.invoice_number ?? ''} onChange={(e) => update('invoice_number', e.target.value)} placeholder="N° Factura" className="w-full px-3 py-2 border rounded-lg" />
+          </div>
           {isFiscal && (
             <>
               <input type="text" name="tipo_instalacion" value={form.tipo_instalacion ?? ''} onChange={(e) => update('tipo_instalacion', e.target.value)} placeholder="Tipo Instalación" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="tipo_rubro" value={form.tipo_rubro ?? ''} onChange={(e) => update('tipo_rubro', e.target.value)} placeholder="Tipo Rubro" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" className="w-full px-3 py-2 border rounded-lg" />
-              <input type="text" name="punto_venta" value={form.punto_venta ?? ''} onChange={(e) => update('punto_venta', e.target.value)} placeholder="N° Punto Venta" className="w-full px-3 py-2 border rounded-lg" />
-              <input type="text" name="cuit" value={form.cuit ?? ''} onChange={(e) => update('cuit', e.target.value)} placeholder="CUIT" className="w-full px-3 py-2 border rounded-lg" />
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  Punto de Venta
+                  <HelpTooltip text="El mismo debe ser NUEVO. No se puede repetir un PV usado en otro sistema." />
+                </label>
+                <input type="text" name="punto_venta" value={form.punto_venta ?? ''} onChange={(e) => update('punto_venta', e.target.value)} placeholder="N° Punto Venta" className="w-full px-3 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  CUIT
+                  <HelpTooltip text="CUIT al cual se registrará la licencia." />
+                </label>
+                <input type="text" name="cuit" value={form.cuit ?? ''} onChange={(e) => update('cuit', e.target.value)} placeholder="CUIT" className="w-full px-3 py-2 border rounded-lg" />
+              </div>
               <input type="text" name="razon_social" value={form.razon_social ?? ''} onChange={(e) => update('razon_social', e.target.value)} placeholder="Razón Social" className="w-full px-3 py-2 border rounded-lg" />
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="noClave" checked={noClaveFiscal} onChange={(e) => setNoClaveFiscal(e.target.checked)} />
-                <label htmlFor="noClave" className="text-sm">No brindar clave fiscal</label>
+                <label htmlFor="noClave" className="flex items-center gap-2 text-sm">
+                  No brindar clave fiscal
+                  <HelpTooltip text="Opcional. Si elegís NO brindar la clave para relacionar los certificados, el proceso sufrirá mayores demoras en Arca." />
+                </label>
               </div>
               {!noClaveFiscal && (
-                <input type="text" name="clave_fiscal" value={form.clave_fiscal ?? ''} onChange={(e) => update('clave_fiscal', e.target.value)} placeholder="Clave Fiscal" className="w-full px-3 py-2 border rounded-lg" />
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                    Clave Fiscal
+                    <HelpTooltip text="Opcional. Si elegís NO brindar la clave para relacionar los certificados, el proceso sufrirá mayores demoras en Arca." />
+                  </label>
+                  <input type="text" name="clave_fiscal" value={form.clave_fiscal ?? ''} onChange={(e) => update('clave_fiscal', e.target.value)} placeholder="Clave Fiscal" className="w-full px-3 py-2 border rounded-lg" />
+                </div>
               )}
               <input type="text" name="telefono" value={form.telefono ?? ''} onChange={(e) => update('telefono', e.target.value)} placeholder="Teléfono" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="ingresos_brutos" value={form.ingresos_brutos ?? ''} onChange={(e) => update('ingresos_brutos', e.target.value)} placeholder="Ingresos Brutos" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="inicio_actividades" value={form.inicio_actividades ?? ''} onChange={(e) => update('inicio_actividades', e.target.value)} placeholder="Inicio Actividades" className="w-full px-3 py-2 border rounded-lg" />
               <input type="email" name="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} placeholder="Email" className="w-full px-3 py-2 border rounded-lg" />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Logo (JPG)</label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  Logo (JPG)
+                  <HelpTooltip text="Tamaño recomendado: 350x250px en BLANCO y NEGRO. Formato: JPG de 1 bit." />
+                </label>
                 <input type="file" accept=".jpg,.jpeg" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border rounded-lg text-sm" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Constancia Alta (PDF)</label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  Constancia de Alta (PDF)
+                  <HelpTooltip text="Adjuntar constancia en formato PDF." />
+                </label>
                 <input type="file" accept=".pdf" onChange={(e) => setConstanciaFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border rounded-lg text-sm" />
               </div>
             </>

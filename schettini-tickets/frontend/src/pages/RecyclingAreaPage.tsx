@@ -153,7 +153,12 @@ const RecyclingAreaPage: React.FC = () => {
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
           </div>
         ) : filteredOrders.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">{searchText.trim() ? 'No hay resultados para la búsqueda.' : 'No hay órdenes en reciclaje.'}</p>
+          <div className="text-center py-12 px-4">
+            <p className="text-gray-600 font-medium mb-1">{searchText.trim() ? 'No hay resultados para la búsqueda.' : 'Aún no hay registros aquí.'}</p>
+            {!searchText.trim() && (
+              <p className="text-gray-500 text-sm">Las órdenes que se envíen a reciclaje aparecerán en esta lista.</p>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
