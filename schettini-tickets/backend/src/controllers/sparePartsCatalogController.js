@@ -1,5 +1,25 @@
 const pool = require('../config/db');
 
+/**
+ * Convierte string de precio (ej: "$ 1.234,56", "1,5", "1234.56", "1,234.56") a número o null.
+ * Limpia $, espacios; soporta formato europeo (1.234,56) y US (1,234.56).
+ */
+function parsePrice(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  let s = String(value).replace(/\s/g, '').replace(/^\$/, '').trim();
+  if (!s) return null;
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if (lastComma > lastDot) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    s = s.replace(/,/g, '');
+  }
+  const num = parseFloat(s);
+  return Number.isNaN(num) ? null : num;
+}
+
 const search = async (req, res) => {
   try {
     const { q } = req.query;
@@ -57,6 +77,7 @@ const bulkCreate = async (req, res) => {
 /**
  * Importación con upsert: recibe array del Excel (QuoterPage) y hace insert o update por código.
  * Acepta: codigo, descripcion, precioVentaPesos, precioVentaUsd | nombre, precio_usd, precio_ars
+ * Los precios se normalizan ($, comas, puntos) con parsePrice.
  */
 const importFromExcel = async (req, res) => {
   try {
@@ -68,12 +89,11 @@ const importFromExcel = async (req, res) => {
     let upserted = 0;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      // Formato QuoterPage: codigo, descripcion, precioVentaPesos, precioVentaUsd
       const nombre = String(it.nombre || it.descripcion || it.name || '').trim();
       const rawCodigo = String(it.codigo || '').trim();
       const codigo = rawCodigo || `gen-${(nombre || 'item').slice(0, 50)}-${i}`;
-      const precioUsd = it.precio_usd != null ? parseFloat(it.precio_usd) : (it.precioVentaUsd != null ? parseFloat(it.precioVentaUsd) : null);
-      const precioArs = it.precio_ars != null ? parseFloat(it.precio_ars) : (it.precioVentaPesos != null ? parseFloat(it.precioVentaPesos) : null);
+      const precioUsd = parsePrice(it.precio_usd ?? it.precioVentaUsd);
+      const precioArs = parsePrice(it.precio_ars ?? it.precioVentaPesos);
 
       if (!nombre && !rawCodigo) continue;
 
@@ -87,7 +107,7 @@ const importFromExcel = async (req, res) => {
     }
     res.json({ success: true, message: `${upserted} repuestos actualizados en la base de datos`, count: upserted });
   } catch (err) {
-    console.error('sparePartsCatalog importFromExcel:', err.message);
+    console.error('🚨 ERROR EXCEL IMPORT:', err.message, err.sqlMessage || err);
     res.status(500).json({ success: false, message: 'Error al importar lista de precios' });
   }
 };
