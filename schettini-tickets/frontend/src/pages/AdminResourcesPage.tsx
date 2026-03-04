@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp, FaFolderOpen, FaBook, FaChevronRight } from 'react-icons/fa';
+import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp, FaFolderOpen, FaChevronRight } from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
 import DriversPage from './DriversPage';
 
@@ -203,22 +203,16 @@ const AdminResourcesPage: React.FC = () => {
 
     return (
         <div className="container mx-auto p-6">
-            {/* Tabs: Base de Conocimiento | Descargas */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <h1 className="text-3xl font-bold text-gray-800">Gestión de Base de Conocimientos</h1>
                 <button
-                    onClick={() => setViewMode('resources')}
-                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${viewMode === 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                    <FaBook /> Base de Conocimiento
-                </button>
-                <button
+                    type="button"
                     onClick={() => setViewMode('drivers')}
-                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${viewMode !== 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-indigo-200 text-indigo-700 font-medium hover:bg-indigo-50 transition"
                 >
                     <FaFolderOpen /> Descargas / Drivers
                 </button>
             </div>
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Gestión de Base de Conocimientos</h1>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Panel de Formulario */}

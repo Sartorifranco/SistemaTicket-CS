@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
-import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle, FaFolderOpen } from 'react-icons/fa';
+import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle } from 'react-icons/fa';
 import DriversPage from './DriversPage';
 
 interface Resource {
@@ -107,23 +107,6 @@ const ClientResourcesPage: React.FC = () => {
 
     return (
         <div className="min-h-screen">
-            {/* Tabs: Recursos | Descargas */}
-            <div className="bg-white border-b border-gray-200 px-4">
-                <div className="container mx-auto flex gap-2 pt-4">
-                    <button
-                        onClick={() => setViewMode('resources')}
-                        className={`px-4 py-2 rounded-t-lg font-medium transition ${viewMode === 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                        <FaBook className="inline mr-2" /> Recursos
-                    </button>
-                    <button
-                        onClick={() => setViewMode('drivers')}
-                        className={`px-4 py-2 rounded-t-lg font-medium transition flex items-center gap-2 ${viewMode !== 'resources' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                        <FaFolderOpen /> Descargas / Drivers
-                    </button>
-                </div>
-            </div>
             {/* Banner con título y búsqueda (estilo SectionCard: gray-900) */}
             <div className="bg-gray-900 text-white px-4 py-8 md:py-10">
                 <div className="container mx-auto max-w-4xl text-center">
@@ -168,7 +151,14 @@ const ClientResourcesPage: React.FC = () => {
                         return (
                             <button
                                 key={s.id}
-                                onClick={() => setSelectedSectionId(isSelected ? null : s.id)}
+                                onClick={() => {
+                                    const name = (s.name || '').toLowerCase();
+                                    if (name.includes('driver') || name.includes('descarga')) {
+                                        setViewMode('drivers');
+                                        return;
+                                    }
+                                    setSelectedSectionId(isSelected ? null : s.id);
+                                }}
                                 className={`bg-white rounded-lg shadow-md border p-6 text-left hover:shadow-lg transition-all ${
                                     isSelected ? 'border-red-600 ring-2 ring-red-100' : 'border-gray-200 hover:border-gray-300'
                                 }`}

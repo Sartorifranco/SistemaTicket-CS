@@ -36,7 +36,7 @@ interface ResourceSection {
 
 const DriversPage: React.FC = () => {
     const { user } = useAuth();
-    const canEdit = user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'agent';
+    const canEdit = !!user && ['admin', 'agent', 'supervisor'].includes(user.role);
 
     const [sections, setSections] = useState<ResourceSection[]>([]);
     const [drivers, setDrivers] = useState<DriverResource[]>([]);
