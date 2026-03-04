@@ -169,14 +169,15 @@ const AdminUsersPage: React.FC = () => {
         if (formData.role === 'client' && !formData.company_id) return toast.warn('Asigna una empresa al cliente');
 
         try {
-            const payload = {
+            const payload: Record<string, unknown> = {
                 ...formData,
                 full_name: (formData.full_name || '').trim() || null,
                 company_id: formData.company_id ? parseInt(formData.company_id) : null,
                 department_id: formData.department_id ? parseInt(formData.department_id) : null,
                 permissions: (formData.role === 'agent' || formData.role === 'supervisor') ? formData.permissions : undefined,
             };
-            if (payload.permissions === undefined) delete (payload as Record<string, unknown>).permissions;
+            if (payload.permissions === undefined) delete payload.permissions;
+            if (!isEditMode) payload.accepted_confidentiality_agreement = true;
 
             if (isEditMode && currentUserId) {
                 await api.put(`/api/users/${currentUserId}`, payload);
