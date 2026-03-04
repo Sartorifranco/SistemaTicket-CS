@@ -30,7 +30,9 @@ const allowedOrigins = [
   'https://sch-soporte.com.ar',
   'http://sch-soporte.com.ar',
   'https://www.sch-soporte.com.ar',
-  'http://www.sch-soporte.com.ar'
+  'http://www.sch-soporte.com.ar',
+  'https://api.sch-soporte.com.ar',
+  'http://api.sch-soporte.com.ar'
 ];
 
 // Si tienes configurada la variable en Render, la sumamos a la lista
