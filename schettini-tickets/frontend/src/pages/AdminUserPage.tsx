@@ -184,7 +184,7 @@ const AdminUsersPage: React.FC = () => {
             if (d?.razonSocial) {
                 setFormData(prev => ({
                     ...prev,
-                    full_name: d.razonSocial,
+                    full_name: d.razonSocial || '',
                     cuit: d.cuit || prev.cuit,
                 }));
                 toast.success('Datos de AFIP cargados. Revisá Nombre y apellido.');
