@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
-import { FaEye, FaRecycle, FaSearch } from 'react-icons/fa';
+import { FaEye, FaRecycle, FaSearch, FaPaperclip, FaTimes, FaSave } from 'react-icons/fa';
 
 interface RecyclingOrder {
   id: number;
@@ -50,6 +51,10 @@ const RecyclingAreaPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [editOrderId, setEditOrderId] = useState<number | null>(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [editNewFiles, setEditNewFiles] = useState<File[]>([]);
+  const [savingRecycling, setSavingRecycling] = useState(false);
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -77,6 +82,40 @@ const RecyclingAreaPage: React.FC = () => {
         (o.serial_number && o.serial_number.toLowerCase().includes(q))
     );
   }, [orders, searchText]);
+
+  const openEditRecycling = (o: RecyclingOrder) => {
+    setEditOrderId(o.id);
+    setEditNotes(o.recycling_notes || '');
+    setEditNewFiles([]);
+  };
+
+  const closeEditRecycling = () => {
+    setEditOrderId(null);
+    setEditNotes('');
+    setEditNewFiles([]);
+  };
+
+  const handleSaveRecycling = async () => {
+    if (!editOrderId) return;
+    setSavingRecycling(true);
+    try {
+      const formData = new FormData();
+      formData.append('recycling_notes', editNotes);
+      editNewFiles.forEach((f) => formData.append('photos', f));
+      await api.patch(`/api/repair-orders/${editOrderId}/recycling`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Observaciones y adjuntos actualizados.');
+      closeEditRecycling();
+      fetchOrders();
+    } catch {
+      toast.error('Error al guardar. Revisá que los archivos sean imágenes o PDF.');
+    } finally {
+      setSavingRecycling(false);
+    }
+  };
+
+  const isPdf = (url: string) => /\.pdf$/i.test(url) || url.toLowerCase().includes('pdf');
 
   return (
     <div className="space-y-6">
@@ -172,24 +211,37 @@ const RecyclingAreaPage: React.FC = () => {
                             )}
                             {parseRecyclingPhotos(o.recycling_photos).length > 0 && (
                               <div>
-                                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Imágenes del estado del equipo</p>
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Adjuntos (fotos / PDFs)</p>
                                 <div className="flex flex-wrap gap-4">
                                   {parseRecyclingPhotos(o.recycling_photos).map((url, idx) => (
                                     <div key={idx} className="flex flex-col">
-                                      <img
-                                        src={getImageUrl(url)}
-                                        alt={`Reciclaje ${idx + 1}`}
-                                        className="w-32 h-32 object-cover rounded-lg border border-gray-200"
-                                      />
-                                      <span className="text-xs text-gray-500 mt-1">Foto {idx + 1}</span>
+                                      {isPdf(url) ? (
+                                        <a href={getImageUrl(url)} target="_blank" rel="noopener noreferrer" className="w-32 h-32 flex items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200">
+                                          PDF
+                                        </a>
+                                      ) : (
+                                        <img
+                                          src={getImageUrl(url)}
+                                          alt={`Adjunto ${idx + 1}`}
+                                          className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                                        />
+                                      )}
+                                      <span className="text-xs text-gray-500 mt-1">{isPdf(url) ? 'PDF' : `Foto ${idx + 1}`}</span>
                                     </div>
                                   ))}
                                 </div>
                               </div>
                             )}
                             {(!o.recycling_notes || parseRecyclingPhotos(o.recycling_photos).length === 0) && (
-                              <p className="text-sm text-gray-400">Sin observaciones ni fotos de reciclaje.</p>
+                              <p className="text-sm text-gray-400">Sin observaciones ni adjuntos de reciclaje.</p>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => openEditRecycling(o)}
+                              className="mt-2 flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+                            >
+                              <FaPaperclip /> Editar notas / Adjuntar fotos o PDFs
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -201,6 +253,58 @@ const RecyclingAreaPage: React.FC = () => {
           </div>
         )}
       </SectionCard>
+
+      {/* Modal Editar reciclaje / Adjuntar archivos */}
+      {editOrderId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-xl font-bold text-gray-800">Editar reciclaje / Adjuntar archivos</h2>
+              <button type="button" onClick={closeEditRecycling} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones de reciclaje</label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Notas internas, capturas de chat con el cliente..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nuevos adjuntos (fotos o PDFs)</label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,application/pdf"
+                  onChange={(e) => setEditNewFiles(e.target.files ? Array.from(e.target.files) : [])}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700"
+                />
+                {editNewFiles.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">{editNewFiles.length} archivo(s) seleccionado(s)</p>
+                )}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button type="button" onClick={closeEditRecycling} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRecycling}
+                disabled={savingRecycling}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                <FaSave /> {savingRecycling ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

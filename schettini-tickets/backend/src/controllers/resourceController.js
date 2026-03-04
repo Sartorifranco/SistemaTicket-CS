@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { logActivity } = require('../services/activityLogService');
 
 const getResources = async (req, res) => {
     try {
@@ -105,7 +106,25 @@ const updateResource = async (req, res) => {
 const deleteResource = async (req, res) => {
     try {
         const { id } = req.params;
+        const [rows] = await pool.query('SELECT id, title, type FROM knowledge_base WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Recurso no encontrado' });
+        }
+        const { title, type } = rows[0];
+        const tipoLabel = type === 'video' ? 'video' : type === 'article' ? 'artículo' : 'recurso';
         await pool.query('DELETE FROM knowledge_base WHERE id = ?', [id]);
+        const userName = req.user?.username || `ID ${req.user?.id || '?'}`;
+        await logActivity(
+            req.user?.id || null,
+            req.user?.username || 'Sistema',
+            req.user?.role || null,
+            'resource_delete',
+            `El usuario ${userName} eliminó el ${tipoLabel} "${title || '(sin título)'}"`,
+            'knowledge_base',
+            parseInt(id, 10),
+            { title, type },
+            null
+        );
         res.json({ success: true, message: 'Recurso eliminado' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error al eliminar' });

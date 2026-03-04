@@ -518,23 +518,23 @@ const ManageRepairOrderPage: React.FC = () => {
     if (!id) return;
     if (form.isWarranty) {
       if (!form.warrantyType?.trim()) {
-        toast.error('Seleccioná el tipo de garantía');
+        toast.error('Falta seleccionar el Tipo de Garantía (Oficial fabricante, Garantía propia o Garantía proveedor).', { autoClose: 8000, style: { fontSize: '16px', fontWeight: 'bold', maxWidth: '420px' } });
         return;
       }
       if (!form.purchaseInvoiceNumber?.trim()) {
-        toast.error('Ingresá el número de factura de compra');
+        toast.error('Falta ingresar el Número de Factura de Compra.', { autoClose: 8000, style: { fontSize: '16px', fontWeight: 'bold', maxWidth: '420px' } });
         return;
       }
       if (!form.purchaseDate?.trim()) {
-        toast.error('Ingresá la fecha de compra');
+        toast.error('Falta ingresar la Fecha de Compra.', { autoClose: 8000, style: { fontSize: '16px', fontWeight: 'bold', maxWidth: '420px' } });
         return;
       }
       if (!form.originalSupplier?.trim()) {
-        toast.error('Ingresá el proveedor original');
+        toast.error('Falta ingresar el Proveedor Original.', { autoClose: 8000, style: { fontSize: '16px', fontWeight: 'bold', maxWidth: '420px' } });
         return;
       }
       if (!form.serialNumber?.trim()) {
-        toast.error('El Nº de serie del equipo es obligatorio en órdenes por garantía');
+        toast.error('Falta el Nº de Serie del equipo. En órdenes por garantía es obligatorio.', { autoClose: 8000, style: { fontSize: '16px', fontWeight: 'bold', maxWidth: '420px' } });
         return;
       }
     }

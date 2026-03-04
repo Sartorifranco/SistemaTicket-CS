@@ -858,6 +858,57 @@ const processRecyclingToAbandoned = async (req, res) => {
   }
 };
 
+// PATCH - Actualizar reciclaje (notas y/o adjuntar más fotos/PDFs) en orden ya abandonada
+const updateRecycling = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const files = req.files || [];
+    const recyclingNotes = req.body.recycling_notes !== undefined ? (req.body.recycling_notes || null) : undefined;
+
+    const [rows] = await pool.query('SELECT id, recycling_notes, recycling_photos FROM repair_orders WHERE id = ? AND status = ?', [id, 'abandonado']);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Orden no encontrada o no está en reciclaje' });
+    }
+
+    let recyclingPhotosJson = rows[0].recycling_photos;
+    let currentUrls = [];
+    if (recyclingPhotosJson) {
+      try {
+        currentUrls = typeof recyclingPhotosJson === 'string' ? JSON.parse(recyclingPhotosJson) : recyclingPhotosJson;
+        if (!Array.isArray(currentUrls)) currentUrls = [];
+      } catch {
+        currentUrls = [];
+      }
+    }
+    const newUrls = files.map((f) => `/uploads/${f.filename}`);
+    const allUrls = [...currentUrls, ...newUrls];
+    const finalPhotosJson = allUrls.length > 0 ? JSON.stringify(allUrls) : (currentUrls.length > 0 ? recyclingPhotosJson : null);
+
+    const updates = [];
+    const params = [];
+    if (recyclingNotes !== undefined) {
+      updates.push('recycling_notes = ?');
+      params.push(recyclingNotes);
+    }
+    if (newUrls.length > 0 || finalPhotosJson !== recyclingPhotosJson) {
+      updates.push('recycling_photos = ?');
+      params.push(finalPhotosJson);
+    }
+    if (updates.length > 0) {
+      params.push(id);
+      await pool.query(`UPDATE repair_orders SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
+    res.json({ success: true, message: 'Reciclaje actualizado', data: { recycling_photos: allUrls } });
+  } catch (error) {
+    console.error('Error updateRecycling:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar reciclaje' });
+  }
+};
+
 module.exports = {
   getRepairOrders,
   getMonitorOrders,
@@ -869,5 +920,6 @@ module.exports = {
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,
   requestInvoice,
-  processRecyclingToAbandoned
+  processRecyclingToAbandoned,
+  updateRecycling
 };

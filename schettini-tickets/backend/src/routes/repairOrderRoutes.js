@@ -14,7 +14,8 @@ const {
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,
   requestInvoice,
-  processRecyclingToAbandoned
+  processRecyclingToAbandoned,
+  updateRecycling
 } = require('../controllers/repairOrderController');
 
 // Configuración de subida de imágenes
@@ -37,6 +38,17 @@ const upload = multer({
   }
 });
 
+const uploadRecycling = multer({
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = (path.extname(file.originalname) || '').slice(1).toLowerCase();
+    const imageOrPdf = /jpeg|jpg|png|gif|webp|pdf/i.test(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf';
+    if (imageOrPdf) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes o PDF'));
+  }
+});
+
 router.use(protect);
 
 // CRUD (my-orders y monitor deben ir ANTES de :id)
@@ -54,6 +66,7 @@ router.put('/:id', authorize('admin', 'agent', 'supervisor'), updateRepairOrder)
 router.delete('/:id', authorize('admin', 'agent', 'supervisor'), deleteRepairOrder);
 
 router.post('/:id/recycling', authorize('admin', 'agent', 'supervisor'), upload.array('photos', 10), processRecyclingToAbandoned);
+router.patch('/:id/recycling', authorize('admin', 'agent', 'supervisor'), uploadRecycling.array('photos', 10), updateRecycling);
 router.post('/:id/request-invoice', requestInvoice);
 
 // Fotos
