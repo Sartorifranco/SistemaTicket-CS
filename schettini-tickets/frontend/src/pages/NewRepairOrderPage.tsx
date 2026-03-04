@@ -409,15 +409,23 @@ const NewRepairOrderPage: React.FC = () => {
               </div>
             )}
             <label className="flex items-center gap-2 cursor-pointer pt-2">
-              <input type="checkbox" checked={requiresCourier} onChange={(e) => setRequiresCourier(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
+              <input
+                type="checkbox"
+                checked={requiresCourier}
+                onChange={(e) => setRequiresCourier(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded"
+                aria-describedby="courier-address-field"
+              />
               <span>Requiere Cadetería (Retiro/Envío)</span>
             </label>
-            {requiresCourier && orderType !== 'Domicilio' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de entrega</label>
-                <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Para retiro/envío" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
-              </div>
-            )}
+            <div
+              id="courier-address-field"
+              className={requiresCourier && orderType !== 'Domicilio' ? 'mt-3' : 'hidden'}
+              aria-hidden={!(requiresCourier && orderType !== 'Domicilio')}
+            >
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de entrega</label>
+              <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Para retiro/envío" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+            </div>
           </div>
         </SectionCard>
 
