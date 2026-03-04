@@ -9,6 +9,7 @@ import {
     FaBan, FaChevronDown, FaTicketAlt, FaWrench, FaCalculator, FaChartBar
 } from 'react-icons/fa';
 import { PERMISSION_GROUPS, migrateOldPermissions, DEFAULT_AGENT_PERMISSIONS } from '../utils/permissions';
+import HelpTooltip from '../components/Common/HelpTooltip';
 
 interface AfipResponse {
     success: boolean;
@@ -191,8 +192,14 @@ const AdminUsersPage: React.FC = () => {
             } else {
                 toast.info('No se encontró razón social para ese CUIT.');
             }
-        } catch {
-            toast.error('No se pudieron obtener datos para ese CUIT. Verificá el número o intentá más tarde.');
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            if (status === 404) {
+                toast.error('La consulta AFIP no está disponible en este servidor. Actualizá el backend (deploy) y volvé a intentar.');
+            } else {
+                toast.error(msg || 'No se pudieron obtener datos para ese CUIT. Verificá el número o intentá más tarde.');
+            }
         } finally {
             setLoadingAfip(false);
         }
@@ -498,13 +505,17 @@ const AdminUsersPage: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative my-8">
                         <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
                         
-                        <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-800 border-b pb-3">
                             {isEditMode ? 'Editar Usuario' : 'Nuevo Usuario'}
                         </h2>
+                        <p className="text-sm text-gray-500 mb-5">Completá los datos del usuario. Los campos con <span className="text-red-500">*</span> son obligatorios. Pasá el mouse o tocá el ícono de ayuda (?) junto a cada etiqueta para más información.</p>
                         
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Usuario <span className="text-red-500">*</span></label>
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                    Usuario <span className="text-red-500">*</span>
+                                    <HelpTooltip text="Nombre de usuario para iniciar sesión. Sin espacios, por ejemplo: jperez o nombre.empresa. Debe ser único en el sistema." />
+                                </label>
                                 <input 
                                     type="text" required placeholder="Usuario para inicio de sesión (ej. agusortega)"
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -513,7 +524,10 @@ const AdminUsersPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre y apellido</label>
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                    Nombre y apellido
+                                    <HelpTooltip text="Nombre completo de la persona o Razón Social si es empresa. Para clientes con CUIT podés usar «Buscar AFIP» y se completará solo." />
+                                </label>
                                 <input 
                                     type="text" placeholder="Ej. Agustín Ortega o Razón Social"
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -522,7 +536,11 @@ const AdminUsersPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">CUIT</label>
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                    CUIT y AFIP
+                                    <HelpTooltip text="Ingresá el CUIT de 11 dígitos (con o sin guiones) y hacé clic en «Buscar AFIP». El sistema autocompletará el nombre con la Razón Social oficial." />
+                                </label>
+                                <p className="text-xs text-gray-500 mb-2">Ingresá el CUIT (11 dígitos) y usá «Buscar AFIP» para autocompletar Razón Social en el nombre.</p>
                                 <div className="flex gap-2">
                                     <input 
                                         type="text"
@@ -543,7 +561,10 @@ const AdminUsersPage: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Correo Electrónico</label>
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                    Correo Electrónico <span className="text-red-500">*</span>
+                                    <HelpTooltip text="Correo con el que el usuario recibirá notificaciones y podrá recuperar su contraseña. Debe ser único." />
+                                </label>
                                 <input 
                                     type="email" required
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -553,8 +574,9 @@ const AdminUsersPage: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
                                     {isEditMode ? 'Nueva Contraseña (Opcional)' : 'Contraseña'}
+                                    <HelpTooltip text={isEditMode ? 'Dejá en blanco para no cambiar la contraseña actual. Si completás, se actualizará al guardar.' : 'La contraseña debe ser segura. El usuario la usará para entrar al sistema.'} />
                                 </label>
                                 <input 
                                     type="password" 
@@ -568,7 +590,10 @@ const AdminUsersPage: React.FC = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Rol</label>
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                        Rol
+                                        <HelpTooltip text="Cliente: acceso al portal de clientes. Agente/Supervisor: área técnica y tickets. Vista: solo lectura. Admin: acceso total al sistema." />
+                                    </label>
                                     <select 
                                         className="w-full border border-gray-300 p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={formData.role}
@@ -588,7 +613,10 @@ const AdminUsersPage: React.FC = () => {
                                 </div>
                                 
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Estado</label>
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                        Estado
+                                        <HelpTooltip text="Inactivo: el usuario no podrá iniciar sesión hasta que lo vuelvas a activar." />
+                                    </label>
                                     <select 
                                         className="w-full border border-gray-300 p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={formData.status}
@@ -601,8 +629,9 @@ const AdminUsersPage: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
                                     Empresa {formData.role === 'client' && <span className="text-red-500">*</span>}
+                                    <HelpTooltip text="Solo para clientes. Asigná la empresa a la que pertenece el usuario. Los roles internos (agente, admin, etc.) no usan este campo." />
                                 </label>
                                 <select 
                                     className={`w-full border p-2.5 rounded-lg bg-white outline-none transition ${formData.role === 'client' ? 'border-gray-300 focus:ring-2 focus:ring-indigo-500' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
@@ -619,7 +648,10 @@ const AdminUsersPage: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Departamento (Opcional)</label>
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                    Departamento (Opcional)
+                                    <HelpTooltip text="Si la empresa tiene departamentos, asigná uno. Sirve para filtrar y organizar usuarios por área." />
+                                </label>
                                 <select 
                                     className="w-full border border-gray-300 p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                     value={formData.department_id}
@@ -634,7 +666,10 @@ const AdminUsersPage: React.FC = () => {
 
                             {(formData.role === 'agent' || formData.role === 'supervisor') && (
                                 <div className="border-t pt-4 mt-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-3">Permisos de Acceso (Solo para Agentes)</label>
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                                        Permisos de Acceso (Solo para Agentes/Supervisores)
+                                        <HelpTooltip text="Marcá qué secciones puede ver este usuario: tickets, órdenes de reparación, cotizador, reportes, etc. El admin tiene todo por defecto." />
+                                    </label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {PERMISSION_GROUPS.map((group) => (
                                             <div key={group.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 hover:bg-gray-50 transition">

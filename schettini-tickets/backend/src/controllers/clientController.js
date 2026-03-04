@@ -14,7 +14,7 @@ const getAfipByCuit = async (req, res) => {
     const data = await response.json().catch(() => ({}));
 
     if (data.errorGetData || data.errorMessage) {
-      return res.status(404).json({
+      return res.status(503).json({
         success: false,
         message: data.errorMessage || 'No se encontraron datos para ese CUIT o el servicio AFIP no está disponible.'
       });

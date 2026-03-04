@@ -7,7 +7,9 @@
 | **Acá (Cursor / tu PC)** | Yo solo modifico archivos en tu carpeta del proyecto. Esos cambios **quedan solo en tu computadora**. |
 | **El hosting (VPS DonWeb)** | Tiene su propia copia del proyecto. **No se actualiza solo**. Vos tenis que llevar los archivos nuevos o modificados desde tu PC al servidor. |
 
-**Conclusión:** cada vez que hagamos cambios en el código, tenéis que **subir esos cambios al VPS** y luego **ejecutar el script de duplo** en el servidor. Si no haces eso, el hosting sigue con la versión vieja.
+**Conclusión:** cada vez que hagamos cambios en el código, tenéis que **subir esos cambios al VPS** y luego **ejecutar el script de deploy** en el servidor. Si no haces eso, el hosting sigue con la versión vieja.
+
+**Si los cambios ya están en GitHub** (por ejemplo porque se subieron desde otra PC u oficina), en el VPS solo hace falta hacer `git pull` para bajar esa versión y después ejecutar el deploy. No hace falta tener el código en la PC desde la que te conectás por SSH.
 
 ---
 
