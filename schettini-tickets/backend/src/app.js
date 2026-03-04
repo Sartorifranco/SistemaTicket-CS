@@ -87,7 +87,6 @@ app.use((req, res, next) => {
 // --- 4. RUTAS ---
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
-const clientRoutes = require('./routes/clientRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
@@ -122,7 +121,6 @@ const { startCronJobs } = require('./services/cronJobs');
 // --- 5. ENDPOINTS ---
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/clients', clientRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/notifications', notificationRoutes);

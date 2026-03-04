@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
-import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { getPlanLabel } from '../utils/traslations';
 import { useNavigate } from 'react-router-dom';
@@ -11,11 +10,6 @@ import {
 } from 'react-icons/fa';
 import { PERMISSION_GROUPS, migrateOldPermissions, DEFAULT_AGENT_PERMISSIONS } from '../utils/permissions';
 import HelpTooltip from '../components/Common/HelpTooltip';
-
-interface AfipResponse {
-    success: boolean;
-    data?: { razonSocial?: string | null; domicilio?: string | null; condicionIVA?: string | null; cuit?: string };
-}
 
 interface User {
     id: number;
@@ -44,7 +38,6 @@ interface Department {
 
 const AdminUsersPage: React.FC = () => {
     const navigate = useNavigate();
-    const { token } = useAuth();
     
     // Datos
     const [users, setUsers] = useState<User[]>([]);
@@ -79,7 +72,6 @@ const AdminUsersPage: React.FC = () => {
         department_id: '',
         permissions: DEFAULT_AGENT_PERMISSIONS,
     });
-    const [loadingAfip, setLoadingAfip] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -171,45 +163,6 @@ const AdminUsersPage: React.FC = () => {
             fetchData();
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Error al eliminar');
-        }
-    };
-
-    const fetchAfip = async () => {
-        const cuitDigits = (formData.cuit || '').replace(/\D/g, '');
-        if (cuitDigits.length !== 11) {
-            toast.warn('Ingresá un CUIT de 11 dígitos para buscar en AFIP.');
-            return;
-        }
-        if (!token) {
-            toast.error('Debés iniciar sesión para buscar en AFIP.');
-            return;
-        }
-        setLoadingAfip(true);
-        try {
-            const res = await api.get<AfipResponse>(`/api/clients/afip/${cuitDigits}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const d = res.data?.data;
-            if (d?.razonSocial) {
-                setFormData(prev => ({
-                    ...prev,
-                    full_name: d.razonSocial || '',
-                    cuit: d.cuit || prev.cuit,
-                }));
-                toast.success('Datos de AFIP cargados. Revisá Nombre y apellido.');
-            } else {
-                toast.info('No se encontró razón social para ese CUIT.');
-            }
-        } catch (err: unknown) {
-            const status = (err as { response?: { status?: number } })?.response?.status;
-            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            if (status === 404) {
-                toast.error('La consulta AFIP no está disponible en este servidor. Actualizá el backend (deploy) y volvé a intentar.');
-            } else {
-                toast.error(msg || 'No se pudieron obtener datos para ese CUIT. Verificá el número o intentá más tarde.');
-            }
-        } finally {
-            setLoadingAfip(false);
         }
     };
 
@@ -534,7 +487,7 @@ const AdminUsersPage: React.FC = () => {
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
                                     Nombre y apellido
-                                    <HelpTooltip text="Nombre completo de la persona o Razón Social si es empresa. Para clientes con CUIT podés usar «Buscar AFIP» y se completará solo." />
+                                    <HelpTooltip text="Nombre completo de la persona o Razón Social si es empresa." />
                                 </label>
                                 <input 
                                     type="text" placeholder="Ej. Agustín Ortega o Razón Social"
@@ -545,28 +498,16 @@ const AdminUsersPage: React.FC = () => {
                             </div>
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
-                                    CUIT y AFIP
-                                    <HelpTooltip text="Ingresá el CUIT de 11 dígitos (con o sin guiones) y hacé clic en «Buscar AFIP». El sistema autocompletará el nombre con la Razón Social oficial." />
+                                    CUIT
+                                    <HelpTooltip text="Ingresá el CUIT de 11 dígitos (con o sin guiones)." />
                                 </label>
-                                <p className="text-xs text-gray-500 mb-2">Ingresá el CUIT (11 dígitos) y usá «Buscar AFIP» para autocompletar Razón Social en el nombre.</p>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="text"
-                                        placeholder="20-12345678-9"
-                                        className="flex-1 border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                        value={formData.cuit}
-                                        onChange={e => setFormData({...formData, cuit: e.target.value})}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={fetchAfip}
-                                        disabled={loadingAfip || !(formData.cuit || '').replace(/\D/g, '').trim()}
-                                        className="px-4 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2 shrink-0"
-                                        title="Buscar en AFIP y autocompletar Razón Social"
-                                    >
-                                        <FaSearch /> {loadingAfip ? 'Buscando...' : 'Buscar AFIP'}
-                                    </button>
-                                </div>
+                                <input 
+                                    type="text"
+                                    placeholder="20-12345678-9"
+                                    className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    value={formData.cuit}
+                                    onChange={e => setFormData({...formData, cuit: e.target.value})}
+                                />
                             </div>
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
