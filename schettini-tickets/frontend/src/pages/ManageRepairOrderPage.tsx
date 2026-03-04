@@ -273,7 +273,7 @@ const ManageRepairOrderPage: React.FC = () => {
         const o = res.data.data;
         setOrder(o);
         const rawAccessories = (o.items?.[0]?.included_accessories ?? o.included_accessories ?? '') || '';
-        const parsedAccessories = rawAccessories.split(',').map((s: string) => s.trim()).filter(Boolean);
+        const parsedAccessories = rawAccessories.split(/\s*,\s*/).map((s: string) => s.trim()).filter(Boolean);
         setAccessoriesArray(parsedAccessories);
 
         setForm({
