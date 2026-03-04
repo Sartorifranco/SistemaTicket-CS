@@ -153,6 +153,7 @@ function parseSheet(rows: unknown[][]): PriceItem[] {
 const QuoterPage: React.FC = () => {
   const { user } = useAuth();
   const isAgentBlind = user?.role === 'agent';
+  const canSeeExcelImport = user?.role === 'admin' || user?.role === 'supervisor';
 
   const [items, setItems] = useState<PriceItem[]>([]);
   const [search, setSearch] = useState('');
@@ -524,24 +525,26 @@ const QuoterPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* COLUMNA IZQUIERDA: Cotizador Automático - Importador + Cotización Actual */}
         <div className="space-y-6">
-          <SectionCard title="Importador de Lista de Precios">
-            <div className="flex flex-wrap gap-4 items-end">
-              <label className="flex-1 min-w-[200px]">
-                <span className="block text-sm font-medium text-gray-700 mb-1">Archivo Excel (formato cliente)</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100"
-                  />
-                  <FaFileExcel className="text-green-600 text-xl shrink-0" />
-                </div>
-              </label>
-              {fileName && <span className="text-sm text-gray-500">Cargado: {fileName}</span>}
-            </div>
+          <SectionCard title={canSeeExcelImport ? 'Importador de Lista de Precios' : 'Catálogo'}>
+            {canSeeExcelImport && (
+              <div className="flex flex-wrap gap-4 items-end">
+                <label className="flex-1 min-w-[200px]">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">Archivo Excel (formato cliente)</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleFileUpload}
+                      className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100"
+                    />
+                    <FaFileExcel className="text-green-600 text-xl shrink-0" />
+                  </div>
+                </label>
+                {fileName && <span className="text-sm text-gray-500">Cargado: {fileName}</span>}
+              </div>
+            )}
 
-            <div className="mt-4">
+            <div className={canSeeExcelImport ? 'mt-4' : ''}>
               <div className="relative" ref={catalogDropdownRef}>
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -572,7 +575,7 @@ const QuoterPage: React.FC = () => {
               )}
             </div>
 
-            {items.length > 0 && (
+            {canSeeExcelImport && items.length > 0 && (
               <>
                 <div className="mt-4">
                   <div className="relative">

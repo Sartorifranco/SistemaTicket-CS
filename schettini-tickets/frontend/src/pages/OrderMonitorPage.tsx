@@ -126,6 +126,12 @@ const OrderMonitorPage: React.FC = () => {
   const techDisplay = (o: MonitorOrder) =>
     o.technician_full_name || o.technician_name || 'Sin asignar';
 
+  const sortedOrders = [...orders].sort((a, b) => {
+    const dateA = new Date(a.entry_date).getTime();
+    const dateB = new Date(b.entry_date).getTime();
+    return dateA - dateB;
+  });
+
   return (
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-6">
       <header className="mb-6 border-b border-slate-600 pb-4">
@@ -144,7 +150,7 @@ const OrderMonitorPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {orders.map((order) => {
+          {sortedOrders.map((order) => {
             const elapsed = getElapsed(order.entry_date);
             const delayed = isDelayed(order);
             const priorityStyle = PRIORITY_STYLES[order.priority] || PRIORITY_STYLES.Normal;
@@ -194,9 +200,9 @@ const OrderMonitorPage: React.FC = () => {
                     {STATUS_LABELS[order.status] || order.status}
                   </span>
                   {delayed && (
-                    <span className="flex items-center gap-1 text-red-400 text-sm font-medium">
+                    <div className="text-lg font-bold p-3 border-2 border-red-500 rounded-lg bg-red-900/50 text-red-200 flex items-center gap-2">
                       <FaExclamationTriangle /> Demora
-                    </span>
+                    </div>
                   )}
                 </div>
               </div>

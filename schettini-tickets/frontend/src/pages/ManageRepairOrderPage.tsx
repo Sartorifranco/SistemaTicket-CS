@@ -804,67 +804,61 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Accesorios incluidos</label>
-                {!canEditEquipment ? (
-                  <div className="text-gray-600 py-2">{accessoriesArray.length > 0 ? accessoriesArray.join(', ') : '—'}</div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-                      {accessoriesOptions.map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={accessoriesArray.includes(opt)}
-                            onChange={() => toggleAccessory(opt)}
-                            className="w-4 h-4 text-indigo-600 rounded border-gray-300"
-                          />
-                          <span className="text-sm">{opt}</span>
-                        </label>
-                      ))}
-                      {accessoriesOptions.length === 0 && (
-                        <p className="text-xs text-gray-500 col-span-full py-1">Sin opciones predefinidas. Agregá manualmente abajo.</p>
-                      )}
-                    </div>
-                    {accessoriesArray.filter((a) => !accessoriesOptions.includes(a)).length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <span className="text-xs text-gray-500 font-medium">Otros (manuales):</span>
-                        {accessoriesArray
-                          .filter((a) => !accessoriesOptions.includes(a))
-                          .map((a) => (
-                            <span
-                              key={a}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm"
-                            >
-                              {a}
-                              <button
-                                type="button"
-                                onClick={() => toggleAccessory(a)}
-                                className="text-indigo-600 hover:text-indigo-800 ml-0.5"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                      </div>
-                    )}
-                    <div className="flex gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                  {accessoriesOptions.map((opt) => (
+                    <label key={opt} className="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer">
                       <input
-                        type="text"
-                        value={otherAccessoryInput}
-                        onChange={(e) => setOtherAccessoryInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOtherAccessory())}
-                        placeholder="Otro accesorio (especificar)..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        type="checkbox"
+                        checked={accessoriesArray.includes(opt)}
+                        onChange={() => toggleAccessory(opt)}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300"
                       />
-                      <button
-                        type="button"
-                        onClick={addOtherAccessory}
-                        className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 text-sm flex items-center gap-1"
-                      >
-                        <FaPlus size={12} /> Agregar
-                      </button>
-                    </div>
-                  </>
+                      <span className="text-sm">{opt}</span>
+                    </label>
+                  ))}
+                  {accessoriesOptions.length === 0 && (
+                    <p className="text-xs text-gray-500 col-span-full py-1">Sin opciones predefinidas. Agregá manualmente abajo.</p>
+                  )}
+                </div>
+                {accessoriesArray.filter((a) => !accessoriesOptions.includes(a)).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className="text-xs text-gray-500 font-medium">Otros (manuales):</span>
+                    {accessoriesArray
+                      .filter((a) => !accessoriesOptions.includes(a))
+                      .map((a) => (
+                        <span
+                          key={a}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm"
+                        >
+                          {a}
+                          <button
+                            type="button"
+                            onClick={() => toggleAccessory(a)}
+                            className="text-indigo-600 hover:text-indigo-800 ml-0.5"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                  </div>
                 )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={otherAccessoryInput}
+                    onChange={(e) => setOtherAccessoryInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOtherAccessory())}
+                    placeholder="Otro accesorio (especificar)..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={addOtherAccessory}
+                    className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 text-sm flex items-center gap-1"
+                  >
+                    <FaPlus size={12} /> Agregar
+                  </button>
+                </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Informe Técnico / Solución</label>

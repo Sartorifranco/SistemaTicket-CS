@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
-import { FaEye, FaRecycle } from 'react-icons/fa';
+import { FaEye, FaRecycle, FaSearch } from 'react-icons/fa';
 
 interface RecyclingOrder {
   id: number;
@@ -49,6 +49,7 @@ const RecyclingAreaPage: React.FC = () => {
   const [orders, setOrders] = useState<RecyclingOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [searchText, setSearchText] = useState('');
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -62,6 +63,20 @@ const RecyclingAreaPage: React.FC = () => {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  const filteredOrders = useMemo(() => {
+    if (!searchText.trim()) return orders;
+    const q = searchText.trim().toLowerCase();
+    return orders.filter(
+      (o) =>
+        (o.order_number && o.order_number.toLowerCase().includes(q)) ||
+        (o.client_name && o.client_name.toLowerCase().includes(q)) ||
+        (o.client_business_name && o.client_business_name.toLowerCase().includes(q)) ||
+        (o.equipment_type && o.equipment_type.toLowerCase().includes(q)) ||
+        (o.model && o.model.toLowerCase().includes(q)) ||
+        (o.serial_number && o.serial_number.toLowerCase().includes(q))
+    );
+  }, [orders, searchText]);
 
   return (
     <div className="space-y-6">
@@ -82,12 +97,24 @@ const RecyclingAreaPage: React.FC = () => {
       </p>
 
       <SectionCard title="Órdenes abandonadas">
+        <div className="mb-4">
+          <div className="relative max-w-md">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por N° orden, cliente o equipo..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
           </div>
-        ) : orders.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">No hay órdenes en reciclaje.</p>
+        ) : filteredOrders.length === 0 ? (
+          <p className="text-center text-gray-500 py-8">{searchText.trim() ? 'No hay resultados para la búsqueda.' : 'No hay órdenes en reciclaje.'}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -102,7 +129,7 @@ const RecyclingAreaPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {orders.map((o) => (
+                {filteredOrders.map((o) => (
                   <React.Fragment key={o.id}>
                     <tr className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-medium">{o.order_number}</td>

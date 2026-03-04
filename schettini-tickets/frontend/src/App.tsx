@@ -162,7 +162,7 @@ const App: React.FC = () => {
                             <Route path="/agent/tickets" element={<PrivateRoute roles={['agent', 'supervisor', 'viewer']} permission="tickets_view"><AgentTicketsPage /></PrivateRoute>} />
                             <Route path="/agent/tickets/:id" element={<PrivateRoute roles={['agent', 'supervisor', 'viewer']} permission="tickets_view"><AgentTicketDetailPage /></PrivateRoute>} />
                             <Route path="/agent/tasks" element={<PrivateRoute roles={['agent', 'supervisor', 'viewer']} permission="tickets_view"><AgentTasksPage /></PrivateRoute>} />
-                            <Route path="/agent/knowledge-base" element={<PrivateRoute roles={['supervisor']}><AdminResourcesPage /></PrivateRoute>} />
+                            <Route path="/agent/knowledge-base" element={<PrivateRoute roles={['agent', 'supervisor']}><AdminResourcesPage /></PrivateRoute>} />
                             <Route path="/agent/reports" element={<PrivateRoute roles={['agent', 'supervisor', 'viewer']} permission="reports_view"><AgentReportsPage /></PrivateRoute>} />
                             <Route path="/agent/cotizador" element={<PrivateRoute roles={['agent', 'supervisor']} permission="quoter_access"><QuoterPage /></PrivateRoute>} />
                             <Route path="/agent/repair-orders" element={<PrivateRoute roles={['agent', 'supervisor', 'viewer']} permission="repairs_view"><RepairOrdersListPage /></PrivateRoute>} />
