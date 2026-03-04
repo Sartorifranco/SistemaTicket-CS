@@ -40,6 +40,7 @@ import NewRepairOrderPage from './pages/NewRepairOrderPage';
 import ManageRepairOrderPage from './pages/ManageRepairOrderPage';
 import RecyclingAreaPage from './pages/RecyclingAreaPage';
 import OrderMonitorPage from './pages/OrderMonitorPage';
+import WarrantiesDashboardPage from './pages/WarrantiesDashboardPage';
 
 // --- AGENT PAGES ---
 import AgentDashboard from './pages/AgentDashboard';
@@ -153,6 +154,7 @@ const App: React.FC = () => {
                             <Route path="/admin/repair-orders/:id" element={<PrivateRoute roles={['admin']}><ManageRepairOrderPage /></PrivateRoute>} />
                             <Route path="/admin/recycling-area" element={<PrivateRoute roles={['admin']}><RecyclingAreaPage /></PrivateRoute>} />
                             <Route path="/admin/monitor" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><OrderMonitorPage /></PrivateRoute>} />
+                            <Route path="/admin/warranties" element={<PrivateRoute roles={['admin', 'supervisor']}><WarrantiesDashboardPage /></PrivateRoute>} />
                             <Route path="/admin/activations" element={<PrivateRoute roles={['admin']}><AdminActivationsPage /></PrivateRoute>} />
                             <Route path="/admin/ready-equipments" element={<PrivateRoute roles={['admin']}><ReadyEquipmentsPage /></PrivateRoute>} />
                             <Route path="/admin/tasks" element={<PrivateRoute roles={['admin']}><AgentTasksPage mode="admin" /></PrivateRoute>} />

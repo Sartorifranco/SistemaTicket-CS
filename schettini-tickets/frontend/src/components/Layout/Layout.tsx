@@ -8,7 +8,7 @@ import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
 import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -83,6 +83,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>
                         <li><NavLink to="/admin/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>
                         <li><NavLink to="/admin/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>
+                        <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>
                         <li><NavLink to="/admin/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>
                         <li><NavLink to="/admin/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>
                         <li><NavLink to="/admin/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>
@@ -187,6 +188,7 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
+                                {hasRepairs && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
