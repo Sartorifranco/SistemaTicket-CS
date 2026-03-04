@@ -116,6 +116,7 @@ const Layout: React.FC = () => {
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Agente</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
+                        <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
                         {hasTickets && (
                             <>
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
@@ -190,12 +191,12 @@ const Layout: React.FC = () => {
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Supervisor</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
+                        <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
                         {hasTickets && (
                             <>
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
                                 <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
-                                <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
                                 <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                             </>
                         )}
