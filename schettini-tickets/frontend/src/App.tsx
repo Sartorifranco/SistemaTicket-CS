@@ -153,7 +153,7 @@ const App: React.FC = () => {
                             <Route path="/admin/cotizador" element={<PrivateRoute roles={['admin']}><QuoterPage /></PrivateRoute>} />
                             <Route path="/admin/repair-orders" element={<PrivateRoute roles={['admin']}><RepairOrdersListPage /></PrivateRoute>} />
                             <Route path="/admin/repair-orders/new" element={<PrivateRoute roles={['admin']}><NewRepairOrderPage /></PrivateRoute>} />
-                            <Route path="/admin/repair-orders/:id" element={<PrivateRoute roles={['admin']}><ManageRepairOrderPage /></PrivateRoute>} />
+                            <Route path="/admin/repair-orders/:id" element={<PrivateRoute roles={['admin', 'supervisor', 'agent']}><ManageRepairOrderPage /></PrivateRoute>} />
                             <Route path="/admin/recycling-area" element={<PrivateRoute roles={['admin']}><RecyclingAreaPage /></PrivateRoute>} />
                             <Route path="/admin/monitor" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><OrderMonitorPage /></PrivateRoute>} />
                             <Route path="/admin/warranties" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><WarrantiesDashboardPage /></PrivateRoute>} />

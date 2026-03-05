@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import {
@@ -69,6 +70,7 @@ function daysOpen(entryDate: string | null): number | null {
 
 const WarrantiesDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [stats, setStats] = useState<WarrantyStats | null>(null);
   const [orders, setOrders] = useState<WarrantyOrder[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -384,7 +386,7 @@ const WarrantiesDashboardPage: React.FC = () => {
                     <tr
                       key={o.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/admin/repair-orders/${o.id}`)}
+                      onClick={() => navigate(`${user?.role === 'admin' ? '/admin/repair-orders' : '/agent/repair-orders'}/${o.id}`)}
                     >
                       <td className="p-3 font-medium text-indigo-600">{o.order_number}</td>
                       <td className="p-3 text-gray-800">{clientDisplay(o)}</td>
