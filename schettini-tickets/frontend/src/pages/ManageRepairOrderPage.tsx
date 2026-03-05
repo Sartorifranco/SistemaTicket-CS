@@ -279,9 +279,9 @@ const ManageRepairOrderPage: React.FC = () => {
 
         setForm({
           status: o.status || '',
-          equipmentType: o.equipment_type || '',
+          equipmentType: (o.items?.[0]?.equipment_type ?? o.equipment_type ?? '') || '',
           brand: (o.items?.[0]?.brand ?? o.brand ?? '') || '',
-          model: o.model || '',
+          model: (o.items?.[0]?.model ?? o.model ?? '') || '',
           serialNumber: o.serial_number || '',
           reportedFault: o.reported_fault || '',
           includedAccessories: rawAccessories,
@@ -748,6 +748,7 @@ const ManageRepairOrderPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
                 <input
+                  type="text"
                   name="model"
                   list="model-list"
                   value={form.model}
