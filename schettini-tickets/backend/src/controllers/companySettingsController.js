@@ -11,7 +11,11 @@ const getCompanySettings = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Configuración de empresa no encontrada.' });
     }
-    res.json({ success: true, data: rows[0] });
+    const row = rows[0];
+    const data = { ...row };
+    if (row.default_abandonment_days != null) data.recycling_days_abandonment = row.default_abandonment_days;
+    if (row.legal_terms != null) data.legal_terms_ticket = row.legal_terms;
+    res.json({ success: true, data });
   } catch (error) {
     console.error('getCompanySettings:', error);
     res.status(500).json({ message: 'Error al obtener configuración.' });
@@ -63,7 +67,7 @@ const updateCompanySettings = async (req, res) => {
       'company_name = ?', 'address = ?', 'phone = ?', 'email = ?', 'website = ?',
       'tax_percentage = ?', 'quote_footer_text = ?', 'primary_color = ?',
       'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'profit_margin_percent = ?', 'legal_footer_text = ?',
-      'recycling_days_abandonment = ?', 'default_warranty_months = ?', 'legal_terms_ticket = ?'
+      'default_abandonment_days = ?', 'default_warranty_months = ?', 'legal_terms = ?'
     ];
     const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, profitMarginPercent, legalFooterText, recyclingDaysAbandonment, defaultWarrantyMonths, legalTermsTicket];
 
