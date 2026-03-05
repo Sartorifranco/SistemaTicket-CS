@@ -185,6 +185,7 @@ const QuoterPage: React.FC = () => {
   const [manualCostInput, setManualCostInput] = useState('');
   const [manualCostIsUsd, setManualCostIsUsd] = useState(false);
   const [manualLaborValue, setManualLaborValue] = useState('');
+  const [laborCotizadorAutomatico, setLaborCotizadorAutomatico] = useState('');
   const [laborOptions, setLaborOptions] = useState<LaborOption[]>([]);
   const [savingConfig, setSavingConfig] = useState(false);
 
@@ -436,6 +437,14 @@ const QuoterPage: React.FC = () => {
   const ivaManual = subtotalManual * (ivaPct / 100);
   const totalEfectivoManual = subtotalManual + ivaManual;
   const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
+
+  // Cotizador Automático (izquierda): subtotal + mano de obra + IVA + totales (todos numéricos)
+  const laborAutoNum = (laborCotizadorAutomatico === '' || laborCotizadorAutomatico == null) ? 0 : toNumStrict(laborCotizadorAutomatico);
+  const baseRepuestosAuto = totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel;
+  const subtotalNetoAuto = toNumStrict(baseRepuestosAuto) + laborAutoNum;
+  const ivaAuto = subtotalNetoAuto * (ivaPct / 100);
+  const totalEfectivoAuto = subtotalNetoAuto + ivaAuto;
+  const totalListaAuto = surchargePct > 0 ? totalEfectivoAuto * (1 + surchargePct / 100) : totalEfectivoAuto;
 
   const generarTextoCotizacion = (): string => {
     if (quoteItems.length === 0) return '';
@@ -797,14 +806,29 @@ const QuoterPage: React.FC = () => {
               {quoteItems.length > 0 && (
                 <>
                   <hr className="border-gray-200" />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mano de obra</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={laborCotizadorAutomatico}
+                      onChange={(e) => setLaborCotizadorAutomatico(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
                   <div className="text-sm">
+                    <p className="flex justify-between"><span>Subtotal neto (repuestos + mano de obra):</span> <strong>{formatCurrency(subtotalNetoAuto)}</strong></p>
+                    <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> {formatCurrency(ivaAuto)}</p>
+                    <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Efectivo:</span> {formatCurrency(totalEfectivoAuto)}</p>
+                    <p className="flex justify-between text-indigo-700 font-bold"><span>Total Lista:</span> {formatCurrency(totalListaAuto)}</p>
                     {!isAgentBlind && (
                       <>
-                        <p className="flex justify-between"><span>Total (Excel Pesos):</span> <strong>{formatCurrency(totales.totalPesosExcel)}</strong></p>
-                        <p className="flex justify-between"><span>Total (Excel USD):</span> <strong>{formatCurrency(totales.totalUsdExcel)}</strong></p>
+                        <p className="flex justify-between mt-2 text-gray-500"><span>Total (Excel Pesos):</span> <strong>{formatCurrency(totales.totalPesosExcel)}</strong></p>
+                        <p className="flex justify-between text-gray-500"><span>Total (Excel USD):</span> <strong>{formatCurrency(totales.totalUsdExcel)}</strong></p>
                       </>
                     )}
-                    <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Final:</span> {formatCurrency(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel)}</p>
+                    <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Final:</span> {formatCurrency(totalEfectivoAuto)}</p>
                   </div>
 
                   <button
