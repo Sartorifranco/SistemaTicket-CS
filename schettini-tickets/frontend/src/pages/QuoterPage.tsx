@@ -108,6 +108,18 @@ function toNum(val: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
+/** Convierte cualquier valor a número seguro para cálculos (evita concatenación de strings). */
+function toNumStrict(val: unknown): number {
+  if (val == null || val === '') return 0;
+  const n = Number(val);
+  return (n !== n || !isFinite(n)) ? 0 : n;
+}
+
+/** Formato de moneda limpio (evita ceros a la izquierda por valores string). */
+function formatCurrency(value: unknown): string {
+  return Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(toNumStrict(value));
+}
+
 function parseSheet(rows: unknown[][]): PriceItem[] {
   const headerIdx = findHeaderRow(rows);
   if (headerIdx < 0) return [];
@@ -376,20 +388,27 @@ const QuoterPage: React.FC = () => {
   const effectiveDolar = isAgentBlind ? (companySettings?.usd_exchange_rate ?? dolarActual) : dolarActual;
   const effectiveMargen = isAgentBlind ? (companySettings?.profit_margin_percent ?? 30) : margenGanancia;
 
-  const costoBase = (item: PriceItem): number => (item.costoConIva > 0 ? item.costoConIva : item.costoSinIva);
+  const costoBase = (item: PriceItem): number => {
+    const conIva = toNumStrict(item.costoConIva);
+    const sinIva = toNumStrict(item.costoSinIva);
+    return conIva > 0 ? conIva : sinIva;
+  };
 
   const precioACobrar = (item: PriceItem): number => {
     const costo = costoBase(item);
-    if (costo <= 0) return item.precioVentaPesos > 0 ? item.precioVentaPesos : 0;
+    const precioPesos = toNumStrict(item.precioVentaPesos);
+    if (costo <= 0) return precioPesos > 0 ? precioPesos : 0;
 
+    const dolar = toNumStrict(effectiveDolar);
+    const margen = toNumStrict(effectiveMargen);
     let costoUsd: number;
     if (costoEnPesos) {
-      costoUsd = costo / effectiveDolar;
+      costoUsd = dolar > 0 ? costo / dolar : 0;
     } else {
       costoUsd = costo;
     }
-    const precioUsd = costoUsd * (1 + effectiveMargen / 100);
-    return costoEnPesos ? precioUsd * effectiveDolar : precioUsd * effectiveDolar;
+    const precioUsd = costoUsd * (1 + margen / 100);
+    return costoEnPesos ? precioUsd * dolar : precioUsd * dolar;
   };
 
   const totales = useMemo(() => {
@@ -397,22 +416,22 @@ const QuoterPage: React.FC = () => {
     let totalUsdExcel = 0;
     let totalACobrar = 0;
     quoteItems.forEach((i) => {
-      totalPesosExcel += i.precioVentaPesos;
-      totalUsdExcel += i.precioVentaUsd;
+      totalPesosExcel += toNumStrict(i.precioVentaPesos);
+      totalUsdExcel += toNumStrict(i.precioVentaUsd);
       totalACobrar += precioACobrar(i);
     });
     return { totalPesosExcel, totalUsdExcel, totalACobrar };
   }, [quoteItems, effectiveDolar, effectiveMargen, costoEnPesos]);
 
-  const usdRate = companySettings?.usd_exchange_rate ?? 0;
-  const ivaPct = companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21;
-  const surchargePct = companySettings?.list_price_surcharge_percent ?? 0;
-  const profitMarginPct = companySettings?.profit_margin_percent ?? 30;
+  const usdRate = toNumStrict(companySettings?.usd_exchange_rate ?? 0);
+  const ivaPct = toNumStrict(companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21);
+  const surchargePct = toNumStrict(companySettings?.list_price_surcharge_percent ?? 0);
+  const profitMarginPct = toNumStrict(companySettings?.profit_margin_percent ?? 30);
 
-  const manualCostNum = parseFloat(manualCostInput) || 0;
+  const manualCostNum = toNumStrict(manualCostInput);
   const costoBaseManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
   const costoConMargen = costoBaseManual * (1 + profitMarginPct / 100);
-  const manualLaborNum = parseFloat(manualLaborValue) || 0;
+  const manualLaborNum = (manualLaborValue === '' || manualLaborValue == null) ? 0 : toNumStrict(manualLaborValue);
   const subtotalManual = costoConMargen + manualLaborNum;
   const ivaManual = subtotalManual * (ivaPct / 100);
   const totalEfectivoManual = subtotalManual + ivaManual;
@@ -781,11 +800,11 @@ const QuoterPage: React.FC = () => {
                   <div className="text-sm">
                     {!isAgentBlind && (
                       <>
-                        <p className="flex justify-between"><span>Total (Excel Pesos):</span> <strong>${totales.totalPesosExcel.toLocaleString('es-AR')}</strong></p>
-                        <p className="flex justify-between"><span>Total (Excel USD):</span> <strong>${totales.totalUsdExcel.toFixed(2)}</strong></p>
+                        <p className="flex justify-between"><span>Total (Excel Pesos):</span> <strong>{formatCurrency(totales.totalPesosExcel)}</strong></p>
+                        <p className="flex justify-between"><span>Total (Excel USD):</span> <strong>{formatCurrency(totales.totalUsdExcel)}</strong></p>
                       </>
                     )}
-                    <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Final:</span> ${Math.round(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel).toLocaleString('es-AR')}</p>
+                    <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Final:</span> {formatCurrency(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel)}</p>
                   </div>
 
                   <button
@@ -885,13 +904,13 @@ const QuoterPage: React.FC = () => {
             <div className="p-4 bg-white rounded-lg border border-gray-300 space-y-2">
               {!isAgentBlind && (
                 <>
-                  <p className="flex justify-between text-sm text-gray-600"><span>COSTO BASE (ARS):</span> <strong>${costoBaseManual.toLocaleString('es-AR')}</strong></p>
-                  <p className="flex justify-between text-sm text-gray-600"><span>SUBTOTAL (costo + margen + mano obra):</span> <strong>${subtotalManual.toLocaleString('es-AR')}</strong></p>
-                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}%):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>COSTO BASE (ARS):</span> <strong>{formatCurrency(costoBaseManual)}</strong></p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>SUBTOTAL (costo + margen + mano obra):</span> <strong>{formatCurrency(subtotalManual)}</strong></p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}%):</span> {formatCurrency(ivaManual)}</p>
                 </>
               )}
-              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO:</span> ${totalEfectivoManual.toLocaleString('es-AR')}</p>
-              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL LISTA (Tarjetas):</span> ${totalListaManual.toLocaleString('es-AR')}</p>
+              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO:</span> {formatCurrency(totalEfectivoManual)}</p>
+              <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL LISTA (Tarjetas):</span> {formatCurrency(totalListaManual)}</p>
               {!isAgentBlind && <p className="text-xs text-gray-400 mt-2">IVA ({ivaPct}%), Margen ({profitMarginPct}%), Recargo ({surchargePct}%), Dólar: Config. Central</p>}
             </div>
           </div>
