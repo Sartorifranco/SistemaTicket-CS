@@ -41,6 +41,9 @@ interface CompanySettings {
   default_iva_percent?: number | null;
   list_price_surcharge_percent?: number | null;
   profit_margin_percent?: number | null;
+  recycling_days_abandonment?: number | null;
+  default_warranty_months?: number | null;
+  legal_terms_ticket?: string | null;
 }
 
 const defaultSettings: CompanySettings = {
@@ -58,12 +61,17 @@ const defaultSettings: CompanySettings = {
   default_iva_percent: 21,
   list_price_surcharge_percent: null,
   profit_margin_percent: 30,
+  recycling_days_abandonment: null,
+  default_warranty_months: null,
+  legal_terms_ticket: null,
 };
 
-type TabId = 'empresa' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'categorias-tickets';
+type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'categorias-tickets';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'empresa', label: 'Datos de la Empresa', icon: <FaBuilding /> },
+  { id: 'general', label: 'General', icon: <FaBuilding /> },
+  { id: 'finanzas', label: 'Finanzas y Cotizador', icon: <FaCalculator /> },
+  { id: 'taller', label: 'Taller y Órdenes', icon: <FaToolbox /> },
   { id: 'accesorios', label: 'Accesorios', icon: <FaToolbox /> },
   { id: 'marcas', label: 'Marcas', icon: <FaTags /> },
   { id: 'tipos-equipo', label: 'Tipos de Equipo', icon: <FaList /> },
@@ -175,7 +183,7 @@ const OptionsListManager: React.FC<{
 };
 
 const AdminCompanySettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('empresa');
+  const [activeTab, setActiveTab] = useState<TabId>('general');
   const [formData, setFormData] = useState<CompanySettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -306,6 +314,9 @@ const AdminCompanySettingsPage: React.FC = () => {
           default_iva_percent: data.default_iva_percent != null ? Number(data.default_iva_percent) : 21,
           list_price_surcharge_percent: data.list_price_surcharge_percent != null ? Number(data.list_price_surcharge_percent) : null,
           profit_margin_percent: data.profit_margin_percent != null ? Number(data.profit_margin_percent) : 30,
+          recycling_days_abandonment: data.recycling_days_abandonment != null ? Number(data.recycling_days_abandonment) : null,
+          default_warranty_months: data.default_warranty_months != null ? Number(data.default_warranty_months) : null,
+          legal_terms_ticket: data.legal_terms_ticket ?? null,
         });
         if (data.logo_url) {
           setLogoPreview(getImageUrl(data.logo_url));
@@ -351,6 +362,9 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append('default_iva_percent', formData.default_iva_percent != null ? String(formData.default_iva_percent) : '');
       form.append('list_price_surcharge_percent', formData.list_price_surcharge_percent != null ? String(formData.list_price_surcharge_percent) : '');
       form.append('profit_margin_percent', formData.profit_margin_percent != null ? String(formData.profit_margin_percent) : '');
+      form.append('recycling_days_abandonment', formData.recycling_days_abandonment != null ? String(formData.recycling_days_abandonment) : '');
+      form.append('default_warranty_months', formData.default_warranty_months != null ? String(formData.default_warranty_months) : '');
+      form.append('legal_terms_ticket', formData.legal_terms_ticket ?? '');
 
       if (logoFile) {
         form.append('logo', logoFile);
@@ -418,8 +432,8 @@ const AdminCompanySettingsPage: React.FC = () => {
         </nav>
       </div>
 
-      {/* Tab: Datos de la Empresa */}
-      {activeTab === 'empresa' && (
+      {/* Tab: General (Datos de la Empresa y más) */}
+      {activeTab === 'general' && (
         <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200 space-y-6">
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
@@ -664,6 +678,117 @@ const AdminCompanySettingsPage: React.FC = () => {
               className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md transition"
             >
               <FaSave /> {saving ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Tab: Finanzas y Cotizador */}
+      {activeTab === 'finanzas' && (
+        <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200 space-y-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FaCalculator className="text-amber-600" /> Finanzas y Cotizador
+          </h2>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Dólar Actual</label>
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              value={formData.usd_exchange_rate ?? ''}
+              onChange={(e) => setFormData({ ...formData, usd_exchange_rate: e.target.value ? parseFloat(e.target.value) : null })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[200px]"
+              placeholder="Ej: 1200"
+            />
+            <p className="text-xs text-blue-600 mt-1">ℹ️ Este valor base se usará para convertir costos en USD a pesos en el cotizador y órdenes de taller.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Margen de Ganancia (%)</label>
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              value={formData.profit_margin_percent ?? ''}
+              onChange={(e) => setFormData({ ...formData, profit_margin_percent: e.target.value ? parseFloat(e.target.value) : null })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[120px]"
+              placeholder="30"
+            />
+            <p className="text-xs text-blue-600 mt-1">ℹ️ Porcentaje que se aplica sobre el costo para obtener el precio de venta en la calculadora manual del cotizador.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Porcentaje de IVA</label>
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              max={100}
+              value={formData.default_iva_percent ?? ''}
+              onChange={(e) => setFormData({ ...formData, default_iva_percent: e.target.value ? parseFloat(e.target.value) : null })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[120px]"
+              placeholder="21"
+            />
+            <p className="text-xs text-blue-600 mt-1">ℹ️ IVA por defecto aplicado en cotizaciones y órdenes de taller (ej: 21% o 0 si es exento).</p>
+          </div>
+          <div className="pt-4 border-t">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md transition"
+            >
+              <FaSave /> {saving ? 'Guardando...' : 'Guardar Configuración'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Tab: Taller y Órdenes */}
+      {activeTab === 'taller' && (
+        <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200 space-y-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FaToolbox className="text-indigo-600" /> Taller y Órdenes
+          </h2>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Días para Abandono (Área Reciclaje)</label>
+            <input
+              type="number"
+              min={1}
+              value={formData.recycling_days_abandonment ?? ''}
+              onChange={(e) => setFormData({ ...formData, recycling_days_abandonment: e.target.value ? parseInt(e.target.value, 10) : null })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[120px]"
+              placeholder="Ej: 90"
+            />
+            <p className="text-xs text-blue-600 mt-1">ℹ️ Cantidad de días tras los cuales un equipo en Área de Reciclaje puede considerarse abandonado.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Garantía por defecto (Meses)</label>
+            <input
+              type="number"
+              min={0}
+              value={formData.default_warranty_months ?? ''}
+              onChange={(e) => setFormData({ ...formData, default_warranty_months: e.target.value ? parseInt(e.target.value, 10) : null })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none max-w-[120px]"
+              placeholder="Ej: 3"
+            />
+            <p className="text-xs text-blue-600 mt-1">ℹ️ Meses de garantía que se aplican por defecto al registrar una orden en garantía.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Términos Legales (Ticket)</label>
+            <textarea
+              value={formData.legal_terms_ticket ?? ''}
+              onChange={(e) => setFormData({ ...formData, legal_terms_ticket: e.target.value || null })}
+              rows={4}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
+              placeholder="Términos y condiciones que acepta el cliente al abrir un ticket..."
+            />
+            <p className="text-xs text-blue-600 mt-1">ℹ️ Texto legal que puede mostrarse al cliente al crear o gestionar un ticket.</p>
+          </div>
+          <div className="pt-4 border-t">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md transition"
+            >
+              <FaSave /> {saving ? 'Guardando...' : 'Guardar Configuración'}
             </button>
           </div>
         </form>

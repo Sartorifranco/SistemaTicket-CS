@@ -373,6 +373,9 @@ CREATE TABLE IF NOT EXISTS company_settings (
   default_iva_percent DECIMAL(5,2) NULL,
   profit_margin_percent DECIMAL(5,2) NULL DEFAULT 30 COMMENT 'Margen % cotizador manual',
   legal_footer_text TEXT NULL COMMENT 'Términos y condiciones PDF',
+  recycling_days_abandonment INT UNSIGNED NULL COMMENT 'Días para abandono en Área Reciclaje',
+  default_warranty_months INT UNSIGNED NULL COMMENT 'Garantía por defecto en meses',
+  legal_terms_ticket TEXT NULL COMMENT 'Términos legales para tickets',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)

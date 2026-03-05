@@ -46,6 +46,13 @@ const updateCompanySettings = async (req, res) => {
       ? parseFloat(body.profit_margin_percent)
       : null;
     const legalFooterText = (body.legal_footer_text ?? '').trim() || null;
+    const recyclingDaysAbandonment = body.recycling_days_abandonment != null && body.recycling_days_abandonment !== ''
+      ? parseInt(body.recycling_days_abandonment, 10)
+      : null;
+    const defaultWarrantyMonths = body.default_warranty_months != null && body.default_warranty_months !== ''
+      ? parseInt(body.default_warranty_months, 10)
+      : null;
+    const legalTermsTicket = (body.legal_terms_ticket ?? '').trim() || null;
 
     let logoUrl = null;
     if (file && file.filename) {
@@ -55,9 +62,10 @@ const updateCompanySettings = async (req, res) => {
     const updates = [
       'company_name = ?', 'address = ?', 'phone = ?', 'email = ?', 'website = ?',
       'tax_percentage = ?', 'quote_footer_text = ?', 'primary_color = ?',
-      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'profit_margin_percent = ?', 'legal_footer_text = ?'
+      'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'profit_margin_percent = ?', 'legal_footer_text = ?',
+      'recycling_days_abandonment = ?', 'default_warranty_months = ?', 'legal_terms_ticket = ?'
     ];
-    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, profitMarginPercent, legalFooterText];
+    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, profitMarginPercent, legalFooterText, recyclingDaysAbandonment, defaultWarrantyMonths, legalTermsTicket];
 
     if (logoUrl !== null) {
       updates.splice(5, 0, 'logo_url = ?');
