@@ -118,8 +118,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; socket:
     
     const markAllNotificationsAsRead = async () => { 
         try{ 
-            // Usualmente es mejor un endpoint especifico como /read-all, ajusta si tu backend es diferente
-            await api.put('/api/notifications/read-all'); 
+            await api.put('/api/notifications'); 
             setNotifications(prev=>prev.map(n=>({...n,is_read:true}))); 
             setUnreadCount(0); 
         }catch(e){} 
