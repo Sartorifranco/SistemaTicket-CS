@@ -144,6 +144,8 @@ const Layout: React.FC = () => {
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Diccionarios</li>
+                        <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                     </>
                 );
             }
@@ -219,6 +221,8 @@ const Layout: React.FC = () => {
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
+                        <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                     </>
                 );
             }

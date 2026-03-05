@@ -6,8 +6,8 @@ const { getAll, getCategories, create, update, remove } = require('../controller
 router.use(protect);
 router.get('/', getAll);
 router.get('/categories', getCategories);
-router.post('/', authorize('admin'), create);
-router.put('/:id', authorize('admin'), update);
-router.delete('/:id', authorize('admin'), remove);
+router.post('/', authorize('admin', 'supervisor', 'agent'), create);
+router.put('/:id', authorize('admin', 'supervisor', 'agent'), update);
+router.delete('/:id', authorize('admin', 'supervisor', 'agent'), remove);
 
 module.exports = router;

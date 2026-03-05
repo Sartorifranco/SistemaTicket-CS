@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
@@ -23,7 +24,8 @@ import {
   FaCog,
   FaTags,
   FaToolbox,
-  FaList
+  FaList,
+  FaCube
 } from 'react-icons/fa';
 
 interface CompanySettings {
@@ -66,7 +68,7 @@ const defaultSettings: CompanySettings = {
   legal_terms_ticket: null,
 };
 
-type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'categorias-tickets';
+type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <FaBuilding /> },
@@ -75,6 +77,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'accesorios', label: 'Accesorios', icon: <FaToolbox /> },
   { id: 'marcas', label: 'Marcas', icon: <FaTags /> },
   { id: 'tipos-equipo', label: 'Tipos de Equipo', icon: <FaList /> },
+  { id: 'modelos', label: 'Modelos', icon: <FaCube /> },
   { id: 'categorias-tickets', label: 'Categorías de Tickets', icon: <FaTicketAlt /> },
 ];
 
@@ -182,8 +185,16 @@ const OptionsListManager: React.FC<{
   );
 };
 
+const AGENT_ALLOWED_TABS: TabId[] = ['accesorios', 'marcas', 'tipos-equipo', 'modelos'];
+
 const AdminCompanySettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('general');
+  const { user } = useAuth();
+  const isAgent = user?.role === 'agent';
+  const visibleTabs = isAgent ? TABS.filter((t) => AGENT_ALLOWED_TABS.includes(t.id)) : TABS;
+  const defaultTabForAgent: TabId = 'accesorios';
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    user?.role === 'agent' ? defaultTabForAgent : 'general'
+  );
   const [formData, setFormData] = useState<CompanySettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -212,6 +223,12 @@ const AdminCompanySettingsPage: React.FC = () => {
   useEffect(() => {
     fetchTicketCategories();
   }, []);
+
+  useEffect(() => {
+    if (isAgent && !AGENT_ALLOWED_TABS.includes(activeTab)) {
+      setActiveTab(defaultTabForAgent);
+    }
+  }, [isAgent, activeTab]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -411,10 +428,10 @@ const AdminCompanySettingsPage: React.FC = () => {
         Centralizá todas las configuraciones, listas desplegables y datos de tu empresa en un solo lugar.
       </p>
 
-      {/* Pestañas */}
+      {/* Pestañas (agente solo ve Accesorios, Marcas, Tipos de Equipo, Modelos) */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex flex-wrap gap-1 -mb-px">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -821,6 +838,16 @@ const AdminCompanySettingsPage: React.FC = () => {
           title="Tipos de Equipo"
           description="Tipos de equipo (Impresora, PC, Monitor, etc.) que aparecen en los formularios de órdenes de taller y remotas."
           placeholder="Ej: Impresora, Monitor..."
+        />
+      )}
+
+      {/* Tab: Modelos */}
+      {activeTab === 'modelos' && (
+        <OptionsListManager
+          category="model"
+          title="Modelos"
+          description="Modelos de equipos que podés seleccionar o escribir al crear órdenes de reparación."
+          placeholder="Ej: LaserJet Pro, ThinkPad X1..."
         />
       )}
 
