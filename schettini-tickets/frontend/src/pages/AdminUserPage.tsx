@@ -23,6 +23,7 @@ interface User {
     company_id?: number;
     department_id?: number;
     plan?: string;
+    phone?: string | null;
     permissions?: string[];
 }
 
@@ -55,7 +56,7 @@ const AdminUsersPage: React.FC = () => {
 
     // Formulario
     const [formData, setFormData] = useState<{
-        username: string; full_name: string; email: string; password: string; cuit: string;
+        username: string; full_name: string; email: string; password: string; cuit: string; phone: string;
         role: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
         status: 'active' | 'inactive';
         company_id: string; department_id: string;
@@ -67,6 +68,7 @@ const AdminUsersPage: React.FC = () => {
         email: '',
         password: '',
         cuit: '',
+        phone: '',
         role: 'client',
         status: 'active',
         company_id: '',
@@ -108,7 +110,7 @@ const AdminUsersPage: React.FC = () => {
     };
 
     const handleOpenCreate = () => {
-        setFormData({ username: '', full_name: '', email: '', password: '', cuit: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS, can_manage_tech_finances: false });
+        setFormData({ username: '', full_name: '', email: '', password: '', cuit: '', phone: '', role: 'client', status: 'active', company_id: '', department_id: '', permissions: DEFAULT_AGENT_PERMISSIONS, can_manage_tech_finances: false });
         setIsEditMode(false);
         setIsModalOpen(true);
     };
@@ -117,13 +119,14 @@ const AdminUsersPage: React.FC = () => {
         if(e) e.stopPropagation();
         const raw = Array.isArray(user.permissions) ? user.permissions : [];
         const perms = raw.length > 0 ? migrateOldPermissions(raw) : (user.role === 'agent' || user.role === 'supervisor' ? DEFAULT_AGENT_PERMISSIONS : []);
-        const u = user as User & { cuit?: string; can_manage_tech_finances?: boolean };
+        const u = user as User & { cuit?: string; phone?: string | null; can_manage_tech_finances?: boolean };
         setFormData({
             username: user.username,
             full_name: user.full_name ?? user.username ?? '',
             email: user.email,
             password: '',
             cuit: u.cuit ?? '',
+            phone: u.phone ?? '',
             role: user.role,
             status: user.status || 'active',
             company_id: user.company_id ? user.company_id.toString() : '',
@@ -523,6 +526,20 @@ const AdminUsersPage: React.FC = () => {
                                     className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                     value={formData.email}
                                     onChange={e => setFormData({...formData, email: e.target.value})}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                    Teléfono / WhatsApp
+                                    <HelpTooltip text="Número para contacto y envío de WhatsApp desde las órdenes." />
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    placeholder="Ej: 11 1234-5678 o +54 9 11 1234-5678"
+                                    value={formData.phone}
+                                    onChange={e => setFormData({...formData, phone: e.target.value})}
                                 />
                             </div>
 
