@@ -241,9 +241,23 @@ const addCommentToTicket = async (req, res) => {
         const { comment_text, is_internal } = req.body;
         const internal = req.user.role !== 'client' && is_internal ? 1 : 0;
         const ticketId = req.params.id;
-        await pool.query('INSERT INTO comments (ticket_id, user_id, comment_text, is_internal, created_at) VALUES (?, ?, ?, ?, NOW())', 
+
+        // Obtener user_id del ticket (cliente) para notificaciones
+        const [ticketRows] = await pool.query('SELECT user_id FROM Tickets WHERE id = ?', [ticketId]);
+        const clientId = ticketRows.length > 0 ? ticketRows[0].user_id : null;
+
+        await pool.query('INSERT INTO comments (ticket_id, user_id, comment_text, is_internal, created_at) VALUES (?, ?, ?, ?, NOW())',
             [ticketId, req.user.id, comment_text, internal]);
         await createActivityLog(req.user.id, 'ticket', 'comment_added', `Comentario agregado al ticket #${ticketId}`, parseInt(ticketId), null, { preview: (comment_text || '').substring(0, 50) });
+
+        // Si quien responde es admin, agente o supervisor, notificar al cliente (salvo que sea nota interna)
+        const commenterRole = req.user.role;
+        const isStaff = commenterRole === 'admin' || commenterRole === 'agent' || commenterRole === 'supervisor';
+        if (isStaff && !internal && clientId && clientId !== req.user.id) {
+            const message = `Tienes una nueva respuesta en tu ticket #${ticketId}.`;
+            await createNotification(clientId, 'Nueva respuesta en tu ticket', message, 'info', req.io || null, parseInt(ticketId, 10), 'ticket');
+        }
+
         res.json({ success: true, message: 'Comentario agregado' });
     } catch (e) { res.status(500).json({ message: 'Error' }); }
 };
