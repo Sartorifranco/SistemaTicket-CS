@@ -115,9 +115,18 @@ const addCommentToTicket = asyncHandler(async (req, res) => {
             });
         }
 
-        // 5. Notificar a agentes del departamento del ticket (excluyendo al comentador si es agente de ese depto)
+        // 5. Notificar a supervisores (excluyendo al comentador si es supervisor)
+        if (userRole !== 'supervisor') {
+            io.to('supervisor').emit('newNotification', {
+                type: 'new_comment',
+                message: `Nuevo comentario en ticket #${ticketIdNum}: ${username}.`,
+                ticketId: ticketIdNum,
+                relatedType: 'comment',
+            });
+        }
+
+        // 6. Notificar a agentes del departamento del ticket (excluyendo al comentador si es agente de ese depto)
         if (ticket.department_id && (userRole !== 'agent' || req.user.department_id !== ticket.department_id)) { 
-            // Notificar si el comentador no es un agente O si es un agente pero no del departamento del ticket
             io.to(`department-${ticket.department_id}`).except(userSocketId).emit('newNotification', {
                 type: 'new_comment',
                 message: `Nuevo comentario en ticket #${ticketIdNum} del departamento.`,
@@ -126,8 +135,11 @@ const addCommentToTicket = asyncHandler(async (req, res) => {
             });
         }
 
-        // Trigger notificaciones en DB: si quien comenta es admin o agente, notificar al cliente (ticket.user_id)
-        if ((userRole === 'admin' || userRole === 'agent') && ticket.user_id && ticket.user_id !== userId) {
+        // --- Notificaciones en DB (persistentes + tiempo real) ---
+
+        // STAFF → CLIENTE: Si quien comenta es admin, agente o supervisor, notificar al cliente
+        const isStaff = (userRole === 'admin' || userRole === 'agent' || userRole === 'supervisor');
+        if (isStaff && ticket.user_id && ticket.user_id !== userId) {
             await createNotification(
                 ticket.user_id,
                 'Nuevo comentario',
@@ -137,6 +149,33 @@ const addCommentToTicket = asyncHandler(async (req, res) => {
                 ticketIdNum,
                 'ticket'
             );
+        }
+
+        // CLIENTE → STAFF: Si quien comenta es el cliente, notificar al agente asignado y a todos los supervisores
+        if (userRole === 'client') {
+            if (ticket.assigned_to_user_id) {
+                await createNotification(
+                    ticket.assigned_to_user_id,
+                    'Comentario del cliente',
+                    `${username} comentó en el ticket #${ticketIdNum} que tenés asignado.`,
+                    'info',
+                    io,
+                    ticketIdNum,
+                    'ticket'
+                );
+            }
+            const [supervisors] = await pool.query("SELECT id FROM Users WHERE role = 'supervisor' AND is_active = 1");
+            for (const s of supervisors) {
+                await createNotification(
+                    s.id,
+                    'Comentario del cliente',
+                    `El cliente ${username} comentó en el ticket #${ticketIdNum}.`,
+                    'info',
+                    io,
+                    ticketIdNum,
+                    'ticket'
+                );
+            }
         }
     }
 
