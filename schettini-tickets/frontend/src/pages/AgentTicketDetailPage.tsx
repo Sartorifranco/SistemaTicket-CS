@@ -219,9 +219,9 @@ const AgentTicketDetailPage: React.FC = () => {
                                     <div key={comment.id} className={`p-3 rounded-lg shadow-sm border ${comment.is_internal ? 'bg-yellow-50 border-yellow-200' : 'bg-white'}`}>
                                         <div className="flex justify-between items-center mb-1">
                                             <p className="text-sm font-semibold text-gray-800">{comment.username}</p>
-                                            {comment.is_internal && (
+                                            {comment.is_internal ? (
                                                 <span className="text-xs font-bold bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full">NOTA INTERNA</span>
-                                            )}
+                                            ) : null}
                                         </div>
                                         <p className="text-gray-700 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
                                         <p className="text-xs text-gray-500 text-right mt-2">{formatLocalDate(comment.created_at)}</p>

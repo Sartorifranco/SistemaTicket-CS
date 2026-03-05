@@ -226,7 +226,7 @@ const AdminTicketDetailPage: React.FC = () => {
                                             <span>{formatLocalDate(comment.created_at)}</span>
                                         </div>
                                         <p className="text-gray-800 mt-2">{comment.comment_text}</p>
-                                        {comment.is_internal && <span className="text-xs font-bold text-yellow-600 mt-2 block">NOTA INTERNA</span>}
+                                        {comment.is_internal ? <span className="text-xs font-bold text-yellow-600 mt-2 block">NOTA INTERNA</span> : null}
                                     </div>
                                 ))}
                             </div>
