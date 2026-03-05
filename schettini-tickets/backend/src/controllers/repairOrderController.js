@@ -26,6 +26,23 @@ const isValidStatus = (s) => s && VALID_STATUSES.includes(String(s).toLowerCase(
 const isValidWarrantyType = (t) => t && WARRANTY_TYPES.includes(String(t));
 const isValidWarrantyStatus = (s) => !s || WARRANTY_STATUSES.includes(String(s));
 
+/** Si el valor no existe en system_options para esa categoría, lo inserta (auto-guardado para creatable combos). */
+const ensureSystemOption = async (category, value) => {
+  if (!value || !String(value).trim()) return;
+  const v = String(value).trim();
+  try {
+    const [rows] = await pool.query(
+      'SELECT id FROM system_options WHERE category = ? AND LOWER(TRIM(value)) = LOWER(?)',
+      [category, v]
+    );
+    if (rows.length === 0) {
+      await pool.query('INSERT INTO system_options (category, value, sort_order) VALUES (?, ?, 0)', [category, v]);
+    }
+  } catch (e) {
+    console.error('ensureSystemOption:', e);
+  }
+};
+
 /** Registra cambio de status o warranty_status en historial */
 const logStatusHistory = async (repairOrderId, fieldChanged, oldValue, newValue, userId) => {
   if (oldValue === newValue) return;
@@ -441,6 +458,9 @@ const createRepairOrder = async (req, res) => {
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
+      await ensureSystemOption('equipment_type', it.equipment_type);
+      await ensureSystemOption('brand', it.brand);
+      await ensureSystemOption('model', it.model);
       const isWarranty = it.is_warranty === 'true' || it.is_warranty === true ? 1 : 0;
       await pool.query(
         `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)
@@ -696,6 +716,9 @@ const updateRepairOrder = async (req, res) => {
       await pool.query('DELETE FROM repair_order_items WHERE repair_order_id = ?', [id]);
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
+        await ensureSystemOption('equipment_type', it.equipment_type);
+        await ensureSystemOption('brand', it.brand);
+        await ensureSystemOption('model', it.model);
         const isWarranty = it.is_warranty === 'true' || it.is_warranty === true ? 1 : 0;
         await pool.query(
           `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)

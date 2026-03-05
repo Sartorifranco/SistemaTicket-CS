@@ -221,6 +221,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const [otherAccessoryInput, setOtherAccessoryInput] = useState('');
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<string[]>([]);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [manualPartNombre, setManualPartNombre] = useState('');
   const [manualPartPrecio, setManualPartPrecio] = useState('');
   const [manualCostInput, setManualCostInput] = useState('');
@@ -366,6 +367,12 @@ const ManageRepairOrderPage: React.FC = () => {
   useEffect(() => {
     api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=brand').then((res) => {
       setBrandOptions((res.data.data || []).map((o) => o.value));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; category: string; value: string }[] }>('/api/settings/system-options?category=model').then((res) => {
+      setModelOptions((res.data.data || []).map((o) => o.value));
     }).catch(() => {});
   }, []);
 
@@ -740,7 +747,20 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                <input name="model" value={form.model} onChange={handleChange} disabled={!canEditEquipment} className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                <input
+                  name="model"
+                  list="model-list"
+                  value={form.model}
+                  onChange={handleChange}
+                  disabled={!canEditEquipment}
+                  placeholder="Seleccionar o escribir..."
+                  className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                />
+                <datalist id="model-list">
+                  {modelOptions.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
