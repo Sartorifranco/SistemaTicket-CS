@@ -112,4 +112,14 @@ const importFromExcel = async (req, res) => {
   }
 };
 
-module.exports = { search, getAll, bulkCreate, importFromExcel };
+const clearCatalog = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM spare_parts_catalog');
+    res.json({ success: true, message: 'Catálogo de repuestos vaciado correctamente' });
+  } catch (err) {
+    console.error('sparePartsCatalog clearCatalog:', err.message);
+    res.status(500).json({ success: false, message: 'Error al vaciar el catálogo' });
+  }
+};
+
+module.exports = { search, getAll, bulkCreate, importFromExcel, clearCatalog };

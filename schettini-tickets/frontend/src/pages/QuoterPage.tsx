@@ -300,6 +300,22 @@ const QuoterPage: React.FC = () => {
     e.target.value = '';
   };
 
+  const handleClearCatalog = async () => {
+    const ok = window.confirm(
+      '¿Vaciar todo el catálogo de repuestos? Esta acción borrará todos los ítems de la base de datos y no se puede deshacer. Solo podrás volver a usar el catálogo después de subir un nuevo Excel.'
+    );
+    if (!ok) return;
+    try {
+      await api.delete('/api/settings/spare-parts-catalog/clear');
+      setItems([]);
+      setFileName('');
+      toast.success('Catálogo vaciado. Podés subir un nuevo Excel para cargar precios.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al vaciar el catálogo.');
+    }
+  };
+
   const filteredItems = useMemo(() => {
     if (!search.trim()) return items;
     const q = search.toLowerCase();
@@ -578,21 +594,35 @@ const QuoterPage: React.FC = () => {
         <div className="space-y-6">
           <SectionCard title={canSeeExcelImport ? 'Importador de Lista de Precios' : 'Catálogo'}>
             {canSeeExcelImport && (
-              <div className="flex flex-wrap gap-4 items-end">
-                <label className="flex-1 min-w-[200px]">
-                  <span className="block text-sm font-medium text-gray-700 mb-1">Archivo Excel (formato cliente)</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={handleFileUpload}
-                      className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100"
-                    />
-                    <FaFileExcel className="text-green-600 text-xl shrink-0" />
-                  </div>
-                </label>
-                {fileName && <span className="text-sm text-gray-500">Cargado: {fileName}</span>}
-              </div>
+              <>
+                <div className="flex flex-wrap gap-4 items-end">
+                  <label className="flex-1 min-w-[200px]">
+                    <span className="block text-sm font-medium text-gray-700 mb-1">Archivo Excel (formato cliente)</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileUpload}
+                        className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100"
+                      />
+                      <FaFileExcel className="text-green-600 text-xl shrink-0" />
+                    </div>
+                  </label>
+                  {user?.role === 'admin' && (
+                    <button
+                      type="button"
+                      onClick={handleClearCatalog}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition"
+                    >
+                      <FaTrash /> Vaciar Catálogo
+                    </button>
+                  )}
+                  {fileName && <span className="text-sm text-gray-500">Cargado: {fileName}</span>}
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  💡 Sube un nuevo Excel para actualizar los precios existentes. Si querés limpiar la base por completo y empezar de cero, usá el botón &quot;Vaciar Catálogo&quot;.
+                </p>
+              </>
             )}
 
             <div className={canSeeExcelImport ? 'mt-4' : ''}>
