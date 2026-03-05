@@ -2,6 +2,7 @@
 const asyncHandler = require('express-async-handler'); // Asegúrate de que este middleware esté instalado
 const pool = require('../config/db'); // Importa tu pool de conexión a la base de datos
 const { logActivity } = require('../services/activityLogService'); // Importar el servicio de log
+const { createNotification } = require('../utils/notificationManager');
 
 // @desc    Añadir un comentario a un ticket
 // @route   POST /api/tickets/:ticketId/comments
@@ -123,6 +124,19 @@ const addCommentToTicket = asyncHandler(async (req, res) => {
                 ticketId: ticketIdNum,
                 relatedType: 'comment',
             });
+        }
+
+        // Trigger notificaciones en DB: si quien comenta es admin o agente, notificar al cliente (ticket.user_id)
+        if ((userRole === 'admin' || userRole === 'agent') && ticket.user_id && ticket.user_id !== userId) {
+            await createNotification(
+                ticket.user_id,
+                'Nuevo comentario',
+                `Nuevo comentario en tu ticket #${ticketIdNum}.`,
+                'info',
+                io,
+                ticketIdNum,
+                'ticket'
+            );
         }
     }
 

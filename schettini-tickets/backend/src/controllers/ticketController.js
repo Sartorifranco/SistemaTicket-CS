@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const path = require('path');
 const { createActivityLog } = require('../utils/activityLogger');
+const { createNotification } = require('../utils/notificationManager');
 
 const STATUS_ES = { open: 'abierto', 'in-progress': 'en progreso', in_progress: 'en progreso', resolved: 'resuelto', closed: 'cerrado', reopened: 'reabierto' };
 const tr = (s) => STATUS_ES[s] || s;
@@ -42,12 +43,19 @@ const createTicket = async (req, res) => {
             await pool.query(`INSERT INTO ticket_attachments (ticket_id, file_name, file_url, file_type) VALUES ?`, [attachments]);
         }
 
-        // Notificar a admins/agentes
+        // Notificar a admins/agentes (socket ya existente)
         if (req.io) {
             req.io.to('admin').to('agent').emit('dashboard_update', { message: 'Nuevo ticket creado' });
         }
-
+        // Trigger notificaciones en DB para admin y agentes: nuevo trabajo ingresado
+        const [staff] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent') AND is_active = 1");
         const finalTitle = (title || '').trim() || 'Nuevo Ticket';
+        for (const row of staff) {
+            if (row.id !== user.id) {
+                await createNotification(row.id, 'Nuevo ticket', `Se creó un nuevo ticket: "${finalTitle}".`, 'info', req.io || null, ticketId, 'ticket');
+            }
+        }
+
         await createActivityLog(user.id, 'ticket', 'created', `Ticket #${ticketId} creado: "${finalTitle}"`, ticketId, null, { title: finalTitle, status: 'abierto' });
 
         res.status(201).json({ success: true, message: 'Ticket creado', data: { id: ticketId } });

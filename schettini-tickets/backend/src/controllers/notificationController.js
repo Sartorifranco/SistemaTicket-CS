@@ -116,10 +116,16 @@ const createAnnouncement = asyncHandler(async (req, res) => {
     res.status(201).json({ success: true, message: `Anuncio enviado a ${users.length} usuarios.` });
 });
 
+// Alias solicitados para API: obtener notificaciones del usuario logueado y marcar una como leída
+const getNotificationsByUser = getNotifications;
+const markAsRead = markNotificationAsRead;
+
 module.exports = {
     getNotifications,
+    getNotificationsByUser,
     getUnreadNotificationCount,
     markNotificationAsRead,
+    markAsRead,
     markAllNotificationsAsRead,
     deleteNotification,
     deleteAllNotifications,

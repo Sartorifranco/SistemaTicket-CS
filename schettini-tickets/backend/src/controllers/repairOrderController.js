@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 const { registerPaymentFromRepairOrder } = require('./techCashController');
+const { createNotification } = require('../utils/notificationManager');
 
 const VALID_STATUSES = [
   'ingresado',
@@ -485,6 +486,13 @@ const createRepairOrder = async (req, res) => {
     if (req.io) {
       req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
     }
+    // Notificar a admin y agentes que ingresó una nueva orden (registro en DB)
+    const [staff] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent') AND is_active = 1");
+    for (const row of staff) {
+      if (row.id !== req.user?.id) {
+        await createNotification(row.id, 'Nueva orden', `Nueva orden de reparación: ${orderNumber}.`, 'info', req.io || null, repairOrderId, 'repair_order');
+      }
+    }
     res.status(201).json({
       success: true,
       message: 'Orden creada',
@@ -725,13 +733,20 @@ const updateRepairOrderStatus = async (req, res) => {
         message: 'Para declarar abandono debe entrar al detalle de la orden (se requieren fotos y notas obligatorias).'
       });
     }
-    const [existing] = await pool.query('SELECT id, status FROM repair_orders WHERE id = ?', [id]);
+    const [existing] = await pool.query('SELECT id, status, client_id FROM repair_orders WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Orden no encontrada' });
     }
     const oldStatus = existing[0].status;
+    const clientId = existing[0].client_id;
     await pool.query('UPDATE repair_orders SET status = ?, updated_at = NOW() WHERE id = ?', [s, id]);
     await logStatusHistory(id, 'status', oldStatus, s, req.user?.id);
+    // Notificar al cliente del cambio de estado (registro en DB + Socket si hay io)
+    const statusLabels = { ingresado: 'Ingresado', cotizado: 'Cotizado', aceptado: 'Aceptado', no_aceptado: 'No aceptado', en_espera: 'En espera', sin_reparacion: 'Sin reparación', listo: 'Listo', entregado: 'Entregado', entregado_sin_reparacion: 'Entregado sin reparación', abandonado: 'Abandonado' };
+    const statusLabel = statusLabels[s] || s;
+    if (clientId) {
+      await createNotification(clientId, 'Estado actualizado', `Tu equipo pasó a estado: ${statusLabel}.`, 'info', req.io || null, parseInt(id, 10), 'repair_order');
+    }
     if (req.io) {
       req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
     }

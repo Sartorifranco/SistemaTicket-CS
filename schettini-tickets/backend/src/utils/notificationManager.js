@@ -1,6 +1,44 @@
 const pool = require('../config/db');
 
 /**
+ * Función global exportable: crea una notificación en la DB y, si hay Socket.io, la emite en tiempo real al usuario.
+ * @param {number} userId - ID del usuario destinatario.
+ * @param {string} title - Título (opcional); se guarda junto al mensaje en el campo message).
+ * @param {string} message - Texto de la notificación.
+ * @param {string} type - Tipo: 'info', 'alert', 'promotion', etc.
+ * @param {object} [io] - Instancia de Socket.IO (opcional). Si existe, emite el evento al usuario.
+ * @param {number} [relatedId] - ID del recurso relacionado (ticket_id, repair_order_id, etc.).
+ * @param {string} [relatedType] - Tipo: 'ticket', 'repair_order', 'comment', etc.
+ * @returns {Promise<number|null>} - ID de la notificación insertada o null si falla.
+ */
+const createNotification = async (userId, title, message, type = 'info', io = null, relatedId = null, relatedType = null) => {
+    try {
+        const fullMessage = title && String(title).trim() ? `${String(title).trim()}|||${message}` : message;
+        const [result] = await pool.execute(
+            'INSERT INTO notifications (user_id, type, message, related_id, related_type, is_read) VALUES (?, ?, ?, ?, ?, 0)',
+            [userId, type || 'info', fullMessage, relatedId || null, relatedType || null]
+        );
+        const notifId = result.insertId;
+        if (io) {
+            io.to(`user-${userId}`).emit('notification', {
+                id: notifId,
+                user_id: userId,
+                type: type || 'info',
+                message: fullMessage,
+                related_id: relatedId || null,
+                related_type: relatedType || null,
+                is_read: false,
+                created_at: new Date()
+            });
+        }
+        return notifId;
+    } catch (error) {
+        console.error(`Error createNotification para usuario ${userId}:`, error);
+        return null;
+    }
+};
+
+/**
  * Crea una notificación en la DB y envía un evento de socket a un usuario específico.
  * @param {object} io - La instancia del servidor de Socket.IO.
  * @param {object} notificationData - Datos de la notificación { user_id, message, type, related_id, related_type }.
@@ -73,4 +111,4 @@ const notifyAdminsAndAgents = async (req, data) => {
     }
 };
 
-module.exports = { createAndSendNotification, notifyAdminsAndAgents };
+module.exports = { createNotification, createAndSendNotification, notifyAdminsAndAgents };
