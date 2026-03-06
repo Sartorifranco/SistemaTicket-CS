@@ -44,9 +44,15 @@ router.get('/technicians', authorize('admin', 'agent', 'supervisor'), getTechnic
 // 3. Ruta para obtener tickets activos de un usuario (Dashboard)
 router.get('/:id/active-tickets', authorize('admin', 'agent', 'supervisor', 'client'), getUserActiveTickets);
 
-// 4. Documentos del usuario (planillas, contratos)
-router.get('/:id/documents', authorize('admin', 'supervisor', 'agent'), getUserDocuments);
-router.post('/:id/documents', authorize('admin', 'supervisor', 'agent'), docUpload.single('document'), uploadUserDocument);
+// 4. Documentos del usuario (planillas, contratos). Cliente solo puede acceder a sus propios documentos (:id = su user id).
+const ensureClientSelfDocuments = (req, res, next) => {
+    if (req.user?.role === 'client' && parseInt(req.params.id, 10) !== req.user.id) {
+        return res.status(403).json({ message: 'Solo podés acceder a tus propios documentos.' });
+    }
+    next();
+};
+router.get('/:id/documents', authorize('admin', 'supervisor', 'agent', 'client'), ensureClientSelfDocuments, getUserDocuments);
+router.post('/:id/documents', authorize('admin', 'supervisor', 'agent', 'client'), ensureClientSelfDocuments, docUpload.single('document'), uploadUserDocument);
 
 
 // --- RUTAS GENERALES ---

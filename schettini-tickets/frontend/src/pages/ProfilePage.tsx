@@ -2,11 +2,21 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaUser, FaBoxOpen, FaStore, FaMoneyBillWave, FaClock, FaCheck, FaArrowRight, FaPuzzlePiece, FaCheckSquare, FaSquare, FaHistory, FaCreditCard } from 'react-icons/fa';
+import { FaUser, FaBoxOpen, FaStore, FaMoneyBillWave, FaClock, FaCheck, FaArrowRight, FaPuzzlePiece, FaCheckSquare, FaSquare, FaHistory, FaCreditCard, FaFileAlt, FaUpload } from 'react-icons/fa';
 import { Plan, SystemSettings, Module, ActivityLog } from '../types';
 import { translateActionType, translateDescription } from '../utils/activityTranslations';
+import { getImageUrl } from '../utils/imageUrl';
 import ClientPaymentsPage from './ClientPaymentsPage';
 import SectionCard from '../components/Common/SectionCard';
+
+interface UserDocument {
+    id: number;
+    user_id: number;
+    document_name: string;
+    document_type: string;
+    file_path: string;
+    created_at: string;
+}
 
 // --- SUB-COMPONENTE: Tarjeta de Plan ---
 const PlanCard: React.FC<{ plan: Plan, currentPlanId?: number, onRequestChange: (itemName: string, type: 'plan'|'module') => void }> = ({ plan, currentPlanId, onRequestChange }) => {
@@ -62,7 +72,7 @@ const ModuleCard: React.FC<{ module: Module, onRequestModule: (moduleName: strin
 
 const ProfilePage: React.FC = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'profile' | 'plans' | 'costs' | 'payments' | 'activity'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'plans' | 'costs' | 'payments' | 'activity' | 'documents'>('profile');
     
     // Datos
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -72,6 +82,12 @@ const ProfilePage: React.FC = () => {
     const [loadingDetails, setLoadingDetails] = useState<boolean>(true);
     const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
     const [activityFilters, setActivityFilters] = useState({ ticket_id: '', date_from: '', date_to: '' });
+    
+    // Documentos (cliente: contratos/planillas)
+    const [clientDocuments, setClientDocuments] = useState<UserDocument[]>([]);
+    const [clientDocumentsLoading, setClientDocumentsLoading] = useState(false);
+    const [uploadDocumentFile, setUploadDocumentFile] = useState<File | null>(null);
+    const [uploadDocumentSending, setUploadDocumentSending] = useState(false);
     
     // Contraseña
     const [currentPassword, setCurrentPassword] = useState('');
@@ -107,6 +123,24 @@ const ProfilePage: React.FC = () => {
     }, [user]);
 
     useEffect(() => { fetchUserDetails(); }, [fetchUserDetails]);
+
+    const fetchClientDocuments = useCallback(async () => {
+        if (!user?.id || user?.role !== 'client') return;
+        setClientDocumentsLoading(true);
+        try {
+            const res = await api.get<{ success: boolean; data: UserDocument[] }>(`/api/users/${user.id}/documents`);
+            setClientDocuments(Array.isArray(res.data?.data) ? res.data.data : []);
+        } catch (e) {
+            toast.error('No se pudieron cargar los documentos.');
+            setClientDocuments([]);
+        } finally {
+            setClientDocumentsLoading(false);
+        }
+    }, [user?.id, user?.role]);
+
+    useEffect(() => {
+        if (activeTab === 'documents' && user?.role === 'client') fetchClientDocuments();
+    }, [activeTab, user?.role, fetchClientDocuments]);
 
     useEffect(() => {
         const fetchActivityLogs = async () => {
@@ -216,6 +250,67 @@ const ProfilePage: React.FC = () => {
 
     const PaymentsContent = () => <ClientPaymentsPage />;
 
+    const handleUploadDocument = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user?.id || !uploadDocumentFile) {
+            toast.warn('Seleccioná un archivo (PDF, JPG o PNG).');
+            return;
+        }
+        setUploadDocumentSending(true);
+        try {
+            const formData = new FormData();
+            formData.append('document', uploadDocumentFile);
+            formData.append('document_type', 'signed_contract');
+            formData.append('document_name', 'Contrato firmado');
+            await api.post(`/api/users/${user.id}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            toast.success('Documento subido correctamente.');
+            setUploadDocumentFile(null);
+            fetchClientDocuments();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al subir.';
+            toast.error(msg);
+        } finally {
+            setUploadDocumentSending(false);
+        }
+    };
+
+    const DocumentsContent = () => (
+        <SectionCard title="Mis documentos y contratos" className="animate-fade-in">
+            <p className="text-sm text-gray-500 mb-4">Podés subir tu contrato firmado u otros documentos. Formatos: PDF, JPG, PNG (máx. 10 MB).</p>
+            <form onSubmit={handleUploadDocument} className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Subir contrato firmado u otro documento</label>
+                <div className="flex flex-wrap items-end gap-3">
+                    <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => setUploadDocumentFile(e.target.files?.[0] || null)}
+                        className="block w-full max-w-xs text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium"
+                    />
+                    <button type="submit" disabled={uploadDocumentSending || !uploadDocumentFile} className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <FaUpload /> {uploadDocumentSending ? 'Subiendo...' : 'Subir'}
+                    </button>
+                </div>
+            </form>
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Documentos cargados</h3>
+            {clientDocumentsLoading ? (
+                <p className="text-gray-500">Cargando...</p>
+            ) : clientDocuments.length === 0 ? (
+                <p className="text-gray-500 italic">Aún no hay documentos. Usá el formulario de arriba para subir tu contrato firmado.</p>
+            ) : (
+                <ul className="space-y-2">
+                    {clientDocuments.map((doc) => (
+                        <li key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <span className="font-medium text-gray-800">{doc.document_name || doc.document_type || 'Documento'}</span>
+                            <a href={getImageUrl(doc.file_path)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-sm font-medium flex items-center gap-1">
+                                <FaFileAlt /> Ver
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </SectionCard>
+    );
+
     const ActivityContent = () => (
         <SectionCard title="Mi Actividad" className="animate-fade-in">
             <p className="text-sm text-gray-500 mb-4">Registro de tus acciones: tickets creados, comentarios agregados, etc.</p>
@@ -292,6 +387,9 @@ const ProfilePage: React.FC = () => {
                     {user?.role === 'client' && (
                         <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'payments' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaCreditCard className={activeTab === 'payments' ? 'text-indigo-500' : 'text-gray-400'} /> Mis Pagos</span>{activeTab === 'payments' && <FaArrowRight size={12} />}</button>
                     )}
+                    {user?.role === 'client' && (
+                        <button onClick={() => setActiveTab('documents')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'documents' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaFileAlt className={activeTab === 'documents' ? 'text-indigo-500' : 'text-gray-400'} /> Contratos / Documentos</span>{activeTab === 'documents' && <FaArrowRight size={12} />}</button>
+                    )}
                     <button onClick={() => setActiveTab('activity')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'activity' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaHistory className={activeTab === 'activity' ? 'text-indigo-500' : 'text-gray-400'} /> Mi Actividad</span>{activeTab === 'activity' && <FaArrowRight size={12} />}</button>
                 </nav>
             </div>
@@ -300,6 +398,7 @@ const ProfilePage: React.FC = () => {
                 {activeTab === 'plans' && <PlansContent />}
                 {activeTab === 'costs' && <CostsContent />}
                 {activeTab === 'payments' && <PaymentsContent />}
+                {activeTab === 'documents' && <DocumentsContent />}
                 {activeTab === 'activity' && <ActivityContent />}
             </div>
         </div>
