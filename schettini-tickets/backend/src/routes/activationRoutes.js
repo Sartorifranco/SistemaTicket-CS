@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const {
   requestActivation,
   validateActivation,
@@ -38,10 +38,10 @@ router.use(protect);
 
 router.post('/request', requestActivation);
 router.get('/client', getClientActivations);
-router.get('/', authorize('admin', 'supervisor', 'agent', 'viewer'), getActivations);
+router.get('/', authorizeByPermission('repairs_view'), getActivations);
 router.get('/:id', getActivationById);
-router.put('/:id/validate', authorize('admin', 'supervisor'), validateActivation);
-router.put('/:id', authorize('admin', 'supervisor', 'agent'), updateActivationStatus);
+router.put('/:id/validate', authorizeByPermission('repairs_edit'), validateActivation);
+router.put('/:id', authorizeByPermission('repairs_edit'), updateActivationStatus);
 router.post('/:id/submit-form', upload.any(), submitForm);
 
 module.exports = router;

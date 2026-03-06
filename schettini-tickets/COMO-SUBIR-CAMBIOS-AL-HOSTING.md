@@ -131,3 +131,22 @@ Si todo está bien, el hosting ya tiene el impacto de lo que hicimos acá.
 2. **En el VPS (SSH)**:
    - Si es la primera vez o no tenés `.env`: `cd /var/www/tickets/schettini-tickets/frontend && echo "REACT_APP_API_URL=https://api.sch-soporte.com.ar" > .env`
    - Después: `cd /var/www/tickets && git pull && cd schettini-tickets && bash scripts/deploy.sh`
+
+---
+
+## Dónde ver el Registro de Actividad (logs) en el front
+
+Los logs de actividad (equipos reacondicionados, órdenes de taller, planillas, etc.) **están implementados** y se ven así:
+
+| Rol        | Dónde verlo en el front |
+|-----------|--------------------------|
+| **Admin** | Menú lateral → **Registro de Actividad** (ruta `/admin/activity-logs`). Listado global con filtros por usuario, ticket, fechas. |
+| **Agente / Supervisor / Vista** | Menú → **Registro de Actividad** o **Mi Actividad** (ruta `/agent/activity-logs`). Cada uno ve su propia actividad. También en **Mi Perfil** → pestaña **Mi Actividad**. |
+
+Si no ves ítems, revisá que el usuario tenga el permiso **Ver listado** (Tickets) o el que corresponda al módulo, según la configuración de permisos.
+
+---
+
+## Permisos configurables por el administrador
+
+El acceso a Planillas, Taller, Reportes, Registro de Actividad, etc. se controla desde **Admin → Usuarios → editar usuario → Permisos**. Los checkboxes (Ver listado, Responder, Ver taller, Ingresar equipo, etc.) definen qué puede hacer cada agente/supervisor/vista. El backend respeta esos permisos: si el admin no asigna "Ver listado" (Taller), ese usuario no podrá acceder a órdenes de reparación ni planillas aunque entre por URL.

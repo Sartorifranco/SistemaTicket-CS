@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const { getAll, getById, create, update, remove, setActive } = require('../controllers/refurbishedController');
 
 const storage = multer.diskStorage({
@@ -21,11 +21,11 @@ const upload = multer({
 
 router.use(protect);
 
-router.get('/', authorize('admin', 'supervisor', 'agent'), getAll);
-router.get('/:id', authorize('admin', 'supervisor', 'agent'), getById);
-router.post('/', authorize('admin', 'supervisor', 'agent'), upload.array('photos', 6), create);
-router.put('/:id', authorize('admin', 'supervisor', 'agent'), upload.array('photos', 6), update);
-router.patch('/:id/active', authorize('admin', 'supervisor'), setActive);
-router.delete('/:id', authorize('admin', 'supervisor'), remove);
+router.get('/', authorizeByPermission('repairs_view'), getAll);
+router.get('/:id', authorizeByPermission('repairs_view'), getById);
+router.post('/', authorizeByPermission('repairs_create', 'repairs_edit'), upload.array('photos', 6), create);
+router.put('/:id', authorizeByPermission('repairs_edit'), upload.array('photos', 6), update);
+router.patch('/:id/active', authorizeByPermission('repairs_edit'), setActive);
+router.delete('/:id', authorizeByPermission('repairs_edit'), remove);
 
 module.exports = router;

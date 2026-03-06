@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorizeByPermission } = require('../middleware/authMiddleware');
 const { getMovements } = require('../controllers/movementsController');
 
 router.use(protect);
-router.get('/', authorize('admin', 'supervisor', 'agent'), getMovements);
+router.get('/', authorizeByPermission('repairs_view'), getMovements);
 
 module.exports = router;

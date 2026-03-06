@@ -13,16 +13,19 @@ const protect = asyncHandler(async (req, res, next) => {
             let users;
             try {
                 [users] = await pool.query(
-                    'SELECT id, username, email, role, status, can_manage_tech_finances FROM Users WHERE id = ?', 
+                    'SELECT id, username, email, role, status, can_manage_tech_finances, permissions FROM Users WHERE id = ?',
                     [decoded.id]
                 );
             } catch (colErr) {
-                if (colErr.message?.includes('can_manage_tech_finances')) {
+                if (colErr.message?.includes('can_manage_tech_finances') || colErr.message?.includes('permissions')) {
                     [users] = await pool.query(
                         'SELECT id, username, email, role, status FROM Users WHERE id = ?',
                         [decoded.id]
                     );
-                    if (users[0]) users[0].can_manage_tech_finances = false;
+                    if (users[0]) {
+                        users[0].can_manage_tech_finances = false;
+                        users[0].permissions = null;
+                    }
                 } else throw colErr;
             }
 
@@ -33,13 +36,21 @@ const protect = asyncHandler(async (req, res, next) => {
 
             // Normalizar para evitar Buffer/encoding en MySQL (ENUM puede venir raro)
             const u = users[0];
+            let permissions = [];
+            try {
+                if (u.permissions) {
+                    const arr = typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions;
+                    permissions = Array.isArray(arr) ? arr : [];
+                }
+            } catch (_) {}
             req.user = {
                 id: Number(u.id),
                 username: String(u.username || ''),
                 email: String(u.email || ''),
                 role: String(u.role || '').toLowerCase().trim(),
                 status: String(u.status || '').toLowerCase().trim(),
-                can_manage_tech_finances: Boolean(u.can_manage_tech_finances)
+                can_manage_tech_finances: Boolean(u.can_manage_tech_finances),
+                permissions
             };
 
             if (req.user.status !== 'active') {
@@ -105,6 +116,29 @@ const authorize = (...roles) => {
     };
 };
 
+/**
+ * Autoriza por permiso configurable desde el admin (Usuarios > Permisos).
+ * Admin siempre pasa. Para el resto, se requiere tener al menos uno de los permisos indicados.
+ * Los permisos se cargan en req.user.permissions (array) desde la columna Users.permissions.
+ */
+const authorizeByPermission = (...allowedPerms) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            res.status(403);
+            throw new Error('No autorizado');
+        }
+        if (req.user.role === 'admin') return next();
+        const userPerms = req.user.permissions || [];
+        const hasAny = allowedPerms.some(p => userPerms.includes(p));
+        if (!hasAny) {
+            console.log(`⛔ [Auth] Sin permiso. Rol: ${req.user.role}, requiere uno de: ${allowedPerms.join(', ')}`);
+            res.status(403);
+            throw new Error(`No tenés permiso para esta acción. Requiere: ${allowedPerms.join(' o ')}`);
+        }
+        next();
+    };
+};
+
 /** Finanzas Técnicas: admin y supervisor siempre; agent solo si can_manage_tech_finances */
 const authorizeTechFinances = (req, res, next) => {
     if (!req.user) {
@@ -153,4 +187,4 @@ const authorizeReports = asyncHandler(async (req, res, next) => {
     throw new Error('Rol no autorizado para reportes');
 });
 
-module.exports = { protect, optionalProtect, authenticateToken: protect, authorize, authorizeReports, authorizeTechFinances };
+module.exports = { protect, optionalProtect, authenticateToken: protect, authorize, authorizeByPermission, authorizeReports, authorizeTechFinances };

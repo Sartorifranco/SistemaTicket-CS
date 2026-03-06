@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorizeByPermission } = require('../middleware/authMiddleware');
 
 router.use(protect);
+router.use(authorizeByPermission('tickets_view'));
 
 router.get('/', async (req, res) => {
     try {

@@ -198,7 +198,7 @@ io.on('connection', (socket) => {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           socket.join(`user-${decoded.id}`);
           if (decoded.role) socket.join(decoded.role);
-          console.log(`[Socket] Usuario autenticado: ${decoded.email}`);
+          console.log(`[Socket] Usuario autenticado: ${decoded.username || decoded.id}`);
       } catch (error) {
           console.log('[Socket] Token inválido, desconectando...');
           socket.disconnect(); 

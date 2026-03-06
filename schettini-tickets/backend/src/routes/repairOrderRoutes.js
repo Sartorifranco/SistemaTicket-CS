@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const {
   getRepairOrders,
   getMonitorOrders,
@@ -55,31 +55,31 @@ router.use(protect);
 
 // CRUD (my-orders, monitor y external-recycled deben ir ANTES de :id)
 router.get('/my-orders', getMyRepairOrders);
-router.get('/monitor', getMonitorOrders);
-router.post('/external-recycled', authorize('admin', 'agent', 'supervisor'), upload.array('photos', 10), createExternalRecycledOrder);
-router.get('/', getRepairOrders);
+router.get('/monitor', authorizeByPermission('repairs_view'), getMonitorOrders);
+router.post('/external-recycled', authorizeByPermission('repairs_create', 'repairs_edit'), upload.array('photos', 10), createExternalRecycledOrder);
+router.get('/', authorizeByPermission('repairs_view'), getRepairOrders);
 router.get('/:id', getRepairOrderById);
 router.post(
   '/',
-  authorize('admin', 'agent', 'supervisor'),
+  authorizeByPermission('repairs_create', 'repairs_edit'),
   upload.array('photos', 10),
   createRepairOrder
 );
-router.put('/:id/status', authorize('admin', 'agent', 'supervisor'), updateRepairOrderStatus);
-router.put('/:id', authorize('admin', 'agent', 'supervisor'), updateRepairOrder);
-router.delete('/:id', authorize('admin', 'agent', 'supervisor'), deleteRepairOrder);
+router.put('/:id/status', authorizeByPermission('repairs_edit'), updateRepairOrderStatus);
+router.put('/:id', authorizeByPermission('repairs_edit'), updateRepairOrder);
+router.delete('/:id', authorizeByPermission('repairs_edit'), deleteRepairOrder);
 
-router.post('/:id/recycling', authorize('admin', 'agent', 'supervisor'), upload.array('photos', 10), processRecyclingToAbandoned);
-router.patch('/:id/recycling', authorize('admin', 'agent', 'supervisor'), uploadRecycling.array('photos', 10), updateRecycling);
+router.post('/:id/recycling', authorizeByPermission('repairs_edit'), upload.array('photos', 10), processRecyclingToAbandoned);
+router.patch('/:id/recycling', authorizeByPermission('repairs_edit'), uploadRecycling.array('photos', 10), updateRecycling);
 router.post('/:id/request-invoice', requestInvoice);
 
 // Fotos
 router.post(
   '/:id/photos',
-  authorize('admin', 'agent', 'supervisor'),
+  authorizeByPermission('repairs_edit'),
   upload.array('photos', 10),
   addPhotosToRepairOrder
 );
-router.delete('/:id/photos/:photoId', authorize('admin', 'agent', 'supervisor'), deleteRepairOrderPhoto);
+router.delete('/:id/photos/:photoId', authorizeByPermission('repairs_edit'), deleteRepairOrderPhoto);
 
 module.exports = router;

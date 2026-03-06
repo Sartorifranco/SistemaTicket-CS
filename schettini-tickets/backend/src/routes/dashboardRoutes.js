@@ -6,7 +6,7 @@ const {
     getAgentDashboardData,   // ✅ IMPORTANTE: Agregar esto
     getDepositariosMetrics   // ✅ IMPORTANTE: Agregar esto
 } = require('../controllers/dashboardController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 
 // --- RUTAS DE DASHBOARD ---
 
@@ -16,10 +16,10 @@ router.get('/admin', protect, authorize('admin'), getAdminDashboardData);
 // 2. Dashboard Cliente (Solo Clientes)
 router.get('/client', protect, authorize('client'), getClientDashboardData);
 
-// 3. Dashboard Agente / Supervisor (comparten el mismo dashboard)
-router.get('/agent', protect, authorize('agent', 'supervisor'), getAgentDashboardData);
+// 3. Dashboard Agente / Supervisor / Viewer (según permiso tickets_view)
+router.get('/agent', protect, authorizeByPermission('tickets_view'), getAgentDashboardData);
 
-// 4. Métricas Depositarios (✅ NUEVO: Para evitar el error 404 en el widget)
-router.get('/depositarios/metrics', protect, authorize('agent', 'admin'), getDepositariosMetrics);
+// 4. Métricas Depositarios
+router.get('/depositarios/metrics', protect, authorizeByPermission('tickets_view'), getDepositariosMetrics);
 
 module.exports = router;
