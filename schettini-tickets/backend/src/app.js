@@ -115,10 +115,30 @@ const sparePartsCatalogRoutes = require('./routes/sparePartsCatalogRoutes');
 const activationRoutes = require('./routes/activationRoutes');
 const factoryShipmentRoutes = require('./routes/factoryShipmentRoutes');
 const techCashRoutes = require('./routes/techCashRoutes');
+const refurbishedRoutes = require('./routes/refurbishedRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
 // --- 5. ENDPOINTS ---
+// Diagnóstico público (sin auth): ver qué build de frontend usa el backend
+app.get('/api/build-info', (req, res) => {
+  const fs = require('fs');
+  const buildPath = path.join(__dirname, '../../frontend/build');
+  let mainJs = null;
+  try {
+    const jsDir = path.join(buildPath, 'static/js');
+    if (fs.existsSync(jsDir)) {
+      const files = fs.readdirSync(jsDir).filter(f => f.startsWith('main.') && f.endsWith('.js'));
+      mainJs = files[0] || null;
+    }
+  } catch (e) { /* ignore */ }
+  res.json({
+    frontendPath: buildPath,
+    mainJs,
+    exists: fs.existsSync(buildPath),
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tickets', ticketRoutes);
@@ -149,6 +169,7 @@ app.use('/api/settings/spare-parts-catalog', sparePartsCatalogRoutes);
 app.use('/api/activations', activationRoutes);
 app.use('/api/factory-shipments', factoryShipmentRoutes);
 app.use('/api/tech-cash', techCashRoutes);
+app.use('/api/refurbished-equipments', refurbishedRoutes);
 
 // Rutas opcionales (reportRoutes ya incluye /api/reports con debts) (try-catch para evitar errores si no existen los archivos)
 try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) { console.log('Ruta admin opcional no cargada'); }
@@ -185,7 +206,14 @@ io.on('connection', (socket) => {
 
 // --- 7. FRONTEND (Fallback para producción) ---
 // Nota: En Render usas dos servicios separados, pero dejamos esto por si acaso.
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
+const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html') {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
+  next();
+});
+app.use(express.static(frontendBuildPath));
 app.get('*', (req, res) => {
   if (req.url.startsWith('/api')) {
       return res.status(404).json({ success: false, message: 'API Endpoint no encontrado' });
