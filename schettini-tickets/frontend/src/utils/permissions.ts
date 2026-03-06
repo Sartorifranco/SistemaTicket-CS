@@ -151,9 +151,9 @@ export const SIDEBAR_PERMISSION_MAP = {
 } as const;
 
 /** Verifica si el usuario tiene al menos uno de los permisos indicados */
-export function hasAnyPermission(userPerms: string[] | undefined, required: string | string[]): boolean {
+export function hasAnyPermission(userPerms: string[] | undefined, required: string | string[] | readonly string[]): boolean {
   const perms = userPerms || [];
-  const list = Array.isArray(required) ? required : [required];
+  const list = Array.isArray(required) ? [...required] : [required];
   return list.some((r) => perms.includes(r));
 }
 
