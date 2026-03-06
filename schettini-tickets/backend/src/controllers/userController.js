@@ -175,6 +175,32 @@ const updateUser = async (req, res) => {
         const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, can_manage_tech_finances, iva_condition, address, city, province, zip_code } = req.body;
         const userId = req.params.id;
 
+        // Si el rol del solicitante es 'agent', solo puede actualizar campos básicos del cliente
+        // No puede cambiar rol, estado, plan ni permisos
+        if (req.user?.role === 'agent') {
+            const [targetUsers] = await pool.query('SELECT role, status FROM Users WHERE id = ?', [userId]);
+            if (targetUsers.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+            const target = targetUsers[0];
+            // Agentes solo pueden editar clientes
+            if (target.role !== 'client') {
+                return res.status(403).json({ message: 'No tenés permiso para editar este usuario.' });
+            }
+            // Solo actualiza campos básicos — preserva role y status existentes
+            const agentUpdates = ['username = ?', 'full_name = ?', 'email = ?', 'phone = ?', 'cuit = ?', 'company_id = ?', 'department_id = ?'];
+            const agentValues = [
+                username,
+                (full_name || '').trim() || null,
+                email,
+                phone || '',
+                cuit || '',
+                (company_id && company_id !== '' && company_id !== '0') ? company_id : null,
+                (department_id && department_id !== '' && department_id !== '0') ? department_id : null,
+                userId
+            ];
+            await pool.query(`UPDATE Users SET ${agentUpdates.join(', ')} WHERE id = ?`, agentValues);
+            return res.json({ success: true, message: 'Cliente actualizado correctamente' });
+        }
+
         // Lógica corregida: Si 'status' no viene, asumimos 'active'
         const newStatus = status || 'active';
         const isActive = newStatus === 'active' ? 1 : 0;
@@ -225,6 +251,11 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     const { id } = req.params;
     const permanent = req.query.permanent === '1' || req.query.permanent === 'true';
+
+    if (req.user?.role === 'agent') {
+        return res.status(403).json({ message: 'No tenés permiso para eliminar o desactivar usuarios.' });
+    }
+
     try {
         const [tickets] = await pool.query('SELECT id FROM Tickets WHERE user_id = ? OR assigned_to_user_id = ? LIMIT 1', [id, id]);
 

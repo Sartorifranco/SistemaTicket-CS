@@ -19,6 +19,7 @@ import ProfilePage from './pages/ProfilePage';
 // --- ADMIN PAGES ---
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsersPage from './pages/AdminUserPage';
+import ClientManagementPage from './pages/ClientManagementPage';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
 import AdminCompanyDepartmentsPage from './pages/AdminCompanyDeparmentsPage';
 import AdminTicketsPage from './pages/AdminTicketsPage';
@@ -162,6 +163,9 @@ const App: React.FC = () => {
                             <Route path="/admin/activations" element={<PrivateRoute roles={['admin']}><AdminActivationsPage /></PrivateRoute>} />
                             <Route path="/admin/ready-equipments" element={<PrivateRoute roles={['admin']}><ReadyEquipmentsPage /></PrivateRoute>} />
                             <Route path="/admin/tasks" element={<PrivateRoute roles={['admin']}><AgentTasksPage mode="admin" /></PrivateRoute>} />
+
+                            {/* --- CLIENTES / EMPRESAS --- */}
+                            <Route path="/tech/clients" element={<PrivateRoute roles={['admin', 'supervisor', 'agent']}><ClientManagementPage /></PrivateRoute>} />
 
                             {/* --- RUTAS AGENTE Y SUPERVISOR --- */}
                             <Route path="/agent" element={<PrivateRoute roles={['agent', 'supervisor', 'viewer']}><AgentDashboard /></PrivateRoute>} />

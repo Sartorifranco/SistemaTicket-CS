@@ -30,12 +30,12 @@ router.get('/:id/active-tickets', authorize('admin', 'agent', 'supervisor', 'cli
 // --- RUTAS GENERALES ---
 router.route('/')
     .get(authorize('admin', 'agent', 'supervisor'), getUsers)
-    .post(authorize('admin'), createUser);
+    .post(authorize('admin', 'supervisor', 'agent'), createUser);
 
 // --- RUTAS POR ID ---
 router.route('/:id')
-    .get(authorize('admin', 'agent', 'client'), getUserById)
-    .put(authorize('admin'), updateUser)
-    .delete(authorize('admin'), deleteUser);
+    .get(authorize('admin', 'agent', 'supervisor', 'client'), getUserById)
+    .put(authorize('admin', 'supervisor', 'agent'), updateUser)
+    .delete(authorize('admin', 'supervisor', 'agent'), deleteUser);
 
 module.exports = router;

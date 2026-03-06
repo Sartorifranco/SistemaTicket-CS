@@ -8,7 +8,7 @@ import NotificationBell from '../NotificationBell/NotificationBell';
 import PromoModal from '../Common/PromoModal';
 import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
-import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt, FaCashRegister, FaFileInvoiceDollar } from 'react-icons/fa';
+import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt, FaCashRegister, FaFileInvoiceDollar, FaUserFriends } from 'react-icons/fa';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -73,6 +73,7 @@ const Layout: React.FC = () => {
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Administración</li>
                         <li><NavLink to="/admin" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/admin/users" className={getLinkClassName}><FaUsers /> Usuarios</NavLink></li>
+                        <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
                         <li><NavLink to="/admin/companies" className={getLinkClassName}><FaBuilding /> Empresas</NavLink></li>
                         <li><NavLink to="/admin/tickets" className={getLinkClassName}><FaTicketAlt /> Tickets</NavLink></li>
                         <li><NavLink to="/admin/reports" className={getLinkClassName}><FaChartBar /> Reportes</NavLink></li>
@@ -144,6 +145,8 @@ const Layout: React.FC = () => {
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
+                        <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Diccionarios</li>
                         <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                     </>
@@ -221,6 +224,8 @@ const Layout: React.FC = () => {
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
+                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
+                        <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
                         <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                     </>

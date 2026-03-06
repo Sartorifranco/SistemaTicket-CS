@@ -45,7 +45,7 @@ const registerUser = async (req, res) => {
         } = req.body;
 
         // 0. Acuerdo de confidencialidad (solo registro público; admin/supervisor eximidos)
-        const isAdminOrSupervisorCreating = req.user && (req.user.role === 'admin' || req.user.role === 'supervisor');
+        const isAdminOrSupervisorCreating = req.user && (req.user.role === 'admin' || req.user.role === 'supervisor' || req.user.role === 'agent');
         if (!isAdminOrSupervisorCreating && !accepted_confidentiality_agreement) {
             return res.status(400).json({ message: 'Debes aceptar el Acuerdo de Confidencialidad para registrarte.' });
         }
