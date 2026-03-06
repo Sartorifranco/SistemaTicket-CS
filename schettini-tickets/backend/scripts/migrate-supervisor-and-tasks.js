@@ -7,7 +7,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mysql = require('mysql2/promise');
 
 const QUERIES = [
-  "ALTER TABLE Users MODIFY COLUMN role ENUM('admin','supervisor','agent','client') NOT NULL DEFAULT 'client'",
+  "ALTER TABLE Users MODIFY COLUMN role VARCHAR(100) NOT NULL DEFAULT 'client'",
   `CREATE TABLE IF NOT EXISTS agent_tasks (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     title VARCHAR(500) NOT NULL,

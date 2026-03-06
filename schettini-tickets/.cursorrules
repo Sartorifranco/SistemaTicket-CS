@@ -1,0 +1,39 @@
+# Reglas del proyecto Schettini Tickets
+
+## Flujo de trabajo
+- Trabajamos de forma **local** en desarrollo.
+- Los cambios se prueban en local hasta que todo funcione correctamente.
+- **Solo cuando está todo listo y probado** se sube a DonWeb (git push + deploy en el servidor).
+
+## Convenciones de código
+- **Base de datos (MySQL)**: usar `snake_case` en tablas y columnas (ej: `repair_orders`, `order_number`).
+- **JavaScript**: usar `camelCase` en variables y propiedades (ej: `repairOrders`, `orderNumber`).
+
+## Deploy en el VPS (pasos correctos — SIEMPRE respetar este orden)
+El repositorio git está en `/var/www/tickets` (el directorio con `.git`).
+El proyecto está en `/var/www/tickets/schettini-tickets`.
+
+```bash
+cd /var/www/tickets
+git fetch origin
+git reset --hard origin/main   # ← Garantiza que el working tree tenga exactamente lo que está en GitHub
+cd schettini-tickets
+bash scripts/deploy.sh
+```
+
+> **IMPORTANTE:** Usar SIEMPRE `git fetch origin` + `git reset --hard origin/main` en lugar de solo `git pull`.
+> `git pull` puede quedar desincronizado si el working tree tiene cambios locales (builds, uploads, etc.).
+> `git reset --hard origin/main` fuerza el código fuente al estado exacto de GitHub, sin importar el estado local.
+> Los archivos no trackeados (uploads, builds locales) NO se borran con `reset --hard` → se conservan.
+
+## Columnas de BD: NO usar ENUM para roles
+- La columna `role` en la tabla `Users` debe ser **VARCHAR(100)**, nunca ENUM.
+- Razón: agregar roles nuevos (viewer, supervisor, etc.) con ENUM requiere un ALTER TABLE y rompe el sistema hasta que se ejecuta.
+- Con VARCHAR cualquier rol nuevo funciona de inmediato sin migración.
+- El script `backend/scripts/fix-role-varchar.js` garantiza esto en cada deploy.
+- **Al crear nuevas columnas de "tipo/estado/rol"**: usar VARCHAR o TEXT, nunca ENUM.
+
+## Mensajes de error en el backend
+- Los bloques `catch` solo deben devolver el error real: `res.status(500).json({ message: error.message || 'Error genérico' })`.
+- **Prohibido** incluir instrucciones de consola, hints de migración ni textos de ayuda hardcodeados en respuestas de error de la API.
+- Si una migración es necesaria, agregarla al `deploy.sh` como un paso automático, no como un mensaje de error manual.

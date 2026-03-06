@@ -82,6 +82,13 @@ if [[ -f "backend/scripts/add-can-manage-tech-finances.js" ]]; then
     echo ""
 fi
 
+# Columna role: ENUM → VARCHAR(100) para soportar viewer y cualquier rol futuro
+if [[ -f "backend/scripts/fix-role-varchar.js" ]]; then
+    echo ">>> Convirtiendo columna role a VARCHAR(100)..."
+    (cd backend && node scripts/fix-role-varchar.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend
