@@ -57,6 +57,7 @@ const updateCompanySettings = async (req, res) => {
       ? parseInt(body.default_warranty_months, 10)
       : null;
     const legalTermsTicket = (body.legal_terms_ticket ?? '').trim() || null;
+    const agentsCanViewMovements = body.agents_can_view_movements === true || body.agents_can_view_movements === 'true' || body.agents_can_view_movements === 1 || body.agents_can_view_movements === '1';
 
     let logoUrl = null;
     if (file && file.filename) {
@@ -67,9 +68,10 @@ const updateCompanySettings = async (req, res) => {
       'company_name = ?', 'address = ?', 'phone = ?', 'email = ?', 'website = ?',
       'tax_percentage = ?', 'quote_footer_text = ?', 'primary_color = ?',
       'usd_exchange_rate = ?', 'list_price_surcharge_percent = ?', 'default_iva_percent = ?', 'profit_margin_percent = ?', 'legal_footer_text = ?',
-      'default_abandonment_days = ?', 'default_warranty_months = ?', 'legal_terms = ?'
+      'default_abandonment_days = ?', 'default_warranty_months = ?', 'legal_terms = ?',
+      'agents_can_view_movements = ?'
     ];
-    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, profitMarginPercent, legalFooterText, recyclingDaysAbandonment, defaultWarrantyMonths, legalTermsTicket];
+    const values = [companyName, address, phone, email, website, taxPercentage, quoteFooterText, primaryColor, usdExchangeRate, listPriceSurchargePercent, defaultIvaPercent, profitMarginPercent, legalFooterText, recyclingDaysAbandonment, defaultWarrantyMonths, legalTermsTicket, agentsCanViewMovements ? 1 : 0];
 
     if (logoUrl !== null) {
       updates.splice(5, 0, 'logo_url = ?');
@@ -77,10 +79,21 @@ const updateCompanySettings = async (req, res) => {
     }
 
     values.push(ID);
-    await pool.query(
-      `UPDATE company_settings SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
+    try {
+      await pool.query(
+        `UPDATE company_settings SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      );
+    } catch (colErr) {
+      if (colErr.message?.includes('agents_can_view_movements')) {
+        updates.pop();
+        values.pop();
+        await pool.query(
+          `UPDATE company_settings SET ${updates.join(', ')} WHERE id = ?`,
+          values
+        );
+      } else throw colErr;
+    }
 
     const [rows] = await pool.query('SELECT * FROM company_settings WHERE id = ? LIMIT 1', [ID]);
     res.json({ success: true, message: 'Configuración actualizada.', data: rows[0] });

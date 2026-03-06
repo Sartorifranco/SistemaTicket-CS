@@ -89,6 +89,13 @@ if [[ -f "backend/scripts/fix-role-varchar.js" ]]; then
     echo ""
 fi
 
+# Tabla article_movements y agents_can_view_movements (Fase 3 Movimientos de Artículos)
+if [[ -f "backend/scripts/add-article-movements-and-setting.js" ]]; then
+    echo ">>> Ejecutando migración article_movements y agents_can_view_movements..."
+    (cd backend && node scripts/add-article-movements-and-setting.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

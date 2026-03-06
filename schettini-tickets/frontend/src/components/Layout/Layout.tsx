@@ -18,6 +18,7 @@ const Layout: React.FC = () => {
     const isMonitor = location.pathname.endsWith('/monitor');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [delayedOrdersAlert, setDelayedOrdersAlert] = useState<{ message: string; count: number } | null>(null);
+    const [agentsCanViewMovements, setAgentsCanViewMovements] = useState<boolean>(false);
 
     const [currentDate, setCurrentDate] = useState(new Date());
     // @ts-ignore
@@ -53,6 +54,16 @@ const Layout: React.FC = () => {
             socket.off('delayed_orders_alert', handler);
         };
     }, [socket, user?.role]);
+
+    useEffect(() => {
+        if (user?.role !== 'agent') return;
+        api.get('/api/settings/company')
+            .then((res) => {
+                const data = res.data?.data ?? res.data;
+                setAgentsCanViewMovements(!!(data?.agents_can_view_movements === 1 || data?.agents_can_view_movements === true));
+            })
+            .catch(() => setAgentsCanViewMovements(false));
+    }, [user?.role]);
 
     const handleLogout = () => {
         logout();
@@ -90,6 +101,7 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>
                         <li><NavLink to="/admin/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>
                         <li><NavLink to="/admin/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>
+                        <li><NavLink to="/admin/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>
                         <li><NavLink to="/admin/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>
                         {(user.role === 'admin' || user.role === 'supervisor' || user.can_manage_tech_finances) && (
                             <>
@@ -137,6 +149,7 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
+                                {hasRepairs && agentsCanViewMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
                             </>
                         )}
@@ -218,6 +231,7 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
+                                {hasRepairs && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
                             </>
                         )}

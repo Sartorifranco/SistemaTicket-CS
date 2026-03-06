@@ -116,6 +116,7 @@ const activationRoutes = require('./routes/activationRoutes');
 const factoryShipmentRoutes = require('./routes/factoryShipmentRoutes');
 const techCashRoutes = require('./routes/techCashRoutes');
 const refurbishedRoutes = require('./routes/refurbishedRoutes');
+const movementsRoutes = require('./routes/movementsRoutes');
 
 const { startCronJobs } = require('./services/cronJobs');
 
@@ -170,6 +171,7 @@ app.use('/api/activations', activationRoutes);
 app.use('/api/factory-shipments', factoryShipmentRoutes);
 app.use('/api/tech-cash', techCashRoutes);
 app.use('/api/refurbished-equipments', refurbishedRoutes);
+app.use('/api/movements', movementsRoutes);
 
 // Rutas opcionales (reportRoutes ya incluye /api/reports con debts) (try-catch para evitar errores si no existen los archivos)
 try { app.use('/api/admin', require('./routes/problemAdminRoutes')); } catch (e) { console.log('Ruta admin opcional no cargada'); }

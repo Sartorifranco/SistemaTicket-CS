@@ -46,6 +46,7 @@ interface CompanySettings {
   recycling_days_abandonment?: number | null;
   default_warranty_months?: number | null;
   legal_terms_ticket?: string | null;
+  agents_can_view_movements?: boolean | number | null;
 }
 
 const defaultSettings: CompanySettings = {
@@ -66,6 +67,7 @@ const defaultSettings: CompanySettings = {
   recycling_days_abandonment: null,
   default_warranty_months: null,
   legal_terms_ticket: null,
+  agents_can_view_movements: false,
 };
 
 type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets';
@@ -334,6 +336,7 @@ const AdminCompanySettingsPage: React.FC = () => {
           recycling_days_abandonment: data.recycling_days_abandonment != null ? Number(data.recycling_days_abandonment) : null,
           default_warranty_months: data.default_warranty_months != null ? Number(data.default_warranty_months) : null,
           legal_terms_ticket: data.legal_terms_ticket ?? null,
+          agents_can_view_movements: data.agents_can_view_movements === 1 || data.agents_can_view_movements === true,
         });
         if (data.logo_url) {
           setLogoPreview(getImageUrl(data.logo_url));
@@ -382,6 +385,7 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append('recycling_days_abandonment', formData.recycling_days_abandonment != null ? String(formData.recycling_days_abandonment) : '');
       form.append('default_warranty_months', formData.default_warranty_months != null ? String(formData.default_warranty_months) : '');
       form.append('legal_terms_ticket', formData.legal_terms_ticket ?? '');
+      form.append('agents_can_view_movements', formData.agents_can_view_movements ? '1' : '0');
 
       if (logoFile) {
         form.append('logo', logoFile);
@@ -799,6 +803,19 @@ const AdminCompanySettingsPage: React.FC = () => {
             />
             <p className="text-xs text-blue-600 mt-1">ℹ️ Texto legal que puede mostrarse al cliente al crear o gestionar un ticket.</p>
           </div>
+          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <input
+              type="checkbox"
+              id="agents_can_view_movements"
+              checked={!!formData.agents_can_view_movements}
+              onChange={(e) => setFormData({ ...formData, agents_can_view_movements: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="agents_can_view_movements" className="text-sm font-medium text-gray-800 cursor-pointer">
+              Permitir a los agentes ver los Movimientos de Artículos
+            </label>
+          </div>
+          <p className="text-xs text-blue-600 -mt-2">ℹ️ Si está activo, los usuarios con rol Agente podrán ver el listado de repuestos utilizados en las órdenes de taller.</p>
           <div className="pt-4 border-t">
             <button
               type="submit"

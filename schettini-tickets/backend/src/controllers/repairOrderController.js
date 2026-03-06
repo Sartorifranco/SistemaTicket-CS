@@ -53,6 +53,36 @@ const logStatusHistory = async (repairOrderId, fieldChanged, oldValue, newValue,
   );
 };
 
+/** Inserta movimientos de artículos (repuestos) en article_movements a partir de spare_parts_detail (JSON array o texto). */
+const insertArticleMovementsFromSpareParts = async (repairOrderId, sparePartsDetail, userId) => {
+  if (!repairOrderId || !sparePartsDetail) return;
+  let items = [];
+  const raw = sparePartsDetail.trim();
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      items = Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      items = [{ nombre: raw, quantity: 1 }];
+    }
+  } else {
+    items = [{ nombre: raw, quantity: 1 }];
+  }
+  for (const it of items) {
+    const name = it.nombre || it.name || (typeof it === 'string' ? it : null);
+    if (!name || !String(name).trim()) continue;
+    const qty = Math.max(1, parseInt(it.cantidad || it.quantity || 1, 10) || 1);
+    try {
+      await pool.query(
+        'INSERT INTO article_movements (article_name, order_id, quantity, user_id) VALUES (?, ?, ?, ?)',
+        [String(name).trim(), repairOrderId, qty, userId || null]
+      );
+    } catch (e) {
+      console.error('insertArticleMovementsFromSpareParts:', e.message);
+    }
+  }
+};
+
 // Genera order_number: REP-0001, REP-0002, etc.
 const generateOrderNumber = async () => {
   const [rows] = await pool.query(
@@ -452,6 +482,10 @@ const createRepairOrder = async (req, res) => {
 
     const repairOrderId = result.insertId;
 
+    if (sparePartsDetail && String(sparePartsDetail).trim()) {
+      await insertArticleMovementsFromSpareParts(repairOrderId, sparePartsDetail, req.user?.id);
+    }
+
     if (isWarrantyOrder && warrantyStatus) {
       await logStatusHistory(repairOrderId, 'warranty_status', null, warrantyStatus, req.user?.id);
     }
@@ -644,7 +678,12 @@ const updateRepairOrder = async (req, res) => {
     if (deliveredDate !== undefined) add('delivered_date', deliveredDate);
     if (warrantyExpirationDate !== undefined) add('warranty_expiration_date', warrantyExpirationDate);
     if (publicNotes !== undefined) add('public_notes', publicNotes);
-    if (sparePartsDetail !== undefined) add('spare_parts_detail', sparePartsDetail);
+    if (sparePartsDetail !== undefined) {
+      add('spare_parts_detail', sparePartsDetail);
+      if (sparePartsDetail && String(sparePartsDetail).trim()) {
+        await insertArticleMovementsFromSpareParts(id, sparePartsDetail, req.user?.id);
+      }
+    }
     if (orderType !== undefined) add('order_type', orderType);
     if (visitDate !== undefined) add('visit_date', visitDate);
     if (remotePlatform !== undefined) add('remote_platform', remotePlatform);
