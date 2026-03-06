@@ -1,7 +1,16 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
-const NEW_PERMISSIONS = ['tickets_view', 'tickets_reply', 'tickets_delete', 'repairs_view', 'repairs_create', 'repairs_edit', 'quoter_access', 'reports_view'];
+const NEW_PERMISSIONS = [
+    'tickets_view', 'tickets_reply', 'tickets_delete', 'tickets_assign',
+    'tasks_view', 'tasks_edit', 'tasks_manage',
+    'repairs_view', 'repairs_create', 'repairs_edit', 'repairs_delete',
+    'activations_view', 'activations_edit',
+    'ready_view', 'ready_edit',
+    'refurbished_view', 'refurbished_create', 'refurbished_edit',
+    'movements_view', 'warranties_view', 'activity_logs_view',
+    'quoter_access', 'reports_view', 'tech_finances', 'resources_view', 'clients_view'
+];
 const migrateOldPermissions = (arr) => {
     if (!Array.isArray(arr) || arr.length === 0) return ['tickets_view', 'tickets_reply'];
     const migrated = [];
@@ -117,9 +126,10 @@ const registerUser = async (req, res) => {
         const finalFullName = (full_name || '').trim() || username;
         const finalUsername = username.trim();
 
-        const permsVal = (userRole === 'agent' || userRole === 'supervisor') && Array.isArray(permissions) && permissions.length > 0
+        const canHavePerms = userRole === 'agent' || userRole === 'supervisor' || userRole === 'viewer';
+        const permsVal = canHavePerms && Array.isArray(permissions) && permissions.length > 0
             ? JSON.stringify(permissions.filter(p => NEW_PERMISSIONS.includes(p)))
-            : (userRole === 'agent' || userRole === 'supervisor') ? '["tickets_view","tickets_reply"]' : null;
+            : canHavePerms ? '["tickets_view","tickets_reply"]' : null;
 
         const hasPermissions = permsVal !== null;
         const hasTechFinances = (userRole === 'agent' && can_manage_tech_finances === true);

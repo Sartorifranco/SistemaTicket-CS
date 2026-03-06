@@ -1,25 +1,13 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { hasAnyPermission } from '../../utils/permissions';
 
 interface PrivateRouteProps {
     children: React.ReactElement;
     roles?: string[];
-    permission?: string;
-}
-
-/** Permisos granulares requeridos por ruta. Compatible con nombres legacy. */
-const LEGACY_PERMISSION_MAP: Record<string, string> = {
-    tickets_view: 'tickets',
-    repairs_view: 'repair_orders',
-    quoter_access: 'cotizador',
-};
-
-function hasRequiredPermission(userPerms: string[] | undefined, required: string): boolean {
-    const perms = userPerms || [];
-    if (perms.includes(required)) return true;
-    const legacy = LEGACY_PERMISSION_MAP[required];
-    return legacy ? perms.includes(legacy) : false;
+    /** Un permiso o lista de permisos (cualquiera cumple) */
+    permission?: string | string[];
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles, permission }) => {
@@ -40,7 +28,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles, permission
 
     if (permission && (user?.role === 'agent' || user?.role === 'supervisor' || user?.role === 'viewer')) {
         const perms = user.permissions || [];
-        if (!hasRequiredPermission(perms, permission)) {
+        const required = Array.isArray(permission) ? permission : [permission];
+        if (!hasAnyPermission(perms, required)) {
             return <div className="p-8 text-center text-red-500">No tienes permiso para acceder a esta página.</div>;
         }
     }

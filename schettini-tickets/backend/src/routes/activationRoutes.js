@@ -38,10 +38,10 @@ router.use(protect);
 
 router.post('/request', requestActivation);
 router.get('/client', getClientActivations);
-router.get('/', authorizeByPermission('repairs_view'), getActivations);
+router.get('/', authorizeByPermission('repairs_view', 'activations_view'), getActivations);
 router.get('/:id', getActivationById);
-router.put('/:id/validate', authorizeByPermission('repairs_edit'), validateActivation);
-router.put('/:id', authorizeByPermission('repairs_edit'), updateActivationStatus);
+router.put('/:id/validate', authorizeByPermission('repairs_edit', 'activations_edit'), validateActivation);
+    router.put('/:id', authorizeByPermission('repairs_edit', 'activations_edit'), updateActivationStatus);
 router.post('/:id/submit-form', upload.any(), submitForm);
 
 module.exports = router;

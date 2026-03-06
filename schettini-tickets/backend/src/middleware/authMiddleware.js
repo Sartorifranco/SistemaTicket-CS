@@ -139,14 +139,15 @@ const authorizeByPermission = (...allowedPerms) => {
     };
 };
 
-/** Finanzas Técnicas: admin y supervisor siempre; agent solo si can_manage_tech_finances */
+/** Finanzas Técnicas: admin y supervisor siempre; agent/viewer si can_manage_tech_finances o permiso tech_finances */
 const authorizeTechFinances = (req, res, next) => {
     if (!req.user) {
         res.status(403);
         throw new Error('No autorizado');
     }
     if (req.user.role === 'admin' || req.user.role === 'supervisor') return next();
-    if (req.user.role === 'agent' && req.user.can_manage_tech_finances === true) return next();
+    const perms = req.user.permissions || [];
+    if ((req.user.role === 'agent' || req.user.role === 'viewer') && (req.user.can_manage_tech_finances === true || perms.includes('tech_finances'))) return next();
     console.log(`⛔ [Auth] Finanzas Técnicas denegado. Rol: ${req.user.role}, can_manage_tech_finances: ${req.user.can_manage_tech_finances}`);
     res.status(403);
     throw new Error('No tenés permiso para Finanzas Técnicas');

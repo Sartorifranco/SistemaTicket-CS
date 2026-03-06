@@ -4,7 +4,7 @@ const pool = require('../config/db');
 const { protect, authorizeByPermission } = require('../middleware/authMiddleware');
 
 router.use(protect);
-router.use(authorizeByPermission('tickets_view'));
+router.use(authorizeByPermission('tickets_view', 'activity_logs_view'));
 
 router.get('/', async (req, res) => {
     try {

@@ -4,6 +4,6 @@ const { protect, authorizeByPermission } = require('../middleware/authMiddleware
 const { getMovements } = require('../controllers/movementsController');
 
 router.use(protect);
-router.get('/', authorizeByPermission('repairs_view'), getMovements);
+router.get('/', authorizeByPermission('repairs_view', 'movements_view'), getMovements);
 
 module.exports = router;

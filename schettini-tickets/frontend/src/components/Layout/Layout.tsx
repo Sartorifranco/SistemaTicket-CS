@@ -9,6 +9,7 @@ import PromoModal from '../Common/PromoModal';
 import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
 import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt, FaCashRegister, FaFileInvoiceDollar, FaUserFriends, FaCubes } from 'react-icons/fa';
+import { hasAnyPermission, SIDEBAR_PERMISSION_MAP } from '../../utils/permissions';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -121,22 +122,32 @@ const Layout: React.FC = () => {
                 );
             case 'agent': {
                 const perms = user.permissions || [];
-                const hasTickets = perms.includes('tickets_view') || perms.includes('tickets');
-                const hasRepairs = perms.includes('repairs_view') || perms.includes('repair_orders');
-                const hasCotizador = perms.includes('quoter_access') || perms.includes('cotizador');
-                const hasReports = perms.includes('reports_view');
-                const hasAreaTecnica = hasRepairs || hasCotizador;
+                const hasTickets = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tickets);
+                const hasTasks = hasAnyPermission(perms, ['tasks_view']) || hasTickets;
+                const hasRepairs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.repair_orders);
+                const hasActivations = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activations);
+                const hasReady = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.ready_equipments);
+                const hasRefurbished = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.refurbished);
+                const hasMovements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.movements) || (hasRepairs && agentsCanViewMovements);
+                const hasWarranties = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.warranties);
+                const hasCotizador = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.cotizador);
+                const hasReports = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.reports);
+                const hasActivityLogs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activity_logs);
+                const hasTechFinances = user.can_manage_tech_finances || hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tech_finances);
+                const hasResources = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.resources);
+                const hasClients = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.clients);
+                const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Agente</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
-                        <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
+                        {(hasResources || !perms.length) && <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>}
                         {hasTickets && (
                             <>
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
-                                <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>
+                                {hasTasks && <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>}
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
-                                <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                                {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -145,23 +156,27 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
-                                {hasRepairs && agentsCanViewMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
+                                {hasWarranties && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
+                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
+                                {hasReady && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
+                                {hasRefurbished && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
+                                {hasMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
                             </>
                         )}
-                        {user.can_manage_tech_finances && (
+                        {hasTechFinances && (
                             <>
                                 <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
                                 <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
-                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
-                        <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
+                        {(hasClients || !perms.length) && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
+                                <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
+                            </>
+                        )}
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Diccionarios</li>
                         <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                     </>
@@ -169,21 +184,32 @@ const Layout: React.FC = () => {
             }
             case 'viewer': {
                 const perms = user.permissions || [];
-                const hasTickets = perms.includes('tickets_view') || perms.includes('tickets');
-                const hasRepairs = perms.includes('repairs_view') || perms.includes('repair_orders');
-                const hasCotizador = perms.includes('quoter_access') || perms.includes('cotizador');
-                const hasReports = perms.includes('reports_view');
-                const hasAreaTecnica = hasRepairs || hasCotizador;
+                const hasTickets = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tickets);
+                const hasTasks = hasAnyPermission(perms, ['tasks_view']) || hasTickets;
+                const hasRepairs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.repair_orders);
+                const hasActivations = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activations);
+                const hasReady = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.ready_equipments);
+                const hasRefurbished = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.refurbished);
+                const hasMovements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.movements);
+                const hasWarranties = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.warranties);
+                const hasCotizador = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.cotizador);
+                const hasReports = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.reports);
+                const hasActivityLogs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activity_logs);
+                const hasTechFinances = user.can_manage_tech_finances || hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tech_finances);
+                const hasResources = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.resources);
+                const hasClients = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.clients);
+                const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Vista (solo lectura)</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
+                        {(hasResources || !perms.length) && <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>}
                         {hasTickets && (
                             <>
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Tickets</NavLink></li>
-                                <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
+                                {hasTasks && <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>}
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Reportes</NavLink></li>}
-                                <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                                {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -192,10 +218,25 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
+                                {hasWarranties && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
+                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
+                                {hasReady && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
+                                {hasRefurbished && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
+                                {hasMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
+                            </>
+                        )}
+                        {hasTechFinances && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
+                                <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
+                                <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
+                            </>
+                        )}
+                        {(hasClients || !perms.length) && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
+                                <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
                             </>
                         )}
                     </>
@@ -203,22 +244,32 @@ const Layout: React.FC = () => {
             }
             case 'supervisor': {
                 const perms = user.permissions || [];
-                const hasTickets = perms.includes('tickets_view') || perms.includes('tickets') || perms.length === 0;
-                const hasRepairs = perms.includes('repairs_view') || perms.includes('repair_orders');
-                const hasCotizador = perms.includes('quoter_access') || perms.includes('cotizador');
-                const hasReports = perms.includes('reports_view');
-                const hasAreaTecnica = hasRepairs || hasCotizador;
+                const hasTickets = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tickets) || perms.length === 0;
+                const hasTasks = hasAnyPermission(perms, ['tasks_view']) || hasTickets;
+                const hasRepairs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.repair_orders);
+                const hasActivations = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activations);
+                const hasReady = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.ready_equipments);
+                const hasRefurbished = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.refurbished);
+                const hasMovements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.movements);
+                const hasWarranties = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.warranties);
+                const hasCotizador = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.cotizador);
+                const hasReports = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.reports);
+                const hasActivityLogs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activity_logs);
+                const hasTechFinances = user.role === 'supervisor' || user.can_manage_tech_finances || hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tech_finances);
+                const hasResources = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.resources) || !perms.length;
+                const hasClients = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.clients) || !perms.length;
+                const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Supervisor</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
-                        <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>
+                        {hasResources && <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>}
                         {hasTickets && (
                             <>
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Mis Tickets</NavLink></li>
-                                <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>
+                                {hasTasks && <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>}
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
-                                <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
+                                {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -227,23 +278,27 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/repair-orders" className={getLinkClassName}><FaWrench /> Órdenes de Taller</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
-                                {hasRepairs && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
+                                {hasWarranties && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
+                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
+                                {hasReady && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
+                                {hasRefurbished && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
+                                {hasMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
                                 {hasCotizador && <li><NavLink to="/agent/cotizador" className={getLinkClassName}><FaCalculator /> Cotizador</NavLink></li>}
                             </>
                         )}
-                        {(user.role === 'supervisor' || user.can_manage_tech_finances) && (
+                        {hasTechFinances && (
                             <>
                                 <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Finanzas Técnicas</li>
                                 <li><NavLink to="/admin/tech-cash" className={getLinkClassName}><FaCashRegister /> Caja Técnica</NavLink></li>
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
-                        <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
-                        <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
+                        {hasClients && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
+                                <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
+                            </>
+                        )}
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Configuración</li>
                         <li><NavLink to="/admin/company-settings" className={getLinkClassName}><FaBuilding /> Configuración Central</NavLink></li>
                     </>

@@ -184,7 +184,7 @@ const AdminUsersPage: React.FC = () => {
                 full_name: (formData.full_name || '').trim() || null,
                 company_id: formData.company_id ? parseInt(formData.company_id) : null,
                 department_id: formData.department_id ? parseInt(formData.department_id) : null,
-                permissions: (formData.role === 'agent' || formData.role === 'supervisor') ? formData.permissions : undefined,
+                permissions: (formData.role === 'agent' || formData.role === 'supervisor' || formData.role === 'viewer') ? formData.permissions : undefined,
                 can_manage_tech_finances: formData.role === 'agent' ? formData.can_manage_tech_finances : false,
             };
             if (payload.permissions === undefined) delete payload.permissions;
@@ -569,7 +569,7 @@ const AdminUsersPage: React.FC = () => {
                                         value={formData.role}
                                         onChange={e => {
                                             const newRole = e.target.value as 'admin'|'supervisor'|'agent'|'client'|'viewer';
-                                            const perms = (newRole === 'agent' || newRole === 'supervisor') && (!formData.permissions?.length)
+                                            const perms = (newRole === 'agent' || newRole === 'supervisor' || newRole === 'viewer') && (!formData.permissions?.length)
                                                 ? DEFAULT_AGENT_PERMISSIONS : (formData.permissions?.length ? formData.permissions : []);
                                             setFormData({...formData, role: newRole, permissions: perms});
                                         }}
@@ -598,7 +598,7 @@ const AdminUsersPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {formData.role === 'agent' && (
+                            {(formData.role === 'agent' || formData.role === 'viewer') && (
                                 <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                                     <input
                                         type="checkbox"
@@ -649,11 +649,11 @@ const AdminUsersPage: React.FC = () => {
                                 </select>
                             </div>
 
-                            {(formData.role === 'agent' || formData.role === 'supervisor') && (
+                            {(formData.role === 'agent' || formData.role === 'supervisor' || formData.role === 'viewer') && (
                                 <div className="border-t pt-4 mt-2">
                                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
-                                        Permisos de Acceso (Solo para Agentes/Supervisores)
-                                        <HelpTooltip text="Marcá qué secciones puede ver este usuario: tickets, órdenes de reparación, cotizador, reportes, etc. El admin tiene todo por defecto." />
+                                        Permisos de Acceso (Agentes, Supervisores y Vista)
+                                        <HelpTooltip text="Marcá qué secciones puede ver y usar este usuario. Podés ser muy específico: solo planillas, solo movimientos, solo reportes, etc. El admin tiene todo por defecto." />
                                     </label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {PERMISSION_GROUPS.map((group) => (

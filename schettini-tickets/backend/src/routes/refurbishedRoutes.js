@@ -21,11 +21,11 @@ const upload = multer({
 
 router.use(protect);
 
-router.get('/', authorizeByPermission('repairs_view'), getAll);
-router.get('/:id', authorizeByPermission('repairs_view'), getById);
-router.post('/', authorizeByPermission('repairs_create', 'repairs_edit'), upload.array('photos', 6), create);
-router.put('/:id', authorizeByPermission('repairs_edit'), upload.array('photos', 6), update);
-router.patch('/:id/active', authorizeByPermission('repairs_edit'), setActive);
-router.delete('/:id', authorizeByPermission('repairs_edit'), remove);
+router.get('/', authorizeByPermission('repairs_view', 'refurbished_view'), getAll);
+router.get('/:id', authorizeByPermission('repairs_view', 'refurbished_view'), getById);
+router.post('/', authorizeByPermission('repairs_create', 'repairs_edit', 'refurbished_create'), upload.array('photos', 6), create);
+router.put('/:id', authorizeByPermission('repairs_edit', 'refurbished_edit'), upload.array('photos', 6), update);
+router.patch('/:id/active', authorizeByPermission('repairs_edit', 'refurbished_edit'), setActive);
+router.delete('/:id', authorizeByPermission('repairs_edit', 'refurbished_edit'), remove);
 
 module.exports = router;

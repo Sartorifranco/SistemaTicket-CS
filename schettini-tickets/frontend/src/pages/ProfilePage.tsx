@@ -72,6 +72,7 @@ const ModuleCard: React.FC<{ module: Module, onRequestModule: (moduleName: strin
 
 const ProfilePage: React.FC = () => {
     const { user } = useAuth();
+    const isClient = String(user?.role || '').toLowerCase() === 'client';
     const [activeTab, setActiveTab] = useState<'profile' | 'plans' | 'costs' | 'payments' | 'activity' | 'documents'>('profile');
     
     // Datos
@@ -125,7 +126,7 @@ const ProfilePage: React.FC = () => {
     useEffect(() => { fetchUserDetails(); }, [fetchUserDetails]);
 
     const fetchClientDocuments = useCallback(async () => {
-        if (!user?.id || user?.role !== 'client') return;
+        if (!user?.id || !isClient) return;
         setClientDocumentsLoading(true);
         try {
             const res = await api.get<{ success: boolean; data: UserDocument[] }>(`/api/users/${user.id}/documents`);
@@ -136,10 +137,10 @@ const ProfilePage: React.FC = () => {
         } finally {
             setClientDocumentsLoading(false);
         }
-    }, [user?.id, user?.role]);
+    }, [user?.id, isClient]);
 
     useEffect(() => {
-        if (activeTab === 'documents' && user?.role === 'client') fetchClientDocuments();
+        if (activeTab === 'documents' && isClient) fetchClientDocuments();
     }, [activeTab, user?.role, fetchClientDocuments]);
 
     useEffect(() => {
@@ -384,10 +385,10 @@ const ProfilePage: React.FC = () => {
                     <button onClick={() => setActiveTab('profile')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'profile' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaUser className={activeTab === 'profile' ? 'text-indigo-500' : 'text-gray-400'} /> Mis Datos</span>{activeTab === 'profile' && <FaArrowRight size={12} />}</button>
                     <button onClick={() => setActiveTab('plans')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'plans' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaBoxOpen className={activeTab === 'plans' ? 'text-indigo-500' : 'text-gray-400'} /> Planes y Módulos</span>{activeTab === 'plans' && <FaArrowRight size={12} />}</button>
                     <button onClick={() => setActiveTab('costs')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'costs' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaStore className={activeTab === 'costs' ? 'text-indigo-500' : 'text-gray-400'} /> Costos Técnicos</span>{activeTab === 'costs' && <FaArrowRight size={12} />}</button>
-                    {user?.role === 'client' && (
+                    {isClient && (
                         <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'payments' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaCreditCard className={activeTab === 'payments' ? 'text-indigo-500' : 'text-gray-400'} /> Mis Pagos</span>{activeTab === 'payments' && <FaArrowRight size={12} />}</button>
                     )}
-                    {user?.role === 'client' && (
+                    {isClient && (
                         <button onClick={() => setActiveTab('documents')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'documents' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaFileAlt className={activeTab === 'documents' ? 'text-indigo-500' : 'text-gray-400'} /> Contratos / Documentos</span>{activeTab === 'documents' && <FaArrowRight size={12} />}</button>
                     )}
                     <button onClick={() => setActiveTab('activity')} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'activity' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}><span className="flex items-center gap-3"><FaHistory className={activeTab === 'activity' ? 'text-indigo-500' : 'text-gray-400'} /> Mi Actividad</span>{activeTab === 'activity' && <FaArrowRight size={12} />}</button>
