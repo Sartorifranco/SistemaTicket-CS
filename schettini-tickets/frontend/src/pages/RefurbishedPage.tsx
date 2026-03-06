@@ -158,6 +158,8 @@ const RefurbishedPage: React.FC = () => {
                 await api.post('/api/refurbished-equipments', formData);
                 toast.success('Equipo creado correctamente.');
             }
+            setSelectedFiles([]);
+            setExistingPhotos([]);
             setModalOpen(false);
             fetchList();
         } catch (err: any) {

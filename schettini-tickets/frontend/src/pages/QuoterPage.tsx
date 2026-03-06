@@ -433,17 +433,15 @@ const QuoterPage: React.FC = () => {
   const costoBaseManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
   const costoConMargen = costoBaseManual * (1 + profitMarginPct / 100);
   const manualLaborNum = (manualLaborValue === '' || manualLaborValue == null) ? 0 : toNumStrict(manualLaborValue);
-  const subtotalManual = costoConMargen + manualLaborNum;
-  const ivaManual = subtotalManual * (ivaPct / 100);
-  const totalEfectivoManual = subtotalManual + ivaManual;
+  const ivaManual = costoConMargen * (ivaPct / 100);
+  const totalEfectivoManual = costoConMargen + ivaManual + manualLaborNum;
   const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
 
-  // Cotizador Automático (izquierda): subtotal + mano de obra + IVA + totales (todos numéricos)
+  // Cotizador Automático (izquierda): IVA solo sobre repuestos; Total = Repuestos+IVA + Mano de obra
   const laborAutoNum = (laborCotizadorAutomatico === '' || laborCotizadorAutomatico == null) ? 0 : toNumStrict(laborCotizadorAutomatico);
-  const baseRepuestosAuto = totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel;
-  const subtotalNetoAuto = toNumStrict(baseRepuestosAuto) + laborAutoNum;
-  const ivaAuto = subtotalNetoAuto * (ivaPct / 100);
-  const totalEfectivoAuto = subtotalNetoAuto + ivaAuto;
+  const baseRepuestosAuto = Number(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel);
+  const ivaAuto = baseRepuestosAuto * (ivaPct / 100);
+  const totalEfectivoAuto = baseRepuestosAuto + ivaAuto + laborAutoNum;
   const totalListaAuto = surchargePct > 0 ? totalEfectivoAuto * (1 + surchargePct / 100) : totalEfectivoAuto;
 
   const generarTextoCotizacion = (): string => {
@@ -818,8 +816,9 @@ const QuoterPage: React.FC = () => {
                     />
                   </div>
                   <div className="text-sm">
-                    <p className="flex justify-between"><span>Subtotal neto (repuestos + mano de obra):</span> <strong>{formatCurrency(subtotalNetoAuto)}</strong></p>
-                    <p className="flex justify-between"><span>IVA ({ivaPct}%):</span> {formatCurrency(ivaAuto)}</p>
+                    <p className="flex justify-between"><span>Repuestos:</span> <strong>{formatCurrency(baseRepuestosAuto)}</strong></p>
+                    <p className="flex justify-between"><span>IVA ({ivaPct}% sobre repuestos):</span> {formatCurrency(ivaAuto)}</p>
+                    <p className="flex justify-between"><span>Mano de obra:</span> <strong>{formatCurrency(laborAutoNum)}</strong></p>
                     <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Efectivo:</span> {formatCurrency(totalEfectivoAuto)}</p>
                     <p className="flex justify-between text-indigo-700 font-bold"><span>Total Lista:</span> {formatCurrency(totalListaAuto)}</p>
                     {!isAgentBlind && (
@@ -928,9 +927,9 @@ const QuoterPage: React.FC = () => {
             <div className="p-4 bg-white rounded-lg border border-gray-300 space-y-2">
               {!isAgentBlind && (
                 <>
-                  <p className="flex justify-between text-sm text-gray-600"><span>COSTO BASE (ARS):</span> <strong>{formatCurrency(costoBaseManual)}</strong></p>
-                  <p className="flex justify-between text-sm text-gray-600"><span>SUBTOTAL (costo + margen + mano obra):</span> <strong>{formatCurrency(subtotalManual)}</strong></p>
-                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}%):</span> {formatCurrency(ivaManual)}</p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>Repuestos (costo + margen):</span> <strong>{formatCurrency(costoConMargen)}</strong></p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}% sobre repuestos):</span> {formatCurrency(ivaManual)}</p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>Mano de obra:</span> <strong>{formatCurrency(manualLaborNum)}</strong></p>
                 </>
               )}
               <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO:</span> {formatCurrency(totalEfectivoManual)}</p>

@@ -386,7 +386,7 @@ const RecyclingAreaPage: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center px-6 py-4 border-b">
               <h2 className="text-xl font-bold text-gray-800">Cargar Orden de Sistema Anterior</h2>
-              <button type="button" onClick={() => setModalExternalOpen(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+              <button type="button" onClick={() => { setModalExternalOpen(false); setExternalFiles([]); setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '' }); }} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
                 <FaTimes />
               </button>
             </div>
@@ -457,7 +457,7 @@ const RecyclingAreaPage: React.FC = () => {
                 )}
               </div>
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <button type="button" onClick={() => setModalExternalOpen(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              <button type="button" onClick={() => { setModalExternalOpen(false); setExternalFiles([]); setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '' }); }} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                 Cancelar
               </button>
               <button
