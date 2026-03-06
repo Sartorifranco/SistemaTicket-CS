@@ -41,7 +41,8 @@ const registerUser = async (req, res) => {
             business_name, fantasy_name, 
             role, status, company_id, department_id, plan,
             accepted_confidentiality_agreement,
-            permissions, can_manage_tech_finances
+            permissions, can_manage_tech_finances,
+            billing_type, contracted_services
         } = req.body;
 
         // 0. Acuerdo de confidencialidad (solo registro público; admin/supervisor eximidos)
@@ -122,6 +123,12 @@ const registerUser = async (req, res) => {
 
         const hasPermissions = permsVal !== null;
         const hasTechFinances = (userRole === 'agent' && can_manage_tech_finances === true);
+        const contractedServicesStr = Array.isArray(contracted_services)
+            ? JSON.stringify(contracted_services)
+            : (typeof contracted_services === 'string' ? contracted_services : null);
+        const finalBillingType = (billing_type || '').trim() || null;
+        const hasBilling = finalBillingType !== null;
+        const hasContractedServices = contractedServicesStr !== null && contractedServicesStr !== '';
         const sql = `
             INSERT INTO Users (
                 username, full_name, email, password, role, is_active, 
@@ -129,10 +136,14 @@ const registerUser = async (req, res) => {
                 company_id, department_id, plan, last_login
                 ${hasPermissions ? ', permissions' : ''}
                 ${hasTechFinances ? ', can_manage_tech_finances' : ''}
+                ${hasBilling ? ', billing_type' : ''}
+                ${hasContractedServices ? ', contracted_services' : ''}
             ) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
                 ${hasPermissions ? ', ?' : ''}
                 ${hasTechFinances ? ', ?' : ''}
+                ${hasBilling ? ', ?' : ''}
+                ${hasContractedServices ? ', ?' : ''}
             )
         `;
         const insertValues = [
@@ -141,6 +152,8 @@ const registerUser = async (req, res) => {
         ];
         if (hasPermissions) insertValues.push(permsVal);
         if (hasTechFinances) insertValues.push(1);
+        if (hasBilling) insertValues.push(finalBillingType);
+        if (hasContractedServices) insertValues.push(contractedServicesStr);
         
         try {
             await pool.query(sql, insertValues);

@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS Users (
   city VARCHAR(100) NULL,
   province VARCHAR(100) NULL,
   zip_code VARCHAR(20) NULL,
+  billing_type VARCHAR(100) NULL,
+  contracted_services TEXT NULL COMMENT 'JSON array o string (ej. StarPOS, Cloud Nube)',
   company_id INT UNSIGNED NULL,
   department_id INT UNSIGNED NULL,
   plan VARCHAR(50) DEFAULT 'Free',
@@ -119,6 +121,19 @@ CREATE TABLE IF NOT EXISTS notifications (
   related_id INT UNSIGNED NULL,
   related_type VARCHAR(50) NULL,
   is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Documentos de usuario (planillas, contratos)
+CREATE TABLE IF NOT EXISTS user_documents (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  document_name VARCHAR(255) NOT NULL,
+  document_type VARCHAR(80) NOT NULL DEFAULT 'other',
+  file_path VARCHAR(500) NOT NULL,
+  uploaded_by INT UNSIGNED NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_user (user_id)

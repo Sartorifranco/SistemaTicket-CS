@@ -47,6 +47,7 @@ const getUsers = async (req, res) => {
                     u.plan, u.phone, u.cuit, u.company_id, u.department_id,
                     u.permissions, u.can_manage_tech_finances,
                     u.business_name as business_name_text,
+                    u.billing_type, u.contracted_services,
                     c.name as company_name_linked, d.name as department_name
                 FROM Users u
                 LEFT JOIN Companies c ON u.company_id = c.id
@@ -54,7 +55,20 @@ const getUsers = async (req, res) => {
                 ORDER BY u.id DESC
             `);
         } catch (colErr) {
-            if (colErr.message?.includes('full_name')) {
+            if (colErr.message?.includes('billing_type') || colErr.message?.includes('contracted_services')) {
+                [users] = await pool.query(`
+                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
+                        u.plan, u.phone, u.cuit, u.company_id, u.department_id,
+                        u.permissions, u.can_manage_tech_finances,
+                        u.business_name as business_name_text,
+                        c.name as company_name_linked, d.name as department_name
+                    FROM Users u
+                    LEFT JOIN Companies c ON u.company_id = c.id
+                    LEFT JOIN Departments d ON u.department_id = d.id
+                    ORDER BY u.id DESC
+                `);
+                users.forEach(u => { u.billing_type = null; u.contracted_services = null; });
+            } else if (colErr.message?.includes('full_name')) {
                 [users] = await pool.query(`
                     SELECT u.id, u.username, u.username as full_name, u.email, u.role, u.status, u.is_active,
                         u.plan, u.phone, u.cuit, u.company_id, u.department_id,
@@ -122,7 +136,7 @@ const getUserById = async (req, res) => {
 // --- Crear usuario (Admin) ---
 const createUser = async (req, res) => {
     try {
-        const { username, email, password, role, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, iva_condition, address, city, province, zip_code } = req.body;
+        const { username, email, password, role, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, iva_condition, address, city, province, zip_code, billing_type, contracted_services } = req.body;
 
         const [existing] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ message: 'El usuario ya existe' });
@@ -134,14 +148,19 @@ const createUser = async (req, res) => {
         const finalCompanyId = (company_id && company_id !== '' && company_id !== '0') ? company_id : null;
         const finalDepartmentId = (department_id && department_id !== '' && department_id !== '0') ? department_id : null;
 
+        const contractedServicesStr = Array.isArray(contracted_services)
+            ? JSON.stringify(contracted_services)
+            : (typeof contracted_services === 'string' ? contracted_services : null);
+
         const [result] = await pool.query(
             `INSERT INTO Users (
                 username, email, password, role, 
                 department_id, company_id, plan, 
                 phone, cuit, business_name, fantasy_name, 
                 iva_condition, address, city, province, zip_code,
+                billing_type, contracted_services,
                 is_active, status, last_login, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW(), NOW())`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', NOW(), NOW())`,
             [
                 username, 
                 email, 
@@ -158,7 +177,9 @@ const createUser = async (req, res) => {
                 (address || '').trim() || null,
                 (city || '').trim() || null,
                 (province || '').trim() || null,
-                (zip_code || '').trim() || null
+                (zip_code || '').trim() || null,
+                (billing_type || '').trim() || null,
+                contractedServicesStr,
             ]
         );
 
@@ -172,7 +193,7 @@ const createUser = async (req, res) => {
 // --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
-        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, can_manage_tech_finances, iva_condition, address, city, province, zip_code } = req.body;
+        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, can_manage_tech_finances, iva_condition, address, city, province, zip_code, billing_type, contracted_services } = req.body;
         const userId = req.params.id;
 
         // Si el rol del solicitante es 'agent', solo puede actualizar campos básicos del cliente
@@ -185,8 +206,10 @@ const updateUser = async (req, res) => {
             if (target.role !== 'client') {
                 return res.status(403).json({ message: 'No tenés permiso para editar este usuario.' });
             }
-            // Solo actualiza campos básicos — preserva role y status existentes
-            const agentUpdates = ['username = ?', 'full_name = ?', 'email = ?', 'phone = ?', 'cuit = ?', 'company_id = ?', 'department_id = ?'];
+            // Solo actualiza campos básicos + facturación/servicios — preserva role y status existentes
+            const agentBilling = (billing_type || '').trim() || null;
+            const agentServices = Array.isArray(contracted_services) ? JSON.stringify(contracted_services) : (typeof contracted_services === 'string' ? contracted_services : null);
+            const agentUpdates = ['username = ?', 'full_name = ?', 'email = ?', 'phone = ?', 'cuit = ?', 'company_id = ?', 'department_id = ?', 'billing_type = ?', 'contracted_services = ?'];
             const agentValues = [
                 username,
                 (full_name || '').trim() || null,
@@ -195,6 +218,8 @@ const updateUser = async (req, res) => {
                 cuit || '',
                 (company_id && company_id !== '' && company_id !== '0') ? company_id : null,
                 (department_id && department_id !== '' && department_id !== '0') ? department_id : null,
+                agentBilling,
+                agentServices,
                 userId
             ];
             await pool.query(`UPDATE Users SET ${agentUpdates.join(', ')} WHERE id = ?`, agentValues);
@@ -214,19 +239,25 @@ const updateUser = async (req, res) => {
             ? serializePermissions(permissions)
             : null;
 
+        const contractedServicesStr = Array.isArray(contracted_services)
+            ? JSON.stringify(contracted_services)
+            : (typeof contracted_services === 'string' ? contracted_services : null);
+
         const updates = [
             'username = ?', 'full_name = ?', 'email = ?', 'role = ?', 'status = ?', 'is_active = ?',
             'department_id = ?', 'company_id = ?', 'plan = ?',
             'phone = ?', 'cuit = ?', 'business_name = ?', 'fantasy_name = ?',
             'iva_condition = ?', 'address = ?', 'city = ?', 'province = ?', 'zip_code = ?',
-            'can_manage_tech_finances = ?'
+            'can_manage_tech_finances = ?', 'billing_type = ?', 'contracted_services = ?'
         ];
         const values = [
             username, finalFullName, email, role, newStatus, isActive,
             finalDepartmentId, finalCompanyId, plan || 'Free',
             phone || '', cuit || '', business_name || '', fantasy_name || '',
             (iva_condition || '').trim() || null, (address || '').trim() || null, (city || '').trim() || null, (province || '').trim() || null, (zip_code || '').trim() || null,
-            (role === 'agent' && can_manage_tech_finances === true) ? 1 : 0
+            (role === 'agent' && can_manage_tech_finances === true) ? 1 : 0,
+            (billing_type || '').trim() || null,
+            contractedServicesStr
         ];
         if (finalPermissions !== null) {
             updates.push('permissions = ?');
@@ -340,6 +371,52 @@ const getTechnicians = async (req, res) => {
     }
 };
 
+// --- Documentos del usuario (planillas, contratos) ---
+const getUserDocuments = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const [rows] = await pool.query(
+            `SELECT id, user_id, document_name, document_type, file_path, uploaded_by, created_at 
+             FROM user_documents WHERE user_id = ? ORDER BY created_at DESC`,
+            [userId]
+        );
+        res.json({ success: true, data: rows });
+    } catch (error) {
+        if (error.message?.includes("doesn't exist")) {
+            return res.json({ success: true, data: [] });
+        }
+        console.error('getUserDocuments:', error);
+        res.status(500).json({ message: 'Error al listar documentos' });
+    }
+};
+
+const uploadUserDocument = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const uploadedBy = req.user?.id;
+        const documentType = (req.body.document_type || 'other').trim() || 'other';
+        const documentName = (req.body.document_name || '').trim() || (req.file?.originalname || 'documento');
+
+        if (!req.file || !req.file.filename) {
+            return res.status(400).json({ message: 'No se envió ningún archivo o el tipo no está permitido (PDF, JPG, PNG).' });
+        }
+        const filePath = `/uploads/${req.file.filename}`;
+
+        await pool.query(
+            `INSERT INTO user_documents (user_id, document_name, document_type, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)`,
+            [userId, documentName, documentType, filePath, uploadedBy]
+        );
+        res.status(201).json({ success: true, message: 'Documento subido correctamente' });
+    } catch (error) {
+        if (error.message?.includes("doesn't exist")) {
+            return res.status(500).json({ message: 'La tabla user_documents no existe. Ejecutá la migración.' });
+        }
+        console.error('uploadUserDocument:', error);
+        res.status(500).json({ message: 'Error al subir documento' });
+    }
+};
+
 module.exports = {
-    getUsers, getUserById, createUser, updateUser, deleteUser, getUserActiveTickets, getAgents, getTechnicians
+    getUsers, getUserById, createUser, updateUser, deleteUser, getUserActiveTickets, getAgents, getTechnicians,
+    getUserDocuments, uploadUserDocument
 };
