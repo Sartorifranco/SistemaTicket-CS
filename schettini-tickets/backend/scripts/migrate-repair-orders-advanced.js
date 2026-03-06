@@ -128,28 +128,41 @@ async function main() {
     console.log('✓ Tabla repair_order_items creada');
 
     console.log('\n=== 4. Migrar datos de equipos a repair_order_items ===\n');
-    const [orders] = await conn.query(`
-      SELECT id, equipment_type, model, serial_number, reported_fault, included_accessories, is_warranty
-      FROM repair_orders
+    const [colsRows] = await conn.query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'repair_orders'
     `);
-    const [existingItems] = await conn.query('SELECT COUNT(*) as n FROM repair_order_items');
-    if (existingItems[0].n === 0 && orders.length > 0) {
-      for (const o of orders) {
-        await conn.query(
-          `INSERT INTO repair_order_items (repair_order_id, equipment_type, model, serial_number, reported_fault, included_accessories, is_warranty)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            o.id,
-            o.equipment_type || null,
-            o.model || null,
-            o.serial_number || null,
-            o.reported_fault || null,
-            o.included_accessories || null,
-            o.is_warranty || 0
-          ]
-        );
+    const existingCols = new Set(colsRows.map(r => r.COLUMN_NAME));
+    const wantedCols = ['id', 'equipment_type', 'model', 'serial_number', 'reported_fault', 'included_accessories', 'is_warranty'];
+    const selectCols = wantedCols.filter(c => existingCols.has(c));
+    if (!selectCols.includes('id')) {
+      console.log('  (repair_orders sin columna id, omitiendo migración de items)');
+    } else {
+      const [orders] = await conn.query(`
+        SELECT ${selectCols.join(', ')}
+        FROM repair_orders
+      `);
+      const [existingItems] = await conn.query('SELECT COUNT(*) as n FROM repair_order_items');
+      if (existingItems[0].n === 0 && orders.length > 0) {
+        for (const o of orders) {
+          const equipment_type = selectCols.includes('equipment_type') ? (o.equipment_type || null) : null;
+          const model = selectCols.includes('model') ? (o.model || null) : null;
+          const serial_number = selectCols.includes('serial_number') ? (o.serial_number || null) : null;
+          const reported_fault = selectCols.includes('reported_fault') ? (o.reported_fault || null) : null;
+          const included_accessories = selectCols.includes('included_accessories') ? (o.included_accessories || null) : null;
+          const is_warranty = selectCols.includes('is_warranty') ? (o.is_warranty || 0) : 0;
+          await conn.query(
+            `INSERT INTO repair_order_items (repair_order_id, equipment_type, model, serial_number, reported_fault, included_accessories, is_warranty)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [o.id, equipment_type, model, serial_number, reported_fault, included_accessories, is_warranty]
+          );
+        }
+        console.log('✓ Migrados', orders.length, 'registros a repair_order_items');
+      } else if (existingItems[0].n > 0) {
+        console.log('  (repair_order_items ya tiene datos, omitiendo)');
+      } else if (orders.length === 0) {
+        console.log('  (no hay órdenes en repair_orders)');
       }
-      console.log('✓ Migrados', orders.length, 'registros a repair_order_items');
     }
 
     console.log('\n=== 5. repair_orders: nuevos campos ===\n');
@@ -169,11 +182,15 @@ async function main() {
     console.log('\n=== 6. repair_orders: eliminar columnas de equipo (migradas a items) ===\n');
     const dropCols = ['equipment_type', 'model', 'serial_number', 'reported_fault', 'included_accessories', 'is_warranty'];
     for (const col of dropCols) {
+      if (!existingCols.has(col)) {
+        console.log('  (columna', col, 'no existe, omitiendo)');
+        continue;
+      }
       try {
         await conn.query(`ALTER TABLE repair_orders DROP COLUMN \`${col}\``);
         console.log('✓ Eliminada columna', col);
       } catch (e) {
-        if (e.code === 'ER_CANT_DROP_FIELD') console.log('  (columna', col, 'no existe)');
+        if (e.code === 'ER_CANT_DROP_FIELD' || e.code === 'ER_BAD_FIELD_ERROR') console.log('  (columna', col, 'no existe)');
         else throw e;
       }
     }
