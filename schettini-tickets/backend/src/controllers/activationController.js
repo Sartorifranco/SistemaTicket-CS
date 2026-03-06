@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { sendEquipmentReadyEmail } = require('../services/emailService');
+const { createNotification } = require('../utils/notificationManager');
 
 const VALID_FORM_TYPES = ['fiscal', 'no_fiscal', 'controlador_fiscal', 'none'];
 const VALID_STATUSES = ['pending_validation', 'pending_client_fill', 'processing', 'ready'];
@@ -24,11 +25,29 @@ const requestActivation = async (req, res) => {
        VALUES (?, ?, 'none', 'pending_validation', NOW())`,
       [clientId, String(invoice_number).trim()]
     );
+    const activationId = result.insertId;
+
+    const [clientRow] = await pool.query('SELECT username, full_name FROM Users WHERE id = ?', [clientId]);
+    const clientName = (clientRow[0] && (clientRow[0].full_name || clientRow[0].username)) || 'Un cliente';
+    const [staffRows] = await pool.query(
+      "SELECT id FROM Users WHERE role IN ('admin', 'supervisor', 'agent') AND (is_active = 1 OR is_active IS NULL)"
+    );
+    for (const row of staffRows) {
+      await createNotification(
+        row.id,
+        'Nueva Planilla Solicitada',
+        `${clientName} ha solicitado una planilla para validación (factura ${String(invoice_number).trim()}).`,
+        'info',
+        req.io || null,
+        activationId,
+        'activation'
+      );
+    }
 
     res.status(201).json({
       success: true,
       message: 'Solicitud de activación creada. Será validada por el equipo.',
-      data: { id: result.insertId, invoice_number: String(invoice_number).trim(), status: 'pending_validation' }
+      data: { id: activationId, invoice_number: String(invoice_number).trim(), status: 'pending_validation' }
     });
   } catch (error) {
     console.error('Error requestActivation:', error);
@@ -59,11 +78,24 @@ const validateActivation = async (req, res) => {
     if (rows[0].status !== 'pending_validation') {
       return res.status(400).json({ success: false, message: 'Solo se puede validar una activación en estado pending_validation.' });
     }
+    const clientId = rows[0].client_id;
 
     await pool.query(
       `UPDATE activations SET form_type = ?, status = 'pending_client_fill', updated_at = NOW() WHERE id = ?`,
       [form_type, id]
     );
+
+    if (clientId) {
+      await createNotification(
+        clientId,
+        'Actualización de Planilla',
+        'El estado de tu planilla ha cambiado a: Pendiente de completar por vos.',
+        'info',
+        req.io || null,
+        parseInt(id, 10),
+        'activation'
+      );
+    }
 
     res.json({
       success: true,
@@ -123,8 +155,24 @@ const submitForm = async (req, res) => {
       [JSON.stringify(formData), ticketId, id]
     );
 
+    const [clientRow] = await pool.query('SELECT username, full_name FROM Users WHERE id = ?', [clientId]);
+    const clientName = (clientRow[0] && (clientRow[0].full_name || clientRow[0].username)) || 'Un cliente';
+    const [staffRows] = await pool.query(
+      "SELECT id FROM Users WHERE role IN ('admin', 'supervisor', 'agent') AND (is_active = 1 OR is_active IS NULL)"
+    );
+    for (const row of staffRows) {
+      await createNotification(
+        row.id,
+        'Nueva Planilla Recibida',
+        `${clientName} ha enviado una planilla para validación.`,
+        'info',
+        req.io || null,
+        parseInt(id, 10),
+        'activation'
+      );
+    }
     if (req.io) {
-      req.io.to('admin').emit('dashboard_update', { message: 'Nueva activación con formulario enviado' });
+      req.io.to('admin').to('agent').to('supervisor').emit('dashboard_update', { message: 'Nueva activación con formulario enviado' });
     }
 
     res.json({
@@ -244,6 +292,25 @@ const updateActivationStatus = async (req, res) => {
       'UPDATE activations SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, id]
     );
+
+    const statusLabels = {
+      pending_validation: 'Pendiente de validación',
+      pending_client_fill: 'Pendiente de completar por vos',
+      processing: 'En proceso',
+      ready: 'Lista / Finalizada'
+    };
+    const statusLabel = statusLabels[status] || status;
+    if (act.client_id) {
+      await createNotification(
+        act.client_id,
+        'Actualización de Planilla',
+        `El estado de tu planilla ha cambiado a: ${statusLabel}.`,
+        'info',
+        req.io || null,
+        parseInt(id, 10),
+        'activation'
+      );
+    }
 
     if (status === 'ready' && notify_client && act.email) {
       sendEquipmentReadyEmail(act.email, act.full_name || act.username || '', act.invoice_number || '').catch(err => console.error(err));
