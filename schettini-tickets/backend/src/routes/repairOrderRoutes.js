@@ -9,6 +9,7 @@ const {
   getMyRepairOrders,
   getRepairOrderById,
   createRepairOrder,
+  createExternalRecycledOrder,
   updateRepairOrder,
   updateRepairOrderStatus,
   deleteRepairOrder,
@@ -52,9 +53,10 @@ const uploadRecycling = multer({
 
 router.use(protect);
 
-// CRUD (my-orders y monitor deben ir ANTES de :id)
+// CRUD (my-orders, monitor y external-recycled deben ir ANTES de :id)
 router.get('/my-orders', getMyRepairOrders);
 router.get('/monitor', getMonitorOrders);
+router.post('/external-recycled', authorize('admin', 'agent', 'supervisor'), upload.array('photos', 10), createExternalRecycledOrder);
 router.get('/', getRepairOrders);
 router.get('/:id', getRepairOrderById);
 router.post(

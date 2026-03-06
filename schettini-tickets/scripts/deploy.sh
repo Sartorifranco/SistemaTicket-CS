@@ -96,6 +96,13 @@ if [[ -f "backend/scripts/add-article-movements-and-setting.js" ]]; then
     echo ""
 fi
 
+# Órdenes externas en reciclaje (is_external_recycled, external_order_number, external_equipment_status)
+if [[ -f "backend/scripts/add-external-recycled-fields.js" ]]; then
+    echo ">>> Ejecutando migración add-external-recycled-fields..."
+    (cd backend && node scripts/add-external-recycled-fields.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

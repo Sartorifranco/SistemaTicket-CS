@@ -231,7 +231,7 @@ const getRepairOrders = async (req, res) => {
     const data = rows.map(r => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
-      return { ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number };
+      return { ...r, items, equipment_type: first.equipment_type, brand: first.brand, model: first.model, serial_number: first.serial_number };
     });
     res.json({ success: true, data });
   } catch (error) {
@@ -1021,12 +1021,71 @@ const updateRecycling = async (req, res) => {
   }
 };
 
+// POST - Crear orden externa (sistema legado) directamente en Área de Reciclaje
+const createExternalRecycledOrder = async (req, res) => {
+  try {
+    const externalOrderNumber = (req.body.external_order_number || '').trim() || null;
+    const brand = (req.body.brand || '').trim() || null;
+    const model = (req.body.model || '').trim() || null;
+    const serialNumber = (req.body.serial_number || '').trim() || null;
+    const equipmentStatus = (req.body.equipment_status || '').trim() || null;
+    const files = req.files || [];
+    const recyclingPhotoUrls = files.map((f) => `/uploads/${f.filename}`);
+    const recyclingPhotosJson = recyclingPhotoUrls.length > 0 ? JSON.stringify(recyclingPhotoUrls) : null;
+
+    const orderNumber = await generateOrderNumber();
+
+    const [result] = await pool.query(
+      `INSERT INTO repair_orders (
+        client_id, order_number, entry_date, status,
+        is_external_recycled, external_order_number, external_equipment_status,
+        recycling_photos
+      ) VALUES (?, NOW(), ?, ?, 1, ?, ?, ?)`,
+      [
+        null,
+        orderNumber,
+        'abandonado',
+        externalOrderNumber,
+        equipmentStatus,
+        recyclingPhotosJson
+      ]
+    );
+    const repairOrderId = result.insertId;
+
+    await pool.query(
+      `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)
+       VALUES (?, NULL, ?, ?, ?, NULL, NULL, 0, NULL, 0)`,
+      [repairOrderId, brand, model, serialNumber]
+    );
+
+    if (req.user?.id) {
+      const { createActivityLog } = require('../utils/activityLogger');
+      createActivityLog(req.user.id, 'repair_order', 'created', `Orden externa cargada: ${externalOrderNumber || orderNumber}`, repairOrderId, null, { is_external_recycled: true });
+    }
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
+    res.status(201).json({
+      success: true,
+      message: 'Orden externa cargada en reciclaje',
+      data: { id: repairOrderId, orderNumber, external_order_number: externalOrderNumber }
+    });
+  } catch (error) {
+    if (error.message?.includes('is_external_recycled') || error.message?.includes('external_order_number') || error.message?.includes('external_equipment_status')) {
+      return res.status(500).json({ success: false, message: 'Faltan columnas en la BD. Ejecutá la migración: node backend/scripts/add-external-recycled-fields.js' });
+    }
+    console.error('Error createExternalRecycledOrder:', error);
+    res.status(500).json({ success: false, message: 'Error al cargar orden externa' });
+  }
+};
+
 module.exports = {
   getRepairOrders,
   getMonitorOrders,
   getMyRepairOrders,
   getRepairOrderById,
   createRepairOrder,
+  createExternalRecycledOrder,
   updateRepairOrder,
   updateRepairOrderStatus,
   deleteRepairOrder,
