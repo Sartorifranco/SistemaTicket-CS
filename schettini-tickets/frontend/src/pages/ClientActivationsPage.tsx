@@ -6,7 +6,7 @@ import HelpTooltip from '../components/Common/HelpTooltip';
 import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
-type FormType = 'alta_general' | 'controlador_fiscal' | 'fiscal' | 'no_fiscal' | 'none';
+type FormType = 'general' | 'alta_general' | 'controlador_fiscal' | 'fiscal' | 'no_fiscal' | 'none';
 
 interface Activation {
   id: number;
@@ -26,7 +26,8 @@ const STATUS_LABELS: Record<ActivationStatus, string> = {
 };
 
 const FORM_TYPE_LABELS: Record<string, string> = {
-  alta_general: 'Alta General',
+  general: 'Planilla Estándar',
+  alta_general: 'Planilla Estándar',
   controlador_fiscal: 'Controlador Fiscal',
   fiscal: 'Fiscal',
   no_fiscal: 'No fiscal',
@@ -223,7 +224,7 @@ interface ActivationFormModalProps {
 const CONTRATO_CLOUD_NUBE_BLANCO_URL = '/documents/contrato-cloud-nube-blank.pdf';
 
 const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, onClose, onSuccess, submitting, setSubmitting }) => {
-  const isAltaGeneral = activation.form_type === 'alta_general';
+  const isAltaGeneral = activation.form_type === 'alta_general' || activation.form_type === 'general';
   const isControladorFiscal = activation.form_type === 'controlador_fiscal';
   const isLegacyFiscal = activation.form_type === 'fiscal';
   const isLegacyNoFiscal = activation.form_type === 'no_fiscal';

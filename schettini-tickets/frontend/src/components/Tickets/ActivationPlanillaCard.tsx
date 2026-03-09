@@ -20,7 +20,8 @@ const FORM_LABELS: Record<string, string> = {
 };
 
 const FORM_TYPE_LABELS: Record<string, string> = {
-  alta_general: 'Alta General',
+  general: 'Planilla Estándar',
+  alta_general: 'Planilla Estándar',
   controlador_fiscal: 'Controlador Fiscal',
   fiscal: 'Fiscal',
   no_fiscal: 'No Fiscal',

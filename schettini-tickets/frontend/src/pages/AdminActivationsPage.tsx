@@ -7,8 +7,8 @@ import SectionCard from '../components/Common/SectionCard';
 import { FaCheckCircle, FaTicketAlt, FaBoxOpen, FaTimes, FaBell } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
-type FormType = 'alta_general' | 'controlador_fiscal';
-type FormTypeApi = FormType | 'fiscal' | 'no_fiscal' | 'none';
+type FormType = 'general' | 'controlador_fiscal';
+type FormTypeApi = FormType | 'alta_general' | 'fiscal' | 'no_fiscal' | 'none';
 
 interface Activation {
   id: number;
@@ -32,7 +32,7 @@ const STATUS_LABELS: Record<ActivationStatus, string> = {
 };
 
 const FORM_TYPE_OPTIONS: { value: FormType; label: string }[] = [
-  { value: 'alta_general', label: 'Alta General (El cliente elige su facturación)' },
+  { value: 'general', label: 'Planilla Estándar (El cliente completará sus datos)' },
   { value: 'controlador_fiscal', label: 'Controlador Fiscal' }
 ];
 
@@ -50,7 +50,7 @@ const AdminActivationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({ pending_validation: 0, pending_client_fill: 0, processing: 0, ready: 0 });
   const [validateModalId, setValidateModalId] = useState<number | null>(null);
-  const [selectedFormType, setSelectedFormType] = useState<FormType>('alta_general');
+  const [selectedFormType, setSelectedFormType] = useState<FormType>('general');
   const [validating, setValidating] = useState(false);
   const [markingReadyId, setMarkingReadyId] = useState<number | null>(null);
   const [confirmReadyModal, setConfirmReadyModal] = useState<{ id: number; invoice_number: string } | null>(null);
@@ -182,7 +182,7 @@ const AdminActivationsPage: React.FC = () => {
                         {a.status === 'pending_validation' && (
                           <button
                             type="button"
-                            onClick={() => { setValidateModalId(a.id); setSelectedFormType('alta_general'); }}
+                            onClick={() => { setValidateModalId(a.id); setSelectedFormType('general'); }}
                             className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
                           >
                             <FaCheckCircle /> Validar

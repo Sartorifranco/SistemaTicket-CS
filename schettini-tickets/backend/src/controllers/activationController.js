@@ -2,7 +2,7 @@ const pool = require('../config/db');
 const { sendEquipmentReadyEmail } = require('../services/emailService');
 const { createNotification } = require('../utils/notificationManager');
 
-const VALID_FORM_TYPES = ['alta_general', 'controlador_fiscal', 'fiscal', 'no_fiscal', 'none'];
+const VALID_FORM_TYPES = ['general', 'controlador_fiscal', 'alta_general', 'fiscal', 'no_fiscal', 'none'];
 const VALID_STATUSES = ['pending_validation', 'pending_client_fill', 'processing', 'ready'];
 
 // POST /api/activations/request — Cliente envía { invoice_number }

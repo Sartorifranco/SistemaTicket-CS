@@ -89,6 +89,13 @@ if [[ -f "backend/scripts/fix-role-varchar.js" ]]; then
     echo ""
 fi
 
+# Columna form_type: ENUM → VARCHAR(100) para planilla estándar (general) y controlador fiscal
+if [[ -f "backend/scripts/fix-form-type-varchar.js" ]]; then
+    echo ">>> Convirtiendo columna form_type a VARCHAR(100)..."
+    (cd backend && node scripts/fix-form-type-varchar.js) || true
+    echo ""
+fi
+
 # Tabla article_movements y agents_can_view_movements (Fase 3 Movimientos de Artículos)
 if [[ -f "backend/scripts/add-article-movements-and-setting.js" ]]; then
     echo ">>> Ejecutando migración article_movements y agents_can_view_movements..."
