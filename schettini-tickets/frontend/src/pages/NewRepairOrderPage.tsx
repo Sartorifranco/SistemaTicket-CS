@@ -109,6 +109,7 @@ const NewRepairOrderPage: React.FC = () => {
   const [technicianId, setTechnicianId] = useState<string>('');
   const [priority, setPriority] = useState<Priority>('Normal');
 
+  // Fotos: siempre iniciar vacío. No usar valor por defecto ni mock para evitar que aparezca una imagen en todas las órdenes.
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [loading, setLoading] = useState(false);
 

@@ -202,16 +202,18 @@ const ClientRepairsPage: React.FC = () => {
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Fotos del equipo al ingreso</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {selectedOrder.photos.map((p) => (
-                          <div key={p.id} className="space-y-1">
-                            <img
-                              src={getImageUrl(p.photo_url)}
-                              alt={p.perspective_label}
-                              className="w-full aspect-square object-cover rounded-lg border"
-                            />
-                            <p className="text-xs text-gray-500">{p.perspective_label}</p>
-                          </div>
-                        ))}
+                        {selectedOrder.photos
+                          .filter((p) => p && p.photo_url)
+                          .map((p) => (
+                            <div key={p.id} className="space-y-1">
+                              <img
+                                src={getImageUrl(p.photo_url)}
+                                alt={p.perspective_label || 'Foto'}
+                                className="w-full aspect-square object-cover rounded-lg border"
+                              />
+                              <p className="text-xs text-gray-500">{p.perspective_label}</p>
+                            </div>
+                          ))}
                       </div>
                     </div>
                   )}

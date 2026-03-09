@@ -514,7 +514,8 @@ const createRepairOrder = async (req, res) => {
       );
     }
 
-    if (files.length > 0) {
+    // Solo insertar fotos si el usuario subió archivos. Nunca asignar imagen por defecto ni mock.
+    if (Array.isArray(files) && files.length > 0) {
       let perspectiveLabels = [];
       try {
         perspectiveLabels = req.body.perspectiveLabels

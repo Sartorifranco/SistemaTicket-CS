@@ -1126,16 +1126,18 @@ const ManageRepairOrderPage: React.FC = () => {
       {order.photos && order.photos.length > 0 && (
         <SectionCard title="Fotos">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {order.photos.map((p) => (
-              <div key={p.id} className="space-y-1">
-                <img
-                  src={getImageUrl(p.photo_url)}
-                  alt={p.perspective_label}
-                  className="w-full aspect-square object-cover rounded-lg border"
-                />
-                <p className="text-xs text-gray-500">{p.perspective_label}</p>
-              </div>
-            ))}
+            {order.photos
+              .filter((p) => p && p.photo_url)
+              .map((p) => (
+                <div key={p.id} className="space-y-1">
+                  <img
+                    src={getImageUrl(p.photo_url)}
+                    alt={p.perspective_label || 'Foto'}
+                    className="w-full aspect-square object-cover rounded-lg border"
+                  />
+                  <p className="text-xs text-gray-500">{p.perspective_label}</p>
+                </div>
+              ))}
           </div>
         </SectionCard>
       )}
