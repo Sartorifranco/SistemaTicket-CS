@@ -6,7 +6,7 @@ import HelpTooltip from '../components/Common/HelpTooltip';
 import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
-type FormType = 'fiscal' | 'no_fiscal' | 'controlador_fiscal' | 'none';
+type FormType = 'alta_general' | 'controlador_fiscal' | 'fiscal' | 'no_fiscal' | 'none';
 
 interface Activation {
   id: number;
@@ -25,12 +25,18 @@ const STATUS_LABELS: Record<ActivationStatus, string> = {
   ready: 'Listo'
 };
 
-const FORM_TYPE_LABELS: Record<FormType, string> = {
+const FORM_TYPE_LABELS: Record<string, string> = {
+  alta_general: 'Alta General',
+  controlador_fiscal: 'Controlador Fiscal',
   fiscal: 'Fiscal',
   no_fiscal: 'No fiscal',
-  controlador_fiscal: 'Controlador fiscal',
   none: 'Sin tipo'
 };
+
+const BILLING_TYPE_OPTIONS = [
+  { value: 'fiscal', label: 'Fiscal (Facturación Electrónica)' },
+  { value: 'no_fiscal', label: 'No Fiscal (Ticket Interno)' }
+];
 
 const CONDICION_IVA_OPTIONS = [
   { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
@@ -214,22 +220,42 @@ interface ActivationFormModalProps {
   setSubmitting: (v: boolean) => void;
 }
 
+const CONTRATO_CLOUD_NUBE_BLANCO_URL = '/documents/contrato-cloud-nube-blank.pdf';
+
 const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, onClose, onSuccess, submitting, setSubmitting }) => {
-  const isFiscal = activation.form_type === 'fiscal';
-  const isNoFiscal = activation.form_type === 'no_fiscal';
+  const isAltaGeneral = activation.form_type === 'alta_general';
+  const isControladorFiscal = activation.form_type === 'controlador_fiscal';
+  const isLegacyFiscal = activation.form_type === 'fiscal';
+  const isLegacyNoFiscal = activation.form_type === 'no_fiscal';
 
   const [form, setForm] = useState<Record<string, string>>({});
+  const [clientBillingChoice, setClientBillingChoice] = useState<'fiscal' | 'no_fiscal' | ''>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [constanciaFile, setConstanciaFile] = useState<File | null>(null);
   const [noClaveFiscal, setNoClaveFiscal] = useState(false);
+  const [cloudNubeDesea, setCloudNubeDesea] = useState(false);
+  const [cloudNubeContratoFile, setCloudNubeContratoFile] = useState<File | null>(null);
+
+  const showFiscalFields = isAltaGeneral ? clientBillingChoice === 'fiscal' : isLegacyFiscal;
+  const showNoFiscalFields = isAltaGeneral ? clientBillingChoice === 'no_fiscal' : isLegacyNoFiscal;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAltaGeneral && !clientBillingChoice) {
+      toast.warn('Seleccioná el tipo de facturación deseada.');
+      return;
+    }
+    if (cloudNubeDesea && !cloudNubeContratoFile) {
+      toast.warn('Si desea contratar Cloud Nube, debe adjuntar el contrato firmado.');
+      return;
+    }
     const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== '') fd.append(k, v); });
+    Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== '') fd.append(k, String(v)); });
+    if (isAltaGeneral && clientBillingChoice) fd.append('billing_type', clientBillingChoice);
     if (noClaveFiscal) fd.append('no_brindar_clave_fiscal', '1');
     if (logoFile) fd.append('logo', logoFile);
-    if (constanciaFile && isFiscal) fd.append('constancia_alta', constanciaFile);
+    if (constanciaFile && showFiscalFields) fd.append('constancia_alta', constanciaFile);
+    if (cloudNubeDesea && cloudNubeContratoFile) fd.append('cloud_nube_contrato', cloudNubeContratoFile);
 
     setSubmitting(true);
     api.post(`/api/activations/${activation.id}/submit-form`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -261,7 +287,27 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
             </label>
             <input type="text" name="invoice_number" value={form.invoice_number ?? ''} onChange={(e) => update('invoice_number', e.target.value)} placeholder="N° Factura" className="w-full px-3 py-2 border rounded-lg" />
           </div>
-          {isFiscal && (
+
+          {isAltaGeneral && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ¿Tipo de Facturación deseada? <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={clientBillingChoice}
+                onChange={(e) => setClientBillingChoice(e.target.value as 'fiscal' | 'no_fiscal')}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+              >
+                <option value="">Seleccionar...</option>
+                {BILLING_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {showFiscalFields && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Condición ante el IVA <span className="text-red-500">*</span></label>
@@ -332,7 +378,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
               </div>
             </>
           )}
-          {isNoFiscal && (
+          {showNoFiscalFields && (
             <>
               <input type="text" name="tipo_rubro" value={form.tipo_rubro ?? ''} onChange={(e) => update('tipo_rubro', e.target.value)} placeholder="Tipo Rubro" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" className="w-full px-3 py-2 border rounded-lg" />
@@ -344,9 +390,45 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
               </div>
             </>
           )}
-          {!isFiscal && !isNoFiscal && (
+          {isControladorFiscal && (
             <p className="text-gray-500 text-sm">Completá los datos que te haya indicado el equipo y subí los archivos necesarios.</p>
           )}
+          {isAltaGeneral && !clientBillingChoice && (
+            <p className="text-gray-500 text-sm">Elegí el tipo de facturación para ver los campos a completar.</p>
+          )}
+
+          {/* Sección Cloud Nube */}
+          <div className="pt-4 mt-4 border-t border-gray-200 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-800">Servicio Cloud Nube</h3>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cloudNubeDesea}
+                onChange={(e) => { setCloudNubeDesea(e.target.checked); if (!e.target.checked) setCloudNubeContratoFile(null); }}
+                className="rounded border-gray-300 text-indigo-600"
+              />
+              <span className="text-sm text-gray-700">¿Desea contratar Cloud Nube?</span>
+            </label>
+            {cloudNubeDesea && (
+              <div className="pl-6 space-y-2">
+                <p className="text-xs text-gray-600">
+                  <a href={CONTRATO_CLOUD_NUBE_BLANCO_URL} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                    Descargar Contrato en Blanco
+                  </a>
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contrato Firmado (PDF o imagen) <span className="text-red-500">*</span></label>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => setCloudNubeContratoFile(e.target.files?.[0] || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                  {cloudNubeContratoFile && <p className="text-xs text-gray-500 mt-1">{cloudNubeContratoFile.name}</p>}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">

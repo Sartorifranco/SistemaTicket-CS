@@ -7,13 +7,14 @@ import SectionCard from '../components/Common/SectionCard';
 import { FaCheckCircle, FaTicketAlt, FaBoxOpen, FaTimes, FaBell } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
-type FormType = 'fiscal' | 'no_fiscal' | 'controlador_fiscal' | 'none';
+type FormType = 'alta_general' | 'controlador_fiscal';
+type FormTypeApi = FormType | 'fiscal' | 'no_fiscal' | 'none';
 
 interface Activation {
   id: number;
   client_id: number;
   invoice_number: string;
-  form_type: FormType;
+  form_type: FormTypeApi;
   status: ActivationStatus;
   ticket_id?: number | null;
   client_name?: string;
@@ -31,10 +32,8 @@ const STATUS_LABELS: Record<ActivationStatus, string> = {
 };
 
 const FORM_TYPE_OPTIONS: { value: FormType; label: string }[] = [
-  { value: 'fiscal', label: 'Fiscal' },
-  { value: 'no_fiscal', label: 'No fiscal' },
-  { value: 'controlador_fiscal', label: 'Controlador fiscal' },
-  { value: 'none', label: 'Ninguno' }
+  { value: 'alta_general', label: 'Alta General (El cliente elige su facturación)' },
+  { value: 'controlador_fiscal', label: 'Controlador Fiscal' }
 ];
 
 function formatDate(d: string | undefined): string {
@@ -51,7 +50,7 @@ const AdminActivationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({ pending_validation: 0, pending_client_fill: 0, processing: 0, ready: 0 });
   const [validateModalId, setValidateModalId] = useState<number | null>(null);
-  const [selectedFormType, setSelectedFormType] = useState<FormType>('fiscal');
+  const [selectedFormType, setSelectedFormType] = useState<FormType>('alta_general');
   const [validating, setValidating] = useState(false);
   const [markingReadyId, setMarkingReadyId] = useState<number | null>(null);
   const [confirmReadyModal, setConfirmReadyModal] = useState<{ id: number; invoice_number: string } | null>(null);
@@ -183,7 +182,7 @@ const AdminActivationsPage: React.FC = () => {
                         {a.status === 'pending_validation' && (
                           <button
                             type="button"
-                            onClick={() => { setValidateModalId(a.id); setSelectedFormType('fiscal'); }}
+                            onClick={() => { setValidateModalId(a.id); setSelectedFormType('alta_general'); }}
                             className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
                           >
                             <FaCheckCircle /> Validar

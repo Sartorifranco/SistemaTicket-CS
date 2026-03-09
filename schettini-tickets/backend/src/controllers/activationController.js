@@ -2,7 +2,7 @@ const pool = require('../config/db');
 const { sendEquipmentReadyEmail } = require('../services/emailService');
 const { createNotification } = require('../utils/notificationManager');
 
-const VALID_FORM_TYPES = ['fiscal', 'no_fiscal', 'controlador_fiscal', 'none'];
+const VALID_FORM_TYPES = ['alta_general', 'controlador_fiscal', 'fiscal', 'no_fiscal', 'none'];
 const VALID_STATUSES = ['pending_validation', 'pending_client_fill', 'processing', 'ready'];
 
 // POST /api/activations/request — Cliente envía { invoice_number }
@@ -138,6 +138,24 @@ const submitForm = async (req, res) => {
       originalName: f.originalname
     }));
     const formData = { ...body, _uploads: uploads };
+
+    if (body.billing_type === 'fiscal' || body.billing_type === 'no_fiscal') {
+      await pool.query('UPDATE Users SET billing_type = ?, updated_at = NOW() WHERE id = ?', [body.billing_type, clientId]);
+    }
+
+    const cloudNubeFile = files.find(f => (f.fieldname || '') === 'cloud_nube_contrato');
+    if (cloudNubeFile && cloudNubeFile.filename) {
+      try {
+        await pool.query(
+          'INSERT INTO user_documents (user_id, document_name, document_type, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)',
+          [clientId, 'Contrato Cloud Nube firmado', 'cloud_nube_contrato', `/uploads/${cloudNubeFile.filename}`, clientId]
+        );
+      } catch (docErr) {
+        if (!docErr.message || !docErr.message.includes("doesn't exist")) {
+          console.error('Error guardando contrato Cloud Nube en user_documents:', docErr);
+        }
+      }
+    }
 
     const invoiceNumber = activation.invoice_number || '';
     const ticketTitle = `Alta de Sistema - Factura ${invoiceNumber}`.trim();
