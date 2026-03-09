@@ -280,14 +280,6 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-              N° Factura/Pedido
-              <HelpTooltip text="Lo encontrás en el margen superior derecho de tu comprobante." />
-            </label>
-            <input type="text" name="invoice_number" value={form.invoice_number ?? ''} onChange={(e) => update('invoice_number', e.target.value)} placeholder="N° Factura" className="w-full px-3 py-2 border rounded-lg" />
-          </div>
-
           {isAltaGeneral && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -304,8 +296,17 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">Fiscal: Facturación Electrónica (AFIP). No Fiscal: Ticket Interno.</p>
             </div>
           )}
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+              N° Factura/Pedido
+              <HelpTooltip text="Lo encontrás en el margen superior derecho de tu comprobante." />
+            </label>
+            <input type="text" name="invoice_number" value={form.invoice_number ?? ''} onChange={(e) => update('invoice_number', e.target.value)} placeholder="N° Factura" className="w-full px-3 py-2 border rounded-lg" />
+          </div>
 
           {showFiscalFields && (
             <>
