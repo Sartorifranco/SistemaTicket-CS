@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { getImageUrl } from '../utils/imageUrl';
 import {
     FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
-    FaFolderOpen, FaChevronRight, FaFolder, FaTimes, FaFolderTree
+    FaFolderOpen, FaChevronRight, FaFolder, FaTimes
 } from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
 import DriversPage from './DriversPage';
@@ -441,7 +441,7 @@ const AdminResourcesPage: React.FC = () => {
                                             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded transition text-xs font-medium flex items-center gap-1"
                                             title="Mover a otra carpeta"
                                         >
-                                            <FaFolderTree size={12} /> Mover
+                                            <FaFolder size={12} /> Mover
                                         </button>
                                         <select
                                             value={res.section_id || ''}
