@@ -596,10 +596,9 @@ const ManageRepairOrderPage: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name } = e.target;
-    const value = 'checked' in e.target && typeof (e.target as HTMLInputElement).checked === 'boolean'
-      ? (e.target as HTMLInputElement).checked
-      : (e.target as HTMLInputElement).value;
+    const target = e.target as HTMLInputElement;
+    const { name } = target;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
     if (name === 'status' && value === 'abandonado') {
       if (user?.role === 'agent' && order?.entry_date) {
         const entry = new Date(order.entry_date).getTime();
@@ -1075,7 +1074,16 @@ const ManageRepairOrderPage: React.FC = () => {
                   Seña / Pagos ($)
                   <HelpTooltip text="Monto adelantado por el cliente. Se restará del total." />
                 </label>
-                <input type="number" step="0.01" name="depositPaid" value={form.depositPaid} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg" />
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  name="depositPaid"
+                  value={form.depositPaid ?? ''}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Aceptado el</label>

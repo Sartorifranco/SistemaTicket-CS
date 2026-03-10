@@ -654,7 +654,15 @@ const NewRepairOrderPage: React.FC = () => {
                 Monto de seña ($)
                 <HelpTooltip text="Monto que dejó el cliente por adelantado. Se restará automáticamente del total final." />
               </label>
-              <input type="number" step="0.01" min="0" value={depositPaid} onChange={(e) => setDepositPaid(e.target.value)} placeholder="0" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={depositPaid ?? ''}
+                onChange={(e) => setDepositPaid(e.target.value)}
+                placeholder="0"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
             {hasDeposit && (
               <>
