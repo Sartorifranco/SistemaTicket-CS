@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../config/axiosConfig';
+import { getImageUrl } from '../../utils/imageUrl';
 import { formatDateTimeArgentina } from '../../utils/dateFormatter';
 import { FaCommentDots, FaVideo, FaDownload, FaTimes, FaPaperPlane, FaChevronLeft, FaHeadset, FaQuestion, FaBook, FaLink, FaFileAlt, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import io from 'socket.io-client';
@@ -20,6 +21,7 @@ interface Resource {
     type: 'video' | 'article' | 'link' | 'download';
     content: string;
     category: string;
+    image_url?: string | null;
 }
 
 const HelpWidget: React.FC = () => {
@@ -233,7 +235,11 @@ const HelpWidget: React.FC = () => {
                                     resources.length === 0 ? <p className="text-center text-xs text-gray-400 py-4">No hay recursos.</p> :
                                     resources.slice(0, 5).map((res) => (
                                         <a key={res.id} href={getResourceLink(res.content)} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-orange-300 hover:shadow-md transition group text-left cursor-pointer">
-                                            {getResourceIcon(res.type)}
+                                            {res.image_url ? (
+                                                <img src={getImageUrl(res.image_url)} alt={res.title} className="w-10 h-10 object-cover rounded-md shrink-0" />
+                                            ) : (
+                                                getResourceIcon(res.type)
+                                            )}
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-semibold text-gray-700 group-hover:text-orange-600 truncate">{res.title}</div>
                                                 <div className="text-[10px] text-gray-400">{res.category}</div>

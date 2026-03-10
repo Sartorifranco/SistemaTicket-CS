@@ -117,6 +117,13 @@ if [[ -f "backend/scripts/add-external-recycled-fields.js" ]]; then
     echo ""
 fi
 
+# Carpetas jerárquicas Centro de Ayuda (kb_folders + folder_id en knowledge_base)
+if [[ -f "backend/scripts/migrate-kb-folders.js" ]]; then
+    echo ">>> Ejecutando migración kb_folders..."
+    (cd backend && node scripts/migrate-kb-folders.js) || true
+    echo ""
+fi
+
 # Build del frontend (instalar dependencias si faltan)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

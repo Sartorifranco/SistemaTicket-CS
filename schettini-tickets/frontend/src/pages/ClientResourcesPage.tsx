@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
-import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle } from 'react-icons/fa';
+import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle, FaFolder } from 'react-icons/fa';
 import DriversPage from './DriversPage';
 
 interface Resource {
@@ -14,6 +14,19 @@ interface Resource {
     system_id?: number | null;
     section_name?: string;
     system_name?: string;
+    image_url?: string | null;
+}
+
+interface KbFolder {
+    id: number;
+    name: string;
+    parent_id: number | null;
+    sort_order: number;
+}
+
+interface BreadcrumbItem {
+    id: number | null;
+    name: string;
 }
 
 interface ResourceSection {
@@ -31,7 +44,11 @@ interface System {
 
 const ClientResourcesPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'resources' | 'drivers'>('resources');
+    const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+    const [folders, setFolders] = useState<KbFolder[]>([]);
     const [resources, setResources] = useState<Resource[]>([]);
+    const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: 'Inicio' }]);
+    const [loading, setLoading] = useState(true);
     const [sections, setSections] = useState<ResourceSection[]>([]);
     const [systems, setSystems] = useState<System[]>([]);
     const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
@@ -40,13 +57,33 @@ const ClientResourcesPage: React.FC = () => {
     const [modalResource, setModalResource] = useState<Resource | null>(null);
 
     useEffect(() => {
-        api.get('/api/resources').then(res => setResources(res.data.data || []));
+        const load = async () => {
+            setLoading(true);
+            try {
+                const params = currentFolderId != null ? { folder_id: currentFolderId } : {};
+                const res = await api.get('/api/resources/explorer', { params });
+                const d = res.data.data || {};
+                setFolders(d.folders || []);
+                setResources(d.resources || []);
+                setBreadcrumbs(d.breadcrumbs && d.breadcrumbs.length ? d.breadcrumbs : [{ id: null, name: 'Inicio' }]);
+            } catch {
+                setFolders([]);
+                setResources([]);
+                setBreadcrumbs([{ id: null, name: 'Inicio' }]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, [currentFolderId]);
+
+    useEffect(() => {
         api.get('/api/resource-sections').then(res => setSections(res.data.data || []));
         api.get('/api/ticket-config/options').then(res => setSystems(res.data.data?.systems || []));
     }, []);
 
     const filtered = resources.filter(r => {
-        const matchText = r.title.toLowerCase().includes(filter.toLowerCase()) ||
+        const matchText = !filter || r.title.toLowerCase().includes(filter.toLowerCase()) ||
             (r.category && r.category.toLowerCase().includes(filter.toLowerCase())) ||
             (r.section_name && r.section_name.toLowerCase().includes(filter.toLowerCase()));
         const matchSection = !selectedSectionId || r.section_id === selectedSectionId;
@@ -54,15 +91,16 @@ const ClientResourcesPage: React.FC = () => {
         return matchText && matchSection && matchSystem;
     });
 
-    const getResourceCountBySection = (sectionId: number) => 
+    const getResourceCountBySection = (sectionId: number) =>
         resources.filter(r => r.section_id === sectionId).length;
 
     const getResourceUrl = (content: string) => getImageUrl(content) || content;
 
-    const getThumbnail = (res: Resource) => {
-        const url = getResourceUrl(res.content);
-        if (res.type === 'image') return url;
-        return null;
+    /** Miniatura: prioridad image_url (portada subida), luego content para tipo image. Solo fallback a ícono si no hay imagen. */
+    const getThumbnailUrl = (res: Resource): string => {
+        if (res.image_url) return getImageUrl(res.image_url);
+        if (res.type === 'image' && res.content) return getImageUrl(res.content);
+        return '';
     };
 
     const handleCardClick = (res: Resource) => {
@@ -127,13 +165,42 @@ const ClientResourcesPage: React.FC = () => {
             </div>
 
             <div className="container mx-auto px-4 py-8 -mt-2">
-                {/* Filtro por sistema */}
+                {/* Breadcrumbs */}
+                <nav className="flex items-center gap-2 text-sm text-gray-600 mb-4 flex-wrap">
+                    {breadcrumbs.map((b, i) => (
+                        <span key={b.id ?? 'root'}>
+                            {i > 0 && <span className="mx-1 text-gray-400">/</span>}
+                            <button
+                                type="button"
+                                onClick={() => setCurrentFolderId(b.id)}
+                                className={`hover:text-red-600 font-medium ${i === breadcrumbs.length - 1 ? 'text-gray-900' : ''}`}
+                            >
+                                {b.name}
+                            </button>
+                        </span>
+                    ))}
+                </nav>
+
+                {/* Acceso rápido a Drivers */}
+                {sections.some(s => (s.name || '').toLowerCase().includes('driver') || (s.name || '').toLowerCase().includes('descarga')) && (
+                    <div className="mb-6">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('drivers')}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
+                        >
+                            <FaDownload /> Descargas / Drivers
+                        </button>
+                    </div>
+                )}
+
+                {/* Filtro por sistema (solo aplica a recursos en esta carpeta) */}
                 {systems.length > 0 && (
-                    <div className="flex justify-end mb-6">
+                    <div className="flex justify-end mb-4">
                         <select
                             value={selectedSystemId || ''}
                             onChange={e => setSelectedSystemId(e.target.value ? parseInt(e.target.value) : null)}
-                            className="p-2.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                            className="p-2.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:ring-2 focus:ring-red-500 outline-none"
                         >
                             <option value="">Todos los sistemas</option>
                             {systems.map(s => (
@@ -143,116 +210,78 @@ const ClientResourcesPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* Grid de tarjetas de secciones (estilo SectionCard) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sections.map(s => {
-                        const count = getResourceCountBySection(s.id);
-                        const isSelected = selectedSectionId === s.id;
-                        return (
+                {/* Grid: carpetas + recursos (siempre mostrar miniatura cuando exista; ícono solo como fallback) */}
+                {loading ? (
+                    <p className="text-gray-500 py-12 text-center">Cargando...</p>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        {folders.map(f => (
                             <button
-                                key={s.id}
-                                onClick={() => {
-                                    const name = (s.name || '').toLowerCase();
-                                    if (name.includes('driver') || name.includes('descarga')) {
-                                        setViewMode('drivers');
-                                        return;
-                                    }
-                                    setSelectedSectionId(isSelected ? null : s.id);
-                                }}
-                                className={`bg-white rounded-lg shadow-md border p-6 text-left hover:shadow-lg transition-all ${
-                                    isSelected ? 'border-red-600 ring-2 ring-red-100' : 'border-gray-200 hover:border-gray-300'
-                                }`}
+                                key={f.id}
+                                type="button"
+                                onClick={() => setCurrentFolderId(f.id)}
+                                className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center justify-center min-h-[160px] hover:border-red-300 hover:shadow-lg transition text-left"
                             >
-                                <div className="flex items-start gap-4">
-                                    <div className="shrink-0 w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                                        {getSectionIcon(s)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-gray-800 text-lg mb-2">{s.name}</h3>
-                                        <p className="text-sm text-gray-600 whitespace-normal break-words mb-4">
-                                            {getSectionDescription(s)}
-                                        </p>
-                                        <p className="text-xs text-gray-500 font-medium">
-                                            {count} {count === 1 ? 'recurso' : 'recursos'}
-                                        </p>
-                                    </div>
-                                    <FaChevronRight className={`shrink-0 text-gray-400 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
+                                <div className="w-14 h-14 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+                                    <FaFolder size={28} />
                                 </div>
+                                <span className="font-bold text-gray-800 text-center truncate w-full block">{f.name}</span>
                             </button>
-                        );
-                    })}
-                </div>
-
-                {/* Lista de recursos */}
-                {(selectedSectionId !== null || filtered.length > 0) && (
-                    <div className="mt-10">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">
-                            {selectedSectionId 
-                                ? `Recursos en "${sections.find(s => s.id === selectedSectionId)?.name || ''}"`
-                                : 'Todos los recursos'
-                            }
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filtered.map(res => {
-                                const thumb = getThumbnail(res);
-                                const isVideo = res.type === 'video';
-                                return (
-                                    <div 
-                                        key={res.id} 
-                                        onClick={() => handleCardClick(res)}
-                                        className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg hover:border-red-300 transition overflow-hidden cursor-pointer group h-auto"
-                                    >
-                                        <div className="aspect-video bg-gray-800 relative overflow-hidden shrink-0">
-                                            {thumb ? (
-                                                <img src={thumb} alt={res.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    {isVideo ? (
-                                                        <div className="bg-red-600 rounded-full p-6 text-white group-hover:scale-110 transition-transform shadow-lg">
-                                                            <FaPlay size={28} className="ml-1" />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="bg-gray-700 rounded-full p-6 text-white">
-                                                            {res.type === 'download' ? <FaDownload size={28} /> : <FaFileAlt size={28} />}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {isVideo && thumb && (
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
-                                                    <div className="bg-red-600 rounded-full p-4 text-white shadow-lg">
-                                                        <FaPlay size={24} className="ml-1" />
+                        ))}
+                        {filtered.map(res => {
+                            const thumbUrl = getThumbnailUrl(res);
+                            const isVideo = res.type === 'video';
+                            return (
+                                <div
+                                    key={res.id}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleCardClick(res)}
+                                    onKeyDown={e => e.key === 'Enter' && handleCardClick(res)}
+                                    className="bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-lg hover:border-red-300 transition overflow-hidden cursor-pointer group h-auto"
+                                >
+                                    <div className="aspect-video bg-gray-800 relative overflow-hidden shrink-0">
+                                        {thumbUrl ? (
+                                            <img src={thumbUrl} alt={res.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                                                {isVideo ? (
+                                                    <div className="bg-red-600 rounded-full p-6 text-white group-hover:scale-110 transition-transform shadow-lg">
+                                                        <FaPlay size={28} className="ml-1" />
                                                     </div>
+                                                ) : (
+                                                    <div className="bg-gray-700 rounded-full p-6 text-white">
+                                                        {res.type === 'download' ? <FaDownload size={28} /> : <FaFileAlt size={28} />}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {isVideo && thumbUrl && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
+                                                <div className="bg-red-600 rounded-full p-4 text-white shadow-lg">
+                                                    <FaPlay size={24} className="ml-1" />
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div className="p-4 min-h-0 flex flex-col">
-                                            <h3 className="font-bold text-gray-800 group-hover:text-red-600 transition whitespace-normal break-words">{res.title}</h3>
-                                            <p className="text-xs text-red-600 mt-1 font-medium">Ver {isVideo ? 'video' : res.type === 'download' ? 'descargar' : 'recurso'}</p>
-                                            {res.system_name && (
-                                                <p className="text-xs text-gray-500 mt-1 whitespace-normal break-words">{res.system_name}</p>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <div className="p-4 min-h-0 flex flex-col">
+                                        <h3 className="font-bold text-gray-800 group-hover:text-red-600 transition whitespace-normal break-words">{res.title}</h3>
+                                        <p className="text-xs text-red-600 mt-1 font-medium">Ver {isVideo ? 'video' : res.type === 'download' ? 'descargar' : 'recurso'}</p>
+                                        {res.system_name && (
+                                            <p className="text-xs text-gray-500 mt-1 whitespace-normal break-words">{res.system_name}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
-                {filtered.length === 0 && (selectedSectionId !== null || filter) && (
-                    <div className="text-center py-16 text-gray-500 mt-10">
-                        <FaBook className="mx-auto text-5xl text-gray-300 mb-4" />
-                        <p className="font-medium">No se encontraron recursos</p>
-                        <p className="text-sm mt-1">Probá cambiar los filtros o la búsqueda</p>
-                    </div>
-                )}
-
-                {sections.length === 0 && (
+                {!loading && folders.length === 0 && filtered.length === 0 && (
                     <div className="text-center py-16 text-gray-500">
                         <FaBook className="mx-auto text-5xl text-gray-300 mb-4" />
-                        <p className="font-medium">No hay secciones configuradas</p>
-                        <p className="text-sm mt-1">El administrador puede agregar secciones desde la Base de Conocimiento</p>
+                        <p className="font-medium">No hay recursos en esta carpeta</p>
+                        <p className="text-sm mt-1">Navegá con los breadcrumbs o probá otra sección</p>
                     </div>
                 )}
             </div>

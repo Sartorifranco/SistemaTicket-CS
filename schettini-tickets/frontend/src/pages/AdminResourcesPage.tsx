@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp, FaFolderOpen, FaChevronRight } from 'react-icons/fa';
+import { getImageUrl } from '../utils/imageUrl';
+import {
+    FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
+    FaFolderOpen, FaChevronRight, FaFolder, FaTimes
+} from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
 import DriversPage from './DriversPage';
 
@@ -15,6 +19,20 @@ interface Resource {
     system_id?: number | null;
     section_name?: string;
     system_name?: string;
+    image_url?: string | null;
+    folder_id?: number | null;
+}
+
+interface KbFolder {
+    id: number;
+    name: string;
+    parent_id: number | null;
+    sort_order: number;
+}
+
+interface BreadcrumbItem {
+    id: number | null;
+    name: string;
 }
 
 interface ResourceSection {
@@ -30,60 +48,99 @@ interface System {
     name: string;
 }
 
+/** URL de miniatura: prioridad image_url (portada), luego content para tipo image */
+function getResourceThumbnailUrl(res: Resource): string {
+    if (res.image_url) return getImageUrl(res.image_url);
+    if (res.type === 'image' && res.content) return getImageUrl(res.content);
+    return '';
+}
+
 const AdminResourcesPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'resources' | 'drivers'>('resources');
+    const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+    const [folders, setFolders] = useState<KbFolder[]>([]);
     const [resources, setResources] = useState<Resource[]>([]);
+    const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: 'Inicio' }]);
+    const [loading, setLoading] = useState(true);
+
     const [sections, setSections] = useState<ResourceSection[]>([]);
     const [systems, setSystems] = useState<System[]>([]);
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState('video');
-    const [category, setCategory] = useState('General');
-    const [content, setContent] = useState('');
-    const [sectionId, setSectionId] = useState<string>('');
-    const [systemId, setSystemId] = useState<string>('');
-    const [file, setFile] = useState<File | null>(null);
-    const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+    const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [showNewResourceModal, setShowNewResourceModal] = useState(false);
     const [showSectionsManager, setShowSectionsManager] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
     const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
     const [editingSectionName, setEditingSectionName] = useState('');
     const [editingSectionDescription, setEditingSectionDescription] = useState('');
 
-    useEffect(() => {
-        fetchResources();
-        fetchSections();
-        fetchSystems();
+    const [title, setTitle] = useState('');
+    const [type, setType] = useState<'video' | 'image' | 'download' | 'link' | 'article'>('video');
+    const [category, setCategory] = useState('General');
+    const [content, setContent] = useState('');
+    const [sectionId, setSectionId] = useState<string>('');
+    const [systemId, setSystemId] = useState<string>('');
+    const [file, setFile] = useState<File | null>(null);
+    const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+
+    const fetchExplorer = useCallback(async (folderId: number | null) => {
+        setLoading(true);
+        try {
+            const params = folderId != null ? { folder_id: folderId } : {};
+            const res = await api.get('/api/resources/explorer', { params });
+            const { folders: f, resources: r, breadcrumbs: b } = res.data.data || {};
+            setFolders(f || []);
+            setResources(r || []);
+            setBreadcrumbs(b && b.length ? b : [{ id: null, name: 'Inicio' }]);
+        } catch (e) {
+            console.error(e);
+            toast.error('Error al cargar el explorador');
+            setFolders([]);
+            setResources([]);
+            setBreadcrumbs([{ id: null, name: 'Inicio' }]);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const fetchResources = async () => {
+    useEffect(() => {
+        fetchExplorer(currentFolderId);
+    }, [currentFolderId, fetchExplorer]);
+
+    useEffect(() => {
+        api.get('/api/resource-sections').then(res => setSections(res.data.data || [])).catch(() => {});
+        api.get('/api/ticket-config/options').then(res => setSystems(res.data.data?.systems || [])).catch(() => {});
+    }, []);
+
+    const handleCreateFolder = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return toast.error('Escribe el nombre de la carpeta');
         try {
-            const res = await api.get('/api/resources');
-            setResources(res.data.data);
-        } catch (error) {
-            console.error(error);
-            toast.error('Error al cargar recursos');
+            await api.post('/api/kb-folders', { name: newFolderName.trim(), parent_id: currentFolderId });
+            toast.success('Carpeta creada');
+            setNewFolderName('');
+            setShowNewFolderModal(false);
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al crear carpeta');
         }
     };
 
-    const fetchSections = async () => {
+    const handleDeleteFolder = async (id: number) => {
+        if (!window.confirm('¿Eliminar esta carpeta? Las subcarpetas y recursos quedarán en la raíz.')) return;
         try {
-            const res = await api.get('/api/resource-sections');
-            setSections(res.data.data || []);
-        } catch (error) {
-            console.error(error);
+            await api.delete(`/api/kb-folders/${id}`);
+            toast.success('Carpeta eliminada');
+            if (currentFolderId === id) setCurrentFolderId(null);
+            fetchExplorer(currentFolderId === id ? null : currentFolderId);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al eliminar');
         }
     };
 
-    const fetchSystems = async () => {
-        try {
-            const res = await api.get('/api/ticket-config/options');
-            setSystems(res.data.data?.systems || []);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmitResource = async (e: React.FormEvent) => {
         e.preventDefault();
         const formData = new FormData();
         formData.append('title', title);
@@ -91,6 +148,7 @@ const AdminResourcesPage: React.FC = () => {
         formData.append('category', category);
         formData.append('section_id', sectionId || '');
         formData.append('system_id', systemId || '');
+        if (currentFolderId != null) formData.append('folder_id', String(currentFolderId));
 
         if (type === 'video' || type === 'image') {
             if (!file) return toast.error('Debes subir un archivo de video o imagen');
@@ -106,9 +164,7 @@ const AdminResourcesPage: React.FC = () => {
         if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
 
         try {
-            await api.post('/api/resources', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            await api.post('/api/resources', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             toast.success('Recurso agregado correctamente');
             setTitle('');
             setType('video');
@@ -117,22 +173,34 @@ const AdminResourcesPage: React.FC = () => {
             setThumbnailFile(null);
             setSectionId('');
             setSystemId('');
-            fetchResources();
-        } catch (error) {
-            console.error(error);
+            setShowNewResourceModal(false);
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
             toast.error('Error al agregar el recurso');
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDeleteResource = async (id: number) => {
         if (!window.confirm('¿Estás seguro de que deseas borrar este recurso?')) return;
         try {
             await api.delete(`/api/resources/${id}`);
             toast.success('Recurso eliminado');
-            fetchResources();
-        } catch (error) {
-            console.error(error);
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
             toast.error('Error al eliminar');
+        }
+    };
+
+    const handleUpdateResourceSection = async (resourceId: number, newSectionId: string, newSystemId: string) => {
+        try {
+            await api.put(`/api/resources/${resourceId}`, { section_id: newSectionId || null, system_id: newSystemId || null });
+            toast.success('Sección actualizada');
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al actualizar');
         }
     };
 
@@ -142,9 +210,9 @@ const AdminResourcesPage: React.FC = () => {
             await api.post('/api/resource-sections', { name: newSectionName.trim() });
             toast.success('Sección creada');
             setNewSectionName('');
-            fetchSections();
-        } catch (error) {
-            console.error(error);
+            api.get('/api/resource-sections').then(res => setSections(res.data.data || []));
+        } catch (err) {
+            console.error(err);
             toast.error('Error al crear sección');
         }
     };
@@ -157,20 +225,9 @@ const AdminResourcesPage: React.FC = () => {
             setEditingSectionId(null);
             setEditingSectionName('');
             setEditingSectionDescription('');
-            fetchSections();
-        } catch (error) {
-            console.error(error);
-            toast.error('Error al actualizar');
-        }
-    };
-
-    const handleUpdateResourceSection = async (resourceId: number, newSectionId: string, newSystemId: string) => {
-        try {
-            await api.put(`/api/resources/${resourceId}`, { section_id: newSectionId || null, system_id: newSystemId || null });
-            toast.success('Sección actualizada');
-            fetchResources();
-        } catch (error) {
-            console.error(error);
+            api.get('/api/resource-sections').then(res => setSections(res.data.data || []));
+        } catch (err) {
+            console.error(err);
             toast.error('Error al actualizar');
         }
     };
@@ -180,10 +237,10 @@ const AdminResourcesPage: React.FC = () => {
         try {
             await api.delete(`/api/resource-sections/${id}`);
             toast.success('Sección eliminada');
-            fetchSections();
-            fetchResources();
-        } catch (error) {
-            console.error(error);
+            api.get('/api/resource-sections').then(res => setSections(res.data.data || []));
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
             toast.error('Error al eliminar');
         }
     };
@@ -206,8 +263,8 @@ const AdminResourcesPage: React.FC = () => {
 
     return (
         <div className="container mx-auto p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Gestión de Base de Conocimientos</h1>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <h1 className="text-3xl font-bold text-gray-800">Base de Conocimientos</h1>
                 <button
                     type="button"
                     onClick={() => setViewMode('drivers')}
@@ -216,278 +273,268 @@ const AdminResourcesPage: React.FC = () => {
                     <FaFolderOpen /> Descargas / Drivers
                 </button>
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Panel de Formulario */}
-                <SectionCard title="Agregar Nuevo Recurso" className="h-fit">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Título</label>
-                            <input 
-                                type="text" 
-                                placeholder="Ej: Manual de Usuario 2026" 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                value={title} 
-                                onChange={e => setTitle(e.target.value)} 
-                                required 
-                            />
-                        </div>
-                        
-                        <div className="border-l-4 border-red-600 bg-red-50/50 rounded-r-lg p-3">
-                            <label className="block text-xs font-bold text-gray-700 mb-1">¿A qué sección va este recurso?</label>
-                            <select 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500 outline-none bg-white font-medium" 
-                                value={sectionId} 
-                                onChange={e => setSectionId(e.target.value)}
-                            >
-                                <option value="">Sin sección</option>
-                                {sections.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                            </select>
-                            {sections.length === 0 && (
-                                <p className="text-xs text-amber-700 mt-1">Expandí &quot;Gestionar secciones&quot; abajo para crear Tutoriales, Drivers, etc.</p>
-                            )}
-                        </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Sistema (para filtrar)</label>
-                            <select 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                value={systemId} 
-                                onChange={e => setSystemId(e.target.value)}
-                            >
-                                <option value="">Sin sistema</option>
-                                {systems.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Tipo de Recurso</label>
-                            <select 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                value={type} 
-                                onChange={e => { setType(e.target.value); setFile(null); setContent(''); }}
-                            >
-                                <option value="video">Video (subir archivo MP4/WebM)</option>
-                                <option value="image">Imagen (subir archivo PNG/JPG)</option>
-                                <option value="download">Archivo (PDF, Zip)</option>
-                                <option value="link">Enlace Externo</option>
-                                <option value="article">Artículo de Texto</option>
-                            </select>
-                        </div>
-
-                        {(type === 'video' || type === 'image') && (
-                            <div className="bg-blue-50 p-3 rounded border border-blue-100 text-xs text-blue-800 mb-2">
-                                <div className="flex items-start gap-2">
-                                    <FaInfoCircle className="mt-0.5 shrink-0"/>
-                                    <div>
-                                        <strong>Subida directa:</strong><br/>
-                                        {type === 'video' ? 'Sube el archivo de video (MP4, WebM). Máx. 100MB.' : 'Sube la imagen (PNG, JPG, WebP).'}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Categoría</label>
-                            <input 
-                                type="text" 
-                                placeholder="Ej: Facturación, Soporte, General" 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                value={category} 
-                                onChange={e => setCategory(e.target.value)} 
-                            />
-                        </div>
-
-                        <div>
-                             <label className="block text-xs font-bold text-gray-500 mb-1">Contenido / Archivo</label>
-                            {(type === 'video' || type === 'image' || type === 'download' || type === 'article') ? (
-                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer relative hover:bg-gray-50 transition-colors">
-                                    <input 
-                                        type="file" 
-                                        accept={type === 'video' ? 'video/mp4,video/webm' : type === 'image' ? 'image/png,image/jpeg,image/webp' : undefined}
-                                        onChange={e => setFile(e.target.files ? e.target.files[0] : null)} 
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                    <FaCloudUploadAlt className="mx-auto text-gray-400 text-3xl mb-2"/>
-                                    <p className="text-sm text-gray-600 font-medium">{file ? file.name : 'Haz clic para subir un archivo'}</p>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        {type === 'video' ? 'MP4, WebM (máx. 100MB)' : type === 'image' ? 'PNG, JPG, WebP' : 'PDF, ZIP, PNG, JPG'}
-                                    </p>
-                                </div>
-                            ) : (
-                                <input 
-                                    type="text" 
-                                    placeholder="https://ejemplo.com" 
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                    value={content} 
-                                    onChange={e => setContent(e.target.value)} 
-                                    required 
-                                />
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Imagen de Portada / Miniatura (Opcional)</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={e => setThumbnailFile(e.target.files ? e.target.files[0] : null)}
-                                className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700"
-                            />
-                            <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Se usará como miniatura en listados.</p>
-                        </div>
-
-                        <button 
-                            type="submit" 
-                            className="w-full bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700 transition flex justify-center items-center gap-2"
-                        >
-                            <FaPlus/> Publicar Recurso
-                        </button>
-                    </form>
-
-                    {/* Gestión de secciones */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <button 
+            {/* Breadcrumbs */}
+            <nav className="flex items-center gap-2 text-sm text-gray-600 mb-4 flex-wrap">
+                {breadcrumbs.map((b, i) => (
+                    <span key={b.id ?? 'root'}>
+                        {i > 0 && <span className="mx-1 text-gray-400">/</span>}
+                        <button
                             type="button"
-                            onClick={() => setShowSectionsManager(!showSectionsManager)}
-                            className="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-indigo-600 transition w-full"
+                            onClick={() => setCurrentFolderId(b.id)}
+                            className={`hover:text-indigo-600 font-medium ${i === breadcrumbs.length - 1 ? 'text-gray-900' : ''}`}
                         >
-                            <FaCog size={14}/> Gestionar secciones (Tutoriales, Drivers, etc.)
-                            {showSectionsManager ? <FaChevronUp/> : <FaChevronDown/>}
+                            {b.name}
                         </button>
-                        {showSectionsManager && (
-                            <div className="mt-2 space-y-2">
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Nueva sección..." 
-                                        className="flex-1 p-2 border rounded text-sm" 
-                                        value={newSectionName} 
-                                        onChange={e => setNewSectionName(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSection())}
-                                    />
-                                    <button type="button" onClick={handleAddSection} className="bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700">
-                                        <FaPlus/>
-                                    </button>
-                                </div>
-                                <ul className="space-y-1">
-                                    {sections.map(s => (
-                                        <li key={s.id} className="bg-gray-50 p-2 rounded text-sm">
-                                            {editingSectionId === s.id ? (
-                                                <div className="space-y-2">
-                                                    <input 
-                                                        type="text" 
-                                                        value={editingSectionName} 
-                                                        onChange={e => setEditingSectionName(e.target.value)}
-                                                        placeholder="Nombre"
-                                                        className="w-full p-1 border rounded text-sm"
-                                                        autoFocus
-                                                    />
-                                                    <textarea 
-                                                        value={editingSectionDescription} 
-                                                        onChange={e => setEditingSectionDescription(e.target.value)}
-                                                        placeholder="Descripción (visible en la tarjeta)"
-                                                        className="w-full p-1 border rounded text-sm resize-none"
-                                                        rows={2}
-                                                    />
-                                                    <div className="flex gap-1">
-                                                        <button type="button" onClick={() => handleUpdateSection(s.id)} className="text-green-600 hover:text-green-700 font-bold">Guardar</button>
-                                                        <button type="button" onClick={() => { setEditingSectionId(null); setEditingSectionName(''); setEditingSectionDescription(''); }} className="text-gray-500">Cancelar</button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <span className="font-medium">{s.name}</span>
-                                                        {s.description && <p className="text-xs text-gray-500 truncate max-w-[180px]">{s.description}</p>}
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        <button type="button" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.name); setEditingSectionDescription(s.description || ''); }} className="text-indigo-600 hover:text-indigo-700"><FaEdit size={12}/></button>
-                                                        <button type="button" onClick={() => handleDeleteSection(s.id)} className="text-red-500 hover:text-red-600"><FaTrash size={12}/></button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                </SectionCard>
+                    </span>
+                ))}
+            </nav>
 
-                {/* Lista de Recursos */}
-                <div className="lg:col-span-2 space-y-4">
-                    <SectionCard title="Recursos Publicados">
-                    {resources.length === 0 && (
-                        <p className="text-gray-500 text-center py-8">No hay recursos cargados aún.</p>
-                    )}
-                    
-                    {resources.map(res => (
-                        <div key={res.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3 hover:shadow-md transition">
-                            <div className="flex items-center gap-4 overflow-hidden flex-1 min-w-0">
-                                <div className={`text-xl p-3 rounded-full shrink-0 ${
-                                    res.type === 'video' ? 'bg-red-100 text-red-600' : 
-                                    res.type === 'image' ? 'bg-purple-100 text-purple-600' :
-                                    res.type === 'link' ? 'bg-green-100 text-green-600' :
-                                    'bg-blue-100 text-blue-600'
-                                }`}>
-                                    {res.type === 'video' ? <FaVideo/> : 
-                                     res.type === 'image' ? <FaImage/> :
-                                     res.type === 'link' ? <FaLink/> : <FaFileAlt/>}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h4 className="font-bold text-gray-800 truncate">{res.title}</h4>
-                                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 flex-wrap">
-                                        {res.section_name && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded">{res.section_name}</span>}
-                                        {res.system_name && <span className="bg-gray-100 px-2 py-0.5 rounded">{res.system_name}</span>}
-                                        <span className="bg-gray-100 px-2 py-0.5 rounded">{res.category}</span>
-                                        <span className="capitalize">• {res.type}</span>
-                                    </div>
-                                    <span className="text-xs text-gray-500 truncate block max-w-md">
-                                        {res.type === 'video' || res.type === 'image' ? 'Archivo subido' : res.type === 'download' ? 'Descargar Archivo' : res.content}
-                                    </span>
-                                </div>
+            {/* Toolbar: Nueva Carpeta, Nuevo Recurso */}
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+                <button
+                    type="button"
+                    onClick={() => setShowNewFolderModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 transition"
+                >
+                    <FaFolder /> Nueva Carpeta
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setShowNewResourceModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
+                >
+                    <FaPlus /> Nuevo Recurso
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setShowSectionsManager(!showSectionsManager)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition"
+                >
+                    <FaCog /> Gestionar secciones
+                    {showSectionsManager ? <FaChevronUp /> : <FaChevronDown />}
+                </button>
+            </div>
+
+            {showSectionsManager && (
+                <SectionCard title="Secciones (Tutoriales, Drivers, etc.)" className="mb-6">
+                    <div className="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            placeholder="Nueva sección..."
+                            className="flex-1 p-2 border rounded text-sm"
+                            value={newSectionName}
+                            onChange={e => setNewSectionName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSection())}
+                        />
+                        <button type="button" onClick={handleAddSection} className="bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700">
+                            <FaPlus />
+                        </button>
+                    </div>
+                    <ul className="space-y-1">
+                        {sections.map(s => (
+                            <li key={s.id} className="bg-gray-50 p-2 rounded text-sm flex items-center justify-between">
+                                {editingSectionId === s.id ? (
+                                    <>
+                                        <input value={editingSectionName} onChange={e => setEditingSectionName(e.target.value)} className="flex-1 p-1 border rounded text-sm" />
+                                        <textarea value={editingSectionDescription} onChange={e => setEditingSectionDescription(e.target.value)} placeholder="Descripción" className="flex-1 p-1 border rounded text-sm ml-2" rows={1} />
+                                        <button type="button" onClick={() => handleUpdateSection(s.id)} className="text-green-600 font-bold ml-2">Guardar</button>
+                                        <button type="button" onClick={() => { setEditingSectionId(null); setEditingSectionName(''); setEditingSectionDescription(''); }} className="text-gray-500 ml-1">Cancelar</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="font-medium">{s.name}</span>
+                                        <div className="flex gap-1">
+                                            <button type="button" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.name); setEditingSectionDescription(s.description || ''); }} className="text-indigo-600"><FaEdit size={12} /></button>
+                                            <button type="button" onClick={() => handleDeleteSection(s.id)} className="text-red-500"><FaTrash size={12} /></button>
+                                        </div>
+                                    </>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </SectionCard>
+            )}
+
+            {/* Grid: carpetas + recursos */}
+            {loading ? (
+                <p className="text-gray-500 py-8 text-center">Cargando...</p>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {folders.map(f => (
+                        <div
+                            key={f.id}
+                            className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col items-center justify-center min-h-[140px] hover:border-indigo-300 hover:shadow-md transition cursor-pointer group"
+                            onClick={() => setCurrentFolderId(f.id)}
+                        >
+                            <div className="w-14 h-14 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2 group-hover:bg-amber-200">
+                                <FaFolder size={28} />
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <select
-                                    value={res.section_id || ''}
-                                    onChange={e => handleUpdateResourceSection(res.id, e.target.value, String(res.system_id || ''))}
-                                    className="text-xs p-1.5 border rounded focus:ring-2 focus:ring-red-500 outline-none bg-white"
-                                    title="Cambiar sección"
-                                >
-                                    <option value="">Sin sección</option>
-                                    {sections.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
-                                <select
-                                    value={res.system_id || ''}
-                                    onChange={e => handleUpdateResourceSection(res.id, String(res.section_id || ''), e.target.value)}
-                                    className="text-xs p-1.5 border rounded focus:ring-2 focus:ring-red-500 outline-none bg-white"
-                                    title="Cambiar sistema"
-                                >
-                                    <option value="">Sin sistema</option>
-                                    {systems.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
-                                <button 
-                                    onClick={() => handleDelete(res.id)} 
-                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition"
-                                    title="Eliminar Recurso"
-                                >
-                                    <FaTrash/>
-                                </button>
-                            </div>
+                            <span className="font-medium text-gray-800 text-center truncate w-full block">{f.name}</span>
+                            <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); handleDeleteFolder(f.id); }}
+                                className="mt-2 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition text-sm"
+                                title="Eliminar carpeta"
+                            >
+                                <FaTrash size={14} />
+                            </button>
                         </div>
                     ))}
-                    </SectionCard>
+                    {resources.map(res => {
+                        const thumbUrl = getResourceThumbnailUrl(res);
+                        return (
+                            <div
+                                key={res.id}
+                                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md hover:border-gray-300 transition flex flex-col"
+                            >
+                                <div className="aspect-video bg-gray-100 relative shrink-0">
+                                    {thumbUrl ? (
+                                        <img src={thumbUrl} alt={res.title} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className={`w-full h-full flex items-center justify-center ${
+                                            res.type === 'video' ? 'bg-red-100 text-red-600' :
+                                            res.type === 'image' ? 'bg-purple-100 text-purple-600' :
+                                            res.type === 'link' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                                        }`}>
+                                            {res.type === 'video' ? <FaVideo size={32} /> : res.type === 'image' ? <FaImage size={32} /> : res.type === 'link' ? <FaLink size={32} /> : <FaFileAlt size={32} />}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-3 flex-1 min-w-0 flex flex-col">
+                                    <h4 className="font-bold text-gray-800 text-sm truncate" title={res.title}>{res.title}</h4>
+                                    <div className="flex items-center gap-1 mt-1 flex-wrap text-xs text-gray-500">
+                                        {res.section_name && <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded">{res.section_name}</span>}
+                                        <span className="capitalize">{res.type}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-2 flex-wrap">
+                                        <select
+                                            value={res.section_id || ''}
+                                            onChange={e => handleUpdateResourceSection(res.id, e.target.value, String(res.system_id || ''))}
+                                            className="text-xs p-1 border rounded bg-white flex-1 min-w-0"
+                                            title="Sección"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            <option value="">Sin sección</option>
+                                            {sections.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={e => { e.stopPropagation(); handleDeleteResource(res.id); }}
+                                            className="text-red-400 hover:text-red-600 p-1.5 rounded transition"
+                                            title="Eliminar"
+                                        >
+                                            <FaTrash size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            </div>
+            )}
+
+            {!loading && folders.length === 0 && resources.length === 0 && (
+                <p className="text-gray-500 text-center py-12">Esta carpeta está vacía. Creá una carpeta o agregá un recurso.</p>
+            )}
+
+            {/* Modal Nueva Carpeta */}
+            {showNewFolderModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowNewFolderModal(false)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Nueva carpeta</h3>
+                            <button type="button" onClick={() => setShowNewFolderModal(false)} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+                        </div>
+                        <form onSubmit={handleCreateFolder}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                            <input
+                                type="text"
+                                value={newFolderName}
+                                onChange={e => setNewFolderName(e.target.value)}
+                                placeholder="Ej: Controladores Fiscales"
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none mb-4"
+                                autoFocus
+                            />
+                            <div className="flex gap-2 justify-end">
+                                <button type="button" onClick={() => setShowNewFolderModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600">Crear</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Nuevo Recurso */}
+            {showNewResourceModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowNewResourceModal(false)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full my-8 p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Nuevo recurso</h3>
+                            <button type="button" onClick={() => setShowNewResourceModal(false)} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+                        </div>
+                        {breadcrumbs.length > 1 && (
+                            <p className="text-xs text-gray-500 mb-2">Se guardará en: {breadcrumbs.map(b => b.name).join(' > ')}</p>
+                        )}
+                        <form onSubmit={handleSubmitResource} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Título</label>
+                                <input type="text" placeholder="Ej: Manual de Usuario 2026" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" value={title} onChange={e => setTitle(e.target.value)} required />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Sección</label>
+                                <select className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-white" value={sectionId} onChange={e => setSectionId(e.target.value)}>
+                                    <option value="">Sin sección</option>
+                                    {sections.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Sistema</label>
+                                <select className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" value={systemId} onChange={e => setSystemId(e.target.value)}>
+                                    <option value="">Sin sistema</option>
+                                    {systems.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Tipo</label>
+                                <select className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" value={type} onChange={e => { setType(e.target.value as Resource['type']); setFile(null); setContent(''); }}>
+                                    <option value="video">Video</option>
+                                    <option value="image">Imagen</option>
+                                    <option value="download">Archivo</option>
+                                    <option value="link">Enlace</option>
+                                    <option value="article">Artículo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Categoría</label>
+                                <input type="text" placeholder="Ej: Facturación" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" value={category} onChange={e => setCategory(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Contenido / Archivo</label>
+                                {(type === 'video' || type === 'image' || type === 'download' || type === 'article') ? (
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer relative hover:bg-gray-50">
+                                        <input type="file" accept={type === 'video' ? 'video/mp4,video/webm' : type === 'image' ? 'image/*' : undefined} onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        <FaCloudUploadAlt className="mx-auto text-gray-400 text-3xl mb-2" />
+                                        <p className="text-sm text-gray-600">{file ? file.name : 'Clic para subir'}</p>
+                                    </div>
+                                ) : (
+                                    <input type="text" placeholder="https://..." className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" value={content} onChange={e => setContent(e.target.value)} required />
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Imagen de portada / miniatura (opcional)</label>
+                                <input type="file" accept="image/*" onChange={e => setThumbnailFile(e.target.files ? e.target.files[0] : null)} className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700" />
+                            </div>
+                            <div className="flex gap-2 justify-end pt-2">
+                                <button type="button" onClick={() => setShowNewResourceModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 flex items-center gap-2">
+                                    <FaPlus /> Publicar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
