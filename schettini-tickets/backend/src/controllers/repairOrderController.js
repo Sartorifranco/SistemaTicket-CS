@@ -26,6 +26,31 @@ const isValidStatus = (s) => s && VALID_STATUSES.includes(String(s).toLowerCase(
 const isValidWarrantyType = (t) => t && WARRANTY_TYPES.includes(String(t));
 const isValidWarrantyStatus = (s) => !s || WARRANTY_STATUSES.includes(String(s));
 
+/**
+ * Deriva un warranty_status sugerido a partir del status general de la orden.
+ * Solo aplica para órdenes en garantía y sirve como sincronización automática básica.
+ */
+const deriveWarrantyStatusFromOrderStatus = (status, previousWarrantyStatus) => {
+  if (!status) return previousWarrantyStatus || null;
+  const s = String(status).toLowerCase();
+  switch (s) {
+    case 'ingresado':
+      return 'ingresado_garantia';
+    case 'cotizado':
+    case 'aceptado':
+    case 'en_espera':
+    case 'sin_reparacion':
+      return 'en_diagnostico';
+    case 'listo':
+      return 'reparado_garantia';
+    case 'entregado':
+    case 'entregado_sin_reparacion':
+      return 'entregado';
+    default:
+      return previousWarrantyStatus || null;
+  }
+};
+
 /** Si el valor no existe en system_options para esa categoría, lo inserta (auto-guardado para creatable combos). */
 const ensureSystemOption = async (category, value) => {
   if (!value || !String(value).trim()) return;
@@ -648,6 +673,16 @@ const updateRepairOrder = async (req, res) => {
       }
     }
 
+    // Sincronizar automáticamente warranty_status con status cuando la orden es de garantía,
+    // salvo que se envíe un warrantyStatus explícito.
+    let computedWarrantyStatus = warrantyStatus;
+    if (effectiveIsWarranty && status !== undefined && status !== null && status !== '') {
+      const autoStatus = deriveWarrantyStatusFromOrderStatus(status, existing.warranty_status);
+      if (!computedWarrantyStatus || !String(computedWarrantyStatus).trim()) {
+        computedWarrantyStatus = autoStatus;
+      }
+    }
+
     let finalLaborCost = laborCost !== undefined ? (laborCost === '' || laborCost == null ? null : parseFloat(laborCost)) : undefined;
     let finalSparePartsCost = sparePartsCost !== undefined ? (sparePartsCost === '' || sparePartsCost == null ? null : parseFloat(sparePartsCost)) : undefined;
     const effWarrantyType = warrantyType !== undefined ? warrantyType : existing.warranty_type;
@@ -704,7 +739,7 @@ const updateRepairOrder = async (req, res) => {
     if (originalSupplier !== undefined) add('original_supplier', originalSupplier ? String(originalSupplier).trim() : null);
     const newRequiresFactory = requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1;
     if (requiresFactoryShipping !== undefined) add('requires_factory_shipping', newRequiresFactory ? 1 : 0);
-    if (warrantyStatus !== undefined) add('warranty_status', warrantyStatus || null);
+    if (computedWarrantyStatus !== undefined) add('warranty_status', computedWarrantyStatus || null);
     if (setClause.length > 0) {
       setParams.push(id);
       await pool.query(`UPDATE repair_orders SET ${setClause.join(', ')} WHERE id = ?`, setParams);
@@ -747,8 +782,8 @@ const updateRepairOrder = async (req, res) => {
     if (status !== undefined && status !== '' && String(status) !== String(existing.status)) {
       await logStatusHistory(id, 'status', existing.status, status, userId);
     }
-    if (warrantyStatus !== undefined && String(warrantyStatus || '') !== String(existing.warranty_status || '')) {
-      await logStatusHistory(id, 'warranty_status', existing.warranty_status || null, warrantyStatus || null, userId);
+    if (computedWarrantyStatus !== undefined && String(computedWarrantyStatus || '') !== String(existing.warranty_status || '')) {
+      await logStatusHistory(id, 'warranty_status', existing.warranty_status || null, computedWarrantyStatus || null, userId);
     }
 
     const items = parseItems(req.body);
@@ -796,14 +831,24 @@ const updateRepairOrderStatus = async (req, res) => {
         message: 'Para declarar abandono debe entrar al detalle de la orden (se requieren fotos y notas obligatorias).'
       });
     }
-    const [existing] = await pool.query('SELECT id, status, client_id FROM repair_orders WHERE id = ?', [id]);
+    const [existing] = await pool.query('SELECT id, status, client_id, is_warranty, warranty_status FROM repair_orders WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Orden no encontrada' });
     }
-    const oldStatus = existing[0].status;
-    const clientId = existing[0].client_id;
+    const row = existing[0];
+    const oldStatus = row.status;
+    const clientId = row.client_id;
     await pool.query('UPDATE repair_orders SET status = ?, updated_at = NOW() WHERE id = ?', [s, id]);
     await logStatusHistory(id, 'status', oldStatus, s, req.user?.id);
+
+    // Si es una orden en garantía, sincronizar automáticamente warranty_status.
+    if (row.is_warranty) {
+      const autoWarrantyStatus = deriveWarrantyStatusFromOrderStatus(s, row.warranty_status);
+      if (autoWarrantyStatus && autoWarrantyStatus !== row.warranty_status) {
+        await pool.query('UPDATE repair_orders SET warranty_status = ? WHERE id = ?', [autoWarrantyStatus, id]);
+        await logStatusHistory(id, 'warranty_status', row.warranty_status || null, autoWarrantyStatus, req.user?.id);
+      }
+    }
     // Notificar al cliente del cambio de estado (registro en DB + Socket si hay io)
     const statusLabels = { ingresado: 'Ingresado', cotizado: 'Cotizado', aceptado: 'Aceptado', no_aceptado: 'No aceptado', en_espera: 'En espera', sin_reparacion: 'Sin reparación', listo: 'Listo', entregado: 'Entregado', entregado_sin_reparacion: 'Entregado sin reparación', abandonado: 'Abandonado' };
     const statusLabel = statusLabels[s] || s;

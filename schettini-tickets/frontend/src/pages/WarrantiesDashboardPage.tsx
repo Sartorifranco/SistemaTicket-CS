@@ -13,6 +13,7 @@ import {
   FaFilter,
   FaSyncAlt,
 } from 'react-icons/fa';
+import { parseDateAsUTC } from '../utils/dateFormatter';
 
 interface WarrantyStats {
   total_activas: number;
@@ -35,6 +36,7 @@ interface WarrantyOrder {
   id: number;
   order_number: string;
   entry_date: string | null;
+  delivered_date?: string | null;
   warranty_status: string | null;
   warranty_type: string | null;
   original_supplier: string | null;
@@ -62,10 +64,16 @@ const WARRANTY_TYPE_LABELS: Record<string, string> = {
   garantia_proveedor: 'Garantía proveedor',
 };
 
-function daysOpen(entryDate: string | null): number | null {
+function daysOpen(entryDate: string | null, deliveredDate?: string | null): number | null {
   if (!entryDate) return null;
-  const entry = new Date(entryDate).getTime();
-  return Math.floor((Date.now() - entry) / (24 * 60 * 60 * 1000));
+  const startDate = parseDateAsUTC(entryDate) ?? new Date(entryDate);
+  if (Number.isNaN(startDate.getTime())) return null;
+  const endRaw = deliveredDate || null;
+  const endDate = endRaw ? (parseDateAsUTC(endRaw) ?? new Date(endRaw)) : new Date();
+  if (Number.isNaN(endDate.getTime())) return null;
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const days = Math.floor(Math.abs(diffMs) / (24 * 60 * 60 * 1000));
+  return days < 0 ? 0 : days;
 }
 
 const WarrantiesDashboardPage: React.FC = () => {
@@ -140,7 +148,7 @@ const WarrantiesDashboardPage: React.FC = () => {
         const supplier = o.original_supplier || '—';
         const status = (o.warranty_status && WARRANTY_STATUS_LABELS[o.warranty_status]) || o.warranty_status || '—';
         const type = (o.warranty_type && WARRANTY_TYPE_LABELS[o.warranty_type]) || o.warranty_type || '—';
-        const days = daysOpen(o.entry_date);
+        const days = daysOpen(o.entry_date, o.delivered_date ?? null);
         return [o.order_number, client, serial, supplier, status, type, days != null ? days : '—'];
       });
       const wsData = [headers, ...rows];
@@ -398,7 +406,9 @@ const WarrantiesDashboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-3 text-gray-700">
-                        {daysOpen(o.entry_date) != null ? `${daysOpen(o.entry_date)} días` : '—'}
+                        {daysOpen(o.entry_date, o.delivered_date ?? null) != null
+                          ? `${daysOpen(o.entry_date, o.delivered_date ?? null)} días`
+                          : '—'}
                       </td>
                     </tr>
                   ))}

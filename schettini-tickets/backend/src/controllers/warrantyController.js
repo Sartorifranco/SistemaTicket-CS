@@ -68,15 +68,42 @@ const getWarrantyStats = async (req, res) => {
        ORDER BY ro.entry_date ASC`,
       closedList
     );
-    const ordenes_mas_30_dias_activas = (alertRows || []).map(r => ({
-      id: r.id,
-      order_number: r.order_number,
-      entry_date: r.entry_date,
-      warranty_status: r.warranty_status,
-      original_supplier: r.original_supplier,
-      client_name: r.client_name,
-      dias_activos: r.entry_date ? Math.floor((Date.now() - new Date(r.entry_date)) / (24 * 60 * 60 * 1000)) : null
-    }));
+    const ordenes_mas_30_dias_activas = (alertRows || []).map(r => {
+      if (!r.entry_date) {
+        return {
+          id: r.id,
+          order_number: r.order_number,
+          entry_date: r.entry_date,
+          warranty_status: r.warranty_status,
+          original_supplier: r.original_supplier,
+          client_name: r.client_name,
+          dias_activos: null
+        };
+      }
+      const entry = new Date(r.entry_date);
+      if (Number.isNaN(entry.getTime())) {
+        return {
+          id: r.id,
+          order_number: r.order_number,
+          entry_date: r.entry_date,
+          warranty_status: r.warranty_status,
+          original_supplier: r.original_supplier,
+          client_name: r.client_name,
+          dias_activos: null
+        };
+      }
+      const diffMs = Date.now() - entry.getTime();
+      const days = Math.floor(Math.abs(diffMs) / (24 * 60 * 60 * 1000));
+      return {
+        id: r.id,
+        order_number: r.order_number,
+        entry_date: r.entry_date,
+        warranty_status: r.warranty_status,
+        original_supplier: r.original_supplier,
+        client_name: r.client_name,
+        dias_activos: days
+      };
+    });
 
     res.json({
       success: true,
