@@ -711,12 +711,14 @@ const ManageRepairOrderPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
                 <input
+                  type="text"
                   name="equipmentType"
                   list="equipment-type-list"
                   value={form.equipmentType}
                   onChange={handleChange}
                   disabled={!canEditEquipment}
-                  placeholder="Seleccionar o escribir..."
+                  placeholder="Escribir o elegir de la lista"
+                  autoComplete="off"
                   className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
                 <datalist id="equipment-type-list">
@@ -728,12 +730,14 @@ const ManageRepairOrderPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
                 <input
+                  type="text"
                   name="brand"
                   list="brand-list"
                   value={form.brand}
                   onChange={handleChange}
                   disabled={!canEditEquipment}
-                  placeholder="Seleccionar o escribir..."
+                  placeholder="Escribir o elegir de la lista"
+                  autoComplete="off"
                   className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
                 <datalist id="brand-list">
@@ -741,6 +745,7 @@ const ManageRepairOrderPage: React.FC = () => {
                     <option key={v} value={v} />
                   ))}
                 </datalist>
+                <p className="text-xs text-gray-500 mt-0.5">Podés escribir una marca nueva si no está en la lista.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
@@ -751,7 +756,8 @@ const ManageRepairOrderPage: React.FC = () => {
                   value={form.model}
                   onChange={handleChange}
                   disabled={!canEditEquipment}
-                  placeholder="Seleccionar o escribir..."
+                  placeholder="Escribir o elegir de la lista"
+                  autoComplete="off"
                   className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
                 <datalist id="model-list">
@@ -759,6 +765,7 @@ const ManageRepairOrderPage: React.FC = () => {
                     <option key={v} value={v} />
                   ))}
                 </datalist>
+                <p className="text-xs text-gray-500 mt-0.5">Podés escribir un modelo nuevo si no está en la lista.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -312,7 +312,7 @@ const NewRepairOrderPage: React.FC = () => {
     );
   };
 
-  /** Input creatable: elegir de la lista o escribir texto libre (valor se envía tal cual en submit). */
+  /** Input con autocompletado: texto libre + datalist con opciones existentes. El valor enviado es exactamente lo que el usuario escribe. */
   const CreatableOption = ({ category, itemIndex, value, onChange, placeholder }: { category: string; itemIndex: number; value: string; onChange: (v: string) => void; placeholder?: string }) => {
     const opts = (optionsByCategory[category] || []).map((o) => o.value);
     const listId = `creatable-${category}-${itemIndex}`;
@@ -323,8 +323,9 @@ const NewRepairOrderPage: React.FC = () => {
           list={listId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || 'Seleccionar o escribir...'}
+          placeholder={placeholder || 'Escribir o elegir de la lista'}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          autoComplete="off"
         />
         <datalist id={listId}>
           {opts.map((v) => (
@@ -529,15 +530,17 @@ const NewRepairOrderPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
-                    <CreatableOption category="equipment_type" itemIndex={idx} value={item.equipment_type} onChange={(v) => updateItem(idx, 'equipment_type', v)} placeholder="Seleccionar o escribir..." />
+                    <CreatableOption category="equipment_type" itemIndex={idx} value={item.equipment_type} onChange={(v) => updateItem(idx, 'equipment_type', v)} placeholder="Escribir o elegir de la lista" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                    <CreatableOption category="brand" itemIndex={idx} value={item.brand} onChange={(v) => updateItem(idx, 'brand', v)} placeholder="Seleccionar o escribir..." />
+                    <CreatableOption category="brand" itemIndex={idx} value={item.brand} onChange={(v) => updateItem(idx, 'brand', v)} placeholder="Escribir o elegir de la lista" />
+                    <p className="text-xs text-gray-500 mt-0.5">Podés escribir una marca nueva si no está en la lista.</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                    <CreatableOption category="model" itemIndex={idx} value={item.model} onChange={(v) => updateItem(idx, 'model', v)} placeholder="Seleccionar o escribir..." />
+                    <CreatableOption category="model" itemIndex={idx} value={item.model} onChange={(v) => updateItem(idx, 'model', v)} placeholder="Escribir o elegir de la lista" />
+                    <p className="text-xs text-gray-500 mt-0.5">Podés escribir un modelo nuevo si no está en la lista.</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
