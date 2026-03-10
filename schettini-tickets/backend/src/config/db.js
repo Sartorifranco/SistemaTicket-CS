@@ -40,4 +40,40 @@ pool.getConnection()
         // No matamos el proceso (process.exit) para que Railway pueda reintentar
     });
 
+/**
+ * Auto-migración forzada: asegura que repair_orders tenga is_warranty y warranty_status.
+ * Se ejecuta al arranque del servidor (antes de listen) para corregir entornos donde
+ * la app se conecta a un MySQL que no tiene esas columnas.
+ */
+async function syncDatabase() {
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const [isWarrantyCols] = await conn.query("SHOW COLUMNS FROM repair_orders LIKE 'is_warranty'");
+        if (isWarrantyCols.length === 0) {
+            await conn.query('ALTER TABLE repair_orders ADD COLUMN is_warranty TINYINT(1) NOT NULL DEFAULT 0');
+            console.log('[syncDatabase] Columna repair_orders.is_warranty creada.');
+        } else {
+            console.log('[syncDatabase] Columna repair_orders.is_warranty ya existe.');
+        }
+
+        const [warrantyStatusCols] = await conn.query("SHOW COLUMNS FROM repair_orders LIKE 'warranty_status'");
+        if (warrantyStatusCols.length === 0) {
+            await conn.query('ALTER TABLE repair_orders ADD COLUMN warranty_status VARCHAR(50) NULL');
+            console.log('[syncDatabase] Columna repair_orders.warranty_status creada.');
+        } else {
+            console.log('[syncDatabase] Columna repair_orders.warranty_status ya existe.');
+        }
+    } catch (err) {
+        if (err.message && (err.message.includes("doesn't exist") || err.message.includes('Unknown table'))) {
+            console.warn('[syncDatabase] Tabla repair_orders no existe en este esquema, omitiendo columnas is_warranty/warranty_status.');
+        } else {
+            console.error('[syncDatabase] Error:', err.message);
+        }
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
 module.exports = pool;
+module.exports.syncDatabase = syncDatabase;

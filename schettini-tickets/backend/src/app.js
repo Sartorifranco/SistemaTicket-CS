@@ -228,9 +228,15 @@ app.get('*', (req, res) => {
   res.send('Backend API Running. Frontend is hosted separately.');
 });
 
-// --- 8. INICIO ---
-const PORT = process.env.PORT || 5050; 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  startCronJobs(io);
-});
+// --- 8. INICIO (auto-migración antes de escuchar) ---
+const PORT = process.env.PORT || 5050;
+const db = require('./config/db');
+(async () => {
+  if (typeof db.syncDatabase === 'function') {
+    await db.syncDatabase();
+  }
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+    startCronJobs(io);
+  });
+})();
