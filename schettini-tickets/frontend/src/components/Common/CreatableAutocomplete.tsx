@@ -29,15 +29,21 @@ const CreatableAutocomplete: React.FC<CreatableAutocompleteProps> = ({
   containerClassName = ''
 }) => {
   const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState<string>(value || '');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const query = (value || '').trim().toLowerCase();
+  // Mantener estado local para evitar que rerenders del padre toquen el foco del input.
+  useEffect(() => {
+    setInputValue(value || '');
+  }, [value]);
+
+  const query = (inputValue || '').trim().toLowerCase();
   const filtered = useMemo(() => {
     if (!query) return options;
     return options.filter((o) => o.toLowerCase().includes(query));
   }, [options, query]);
 
-  const showDropdown = open && (value !== '' || filtered.length > 0);
+  const showDropdown = open && (inputValue !== '' || filtered.length > 0);
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -54,7 +60,9 @@ const CreatableAutocomplete: React.FC<CreatableAutocompleteProps> = ({
     setTimeout(() => setOpen(false), 150);
   };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+    const next = e.target.value;
+    setInputValue(next);
+    onChange(next);
     setOpen(true);
   };
   const handleSelect = (option: string) => {
