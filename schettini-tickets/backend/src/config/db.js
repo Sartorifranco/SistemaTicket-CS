@@ -17,7 +17,8 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0,
     ssl: sslConfig, // ✅ CRÍTICO PARA LA NUBE
-    timezone: '-03:00' // ✅ Mantenemos horario Argentina
+    timezone: 'Z', // UTC: las fechas se guardan y leen en UTC; el frontend convierte a America/Argentina/Cordoba
+    dateStrings: false // devolver fechas como Date cuando el driver lo permita (mysql2 suele devolver strings igual)
 });
 
 pool.getConnection()

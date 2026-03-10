@@ -3,6 +3,31 @@ const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 const { registerPaymentFromRepairOrder } = require('./techCashController');
 const { createNotification } = require('../utils/notificationManager');
 
+/** Convierte un string de fecha/hora MySQL (sin Z) o un Date a ISO con Z para que el frontend la interprete como UTC. */
+function toUTCISO(val) {
+  if (val == null || val === '') return val;
+  if (val instanceof Date) return isNaN(val.getTime()) ? val : val.toISOString();
+  const s = String(val).trim();
+  if (!s) return val;
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(s)) return s;
+  const isoLike = s.replace(' ', 'T');
+  const withZ = /\d{4}-\d{2}-\d{2}T\d{1,2}:\d{2}/.test(isoLike)
+    ? isoLike.slice(0, 19).replace(/T(\d):/, 'T0$1:') + 'Z'
+    : isoLike.slice(0, 10) + 'T00:00:00.000Z';
+  const d = new Date(withZ);
+  return isNaN(d.getTime()) ? val : d.toISOString();
+}
+
+const DATETIME_KEYS = ['entry_date', 'created_at', 'updated_at', 'accepted_date', 'promised_date', 'delivered_date', 'warranty_expiration_date', 'purchase_date', 'visit_date'];
+
+function normalizeRowDates(row) {
+  const out = { ...row };
+  DATETIME_KEYS.forEach((k) => {
+    if (out[k] != null) out[k] = toUTCISO(out[k]);
+  });
+  return out;
+}
+
 const VALID_STATUSES = [
   'ingresado',
   'cotizado',
@@ -159,12 +184,12 @@ const getMonitorOrders = async (req, res) => {
     const data = rows.map((r) => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
-      return {
+      return normalizeRowDates({
         ...r,
         equipment_type: first.equipment_type,
         brand: first.brand,
         model: first.model
-      };
+      });
     });
     res.json({ success: true, data });
   } catch (error) {
@@ -256,7 +281,7 @@ const getRepairOrders = async (req, res) => {
     const data = rows.map(r => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
-      return { ...r, items, equipment_type: first.equipment_type, brand: first.brand, model: first.model, serial_number: first.serial_number };
+      return normalizeRowDates({ ...r, items, equipment_type: first.equipment_type, brand: first.brand, model: first.model, serial_number: first.serial_number });
     });
     res.json({ success: true, data });
   } catch (error) {
@@ -296,7 +321,7 @@ const getMyRepairOrders = async (req, res) => {
     const data = rows.map(r => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
-      return { ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault };
+      return normalizeRowDates({ ...r, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault });
     });
     res.json({ success: true, data });
   } catch (error) {
@@ -345,7 +370,7 @@ const getRepairOrderById = async (req, res) => {
       [id]
     );
     const first = items[0] || {};
-    const data = { ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault };
+    let data = normalizeRowDates({ ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault });
     if (userRole === 'client') {
       delete data.internal_notes;
       delete data.recycling_notes;
