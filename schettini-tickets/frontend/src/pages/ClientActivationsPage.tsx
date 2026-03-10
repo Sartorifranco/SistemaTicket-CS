@@ -36,6 +36,29 @@ const FORM_TYPE_LABELS: Record<string, string> = {
   none: 'Sin tipo'
 };
 
+const PRODUCT_TYPE_OPTIONS = [
+  { value: 'controlador_fiscal', label: 'Controlador Fiscal' },
+  { value: 'software_gestion', label: 'Software de Gestión' }
+];
+
+const FISCAL_MODEL_OPTIONS = [
+  { value: 'Sam4s 330', label: 'Sam4s 330' },
+  { value: 'Moretti Kinder', label: 'Moretti Kinder' },
+  { value: 'Epson', label: 'Epson' },
+  { value: 'Hasar', label: 'Hasar' }
+];
+
+const AFIP_ALTA_OPTIONS = [
+  { value: 'nosotros', label: 'Nosotros (Brindar Clave Fiscal)' },
+  { value: 'su_contador', label: 'Su Contador (Servicio Delegado)' }
+];
+
+const SOFTWARE_TYPE_OPTIONS = [
+  { value: 'StarPOS Restaurant', label: 'StarPOS Restaurant' },
+  { value: 'StarPOS Market', label: 'StarPOS Market' },
+  { value: 'Dux', label: 'Dux' }
+];
+
 const BILLING_TYPE_OPTIONS = [
   { value: 'fiscal', label: 'Fiscal (Facturación Electrónica)' },
   { value: 'no_fiscal', label: 'No Fiscal (Ticket Interno)' }
@@ -235,24 +258,57 @@ interface ActivationFormModalProps {
 
 const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, cloudContracts, onClose, onSuccess, submitting, setSubmitting }) => {
   const isAltaGeneral = activation.form_type === 'alta_general' || activation.form_type === 'general';
-  const isControladorFiscal = activation.form_type === 'controlador_fiscal';
+  const isControladorFiscalLegacy = activation.form_type === 'controlador_fiscal';
   const isLegacyFiscal = activation.form_type === 'fiscal';
   const isLegacyNoFiscal = activation.form_type === 'no_fiscal';
 
   const [form, setForm] = useState<Record<string, string>>({});
+  const [productType, setProductType] = useState<'controlador_fiscal' | 'software_gestion' | ''>('');
+  const [afipAltaType, setAfipAltaType] = useState<'nosotros' | 'su_contador' | ''>('');
   const [clientBillingChoice, setClientBillingChoice] = useState<'fiscal' | 'no_fiscal' | ''>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [constanciaFile, setConstanciaFile] = useState<File | null>(null);
-  const [noClaveFiscal, setNoClaveFiscal] = useState(false);
   const [cloudNubeDesea, setCloudNubeDesea] = useState(false);
   const [cloudNubeContratoFiles, setCloudNubeContratoFiles] = useState<File[]>([]);
 
-  const showFiscalFields = isAltaGeneral ? clientBillingChoice === 'fiscal' : isLegacyFiscal;
-  const showNoFiscalFields = isAltaGeneral ? clientBillingChoice === 'no_fiscal' : isLegacyNoFiscal;
+  useEffect(() => {
+    if (activation.form_type === 'controlador_fiscal' && !productType) setProductType('controlador_fiscal');
+  }, [activation.form_type]);
+
+  const isControladorFiscal = productType === 'controlador_fiscal' || (isControladorFiscalLegacy && productType === '');
+  const isSoftwareGestion = productType === 'software_gestion';
+  const showFiscalFields = isSoftwareGestion ? clientBillingChoice === 'fiscal' : (isAltaGeneral ? clientBillingChoice === 'fiscal' : isLegacyFiscal);
+  const showNoFiscalFields = isSoftwareGestion ? clientBillingChoice === 'no_fiscal' : (isAltaGeneral ? clientBillingChoice === 'no_fiscal' : isLegacyNoFiscal);
+  const fiscalModel = (form.model || '').trim();
+  const showDepartments = isControladorFiscal && (fiscalModel.toLowerCase().includes('sam4s') || fiscalModel.toLowerCase().includes('moretti'));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAltaGeneral && !clientBillingChoice) {
+    if (!productType && !isControladorFiscalLegacy && !isAltaGeneral) {
+      toast.warn('Seleccioná qué producto adquirió.');
+      return;
+    }
+    if (isControladorFiscal && !form.model?.trim()) {
+      toast.warn('Seleccioná Marca/Modelo del controlador fiscal.');
+      return;
+    }
+    if (isControladorFiscal && !afipAltaType) {
+      toast.warn('Seleccioná quién realizará el alta en AFIP.');
+      return;
+    }
+    if (isControladorFiscal && afipAltaType === 'nosotros' && !(form.clave_fiscal ?? '').trim()) {
+      toast.warn('La Clave Fiscal es obligatoria cuando el alta la realizamos nosotros.');
+      return;
+    }
+    if (isSoftwareGestion && !form.software_type?.trim()) {
+      toast.warn('Seleccioná el tipo de software.');
+      return;
+    }
+    if (isSoftwareGestion && !clientBillingChoice) {
+      toast.warn('Seleccioná el tipo de facturación deseada.');
+      return;
+    }
+    if (isAltaGeneral && !productType && !clientBillingChoice) {
       toast.warn('Seleccioná el tipo de facturación deseada.');
       return;
     }
@@ -262,8 +318,11 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
     }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== '') fd.append(k, String(v)); });
+    if (productType) fd.append('product_type', productType);
+    else if (isControladorFiscalLegacy) fd.append('product_type', 'controlador_fiscal');
+    if (afipAltaType) fd.append('afip_alta_type', afipAltaType);
     if (isAltaGeneral && clientBillingChoice) fd.append('billing_type', clientBillingChoice);
-    if (noClaveFiscal) fd.append('no_brindar_clave_fiscal', '1');
+    if (isSoftwareGestion && clientBillingChoice) fd.append('billing_type', clientBillingChoice);
     if (logoFile) fd.append('logo', logoFile);
     if (constanciaFile && showFiscalFields) fd.append('constancia_alta', constanciaFile);
     if (cloudNubeDesea && cloudNubeContratoFiles.length > 0) {
@@ -294,11 +353,120 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
-          {isAltaGeneral && (
+          {/* Tipo de producto adquirido (obligatorio) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ¿Qué producto adquirió? <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={productType}
+              onChange={(e) => {
+                const v = e.target.value as 'controlador_fiscal' | 'software_gestion' | '';
+                setProductType(v);
+                if (v !== 'controlador_fiscal') setAfipAltaType('');
+              }}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+            >
+              <option value="">Seleccionar...</option>
+              {PRODUCT_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Lógica Controlador Fiscal */}
+          {isControladorFiscal && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Marca/Modelo <span className="text-red-500">*</span></label>
+                <select
+                  name="model"
+                  value={form.model ?? ''}
+                  onChange={(e) => update('model', e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  {FISCAL_MODEL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">¿Quién realizará el alta en AFIP? <span className="text-red-500">*</span></label>
+                <select
+                  value={afipAltaType}
+                  onChange={(e) => setAfipAltaType(e.target.value as 'nosotros' | 'su_contador')}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  {AFIP_ALTA_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              {afipAltaType === 'nosotros' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Clave Fiscal <span className="text-red-500">*</span></label>
+                  <input type="text" name="clave_fiscal" value={form.clave_fiscal ?? ''} onChange={(e) => update('clave_fiscal', e.target.value)} placeholder="Clave Fiscal" required className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+              )}
+              {afipAltaType === 'su_contador' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  <p className="font-medium mb-1">Servicio delegado a su contador</p>
+                  <p>Debe descargar el manual para su contador y enviarlo junto con los datos que le indiquemos.</p>
+                  <a href="/manual-contador" target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-indigo-600 font-medium hover:underline">Descargar manual para contador (placeholder)</a>
+                </div>
+              )}
+              {showDepartments && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Departamentos / Rubros</label>
+                  <textarea name="departments" value={form.departments ?? ''} onChange={(e) => update('departments', e.target.value)} placeholder="Ej: 1-Almacén, 2-Bebidas" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Lógica Software de Gestión */}
+          {isSoftwareGestion && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Software <span className="text-red-500">*</span></label>
+                <select
+                  name="software_type"
+                  value={form.software_type ?? ''}
+                  onChange={(e) => update('software_type', e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  {SOFTWARE_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">¿Tipo de Facturación deseada? <span className="text-red-500">*</span></label>
+                <select
+                  value={clientBillingChoice}
+                  onChange={(e) => setClientBillingChoice(e.target.value as 'fiscal' | 'no_fiscal')}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  {BILLING_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {isAltaGeneral && !productType && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                ¿Tipo de Facturación deseada? <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">¿Tipo de Facturación deseada? <span className="text-red-500">*</span></label>
               <select
                 value={clientBillingChoice}
                 onChange={(e) => setClientBillingChoice(e.target.value as 'fiscal' | 'no_fiscal')}
@@ -310,7 +478,6 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Fiscal: Facturación Electrónica (AFIP). No Fiscal: Ticket Interno.</p>
             </div>
           )}
 
@@ -326,13 +493,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Condición ante el IVA <span className="text-red-500">*</span></label>
-                <select
-                  name="condicion_iva"
-                  value={form.condicion_iva ?? ''}
-                  onChange={(e) => update('condicion_iva', e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                >
+                <select name="condicion_iva" value={form.condicion_iva ?? ''} onChange={(e) => update('condicion_iva', e.target.value)} required className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
                   <option value="">Seleccionar...</option>
                   {CONDICION_IVA_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -343,33 +504,17 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
               <input type="text" name="tipo_rubro" value={form.tipo_rubro ?? ''} onChange={(e) => update('tipo_rubro', e.target.value)} placeholder="Tipo Rubro" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" className="w-full px-3 py-2 border rounded-lg" />
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  Punto de Venta
-                  <HelpTooltip text="Debe ser NUEVO. No repetir un PV usado en otro sistema." />
-                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">Punto de Venta <HelpTooltip text="Debe ser NUEVO. No repetir un PV usado en otro sistema." /></label>
                 <input type="text" name="punto_venta" value={form.punto_venta ?? ''} onChange={(e) => update('punto_venta', e.target.value)} placeholder="N° Punto Venta" className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  CUIT
-                  <HelpTooltip text="CUIT al cual se registrará la licencia." />
-                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">CUIT <HelpTooltip text="CUIT al cual se registrará la licencia." /></label>
                 <input type="text" name="cuit" value={form.cuit ?? ''} onChange={(e) => update('cuit', e.target.value)} placeholder="CUIT" className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <input type="text" name="razon_social" value={form.razon_social ?? ''} onChange={(e) => update('razon_social', e.target.value)} placeholder="Razón Social" className="w-full px-3 py-2 border rounded-lg" />
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="noClave" checked={noClaveFiscal} onChange={(e) => setNoClaveFiscal(e.target.checked)} />
-                <label htmlFor="noClave" className="flex items-center gap-2 text-sm">
-                  No brindar clave fiscal
-                  <HelpTooltip text="Opcional. Si elegís NO brindar la clave para relacionar los certificados, el proceso sufrirá mayores demoras en Arca." />
-                </label>
-              </div>
-              {!noClaveFiscal && (
+              {!isControladorFiscal && (
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                    Clave Fiscal
-                    <HelpTooltip text="Opcional. Si elegís NO brindar la clave para relacionar los certificados, el proceso sufrirá mayores demoras en Arca." />
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Clave Fiscal (opcional)</label>
                   <input type="text" name="clave_fiscal" value={form.clave_fiscal ?? ''} onChange={(e) => update('clave_fiscal', e.target.value)} placeholder="Clave Fiscal" className="w-full px-3 py-2 border rounded-lg" />
                 </div>
               )}
@@ -378,17 +523,11 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
               <input type="text" name="inicio_actividades" value={form.inicio_actividades ?? ''} onChange={(e) => update('inicio_actividades', e.target.value)} placeholder="Inicio Actividades" className="w-full px-3 py-2 border rounded-lg" />
               <input type="email" name="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} placeholder="Email" className="w-full px-3 py-2 border rounded-lg" />
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  Logo (JPG)
-                  <HelpTooltip text="Tamaño recomendado: 350x250px en BLANCO y NEGRO. Formato: JPG de 1 bit." />
-                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">Logo (JPG) <HelpTooltip text="Tamaño recomendado: 350x250px en BLANCO y NEGRO. Formato: JPG de 1 bit." /></label>
                 <input type="file" accept=".jpg,.jpeg" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border rounded-lg text-sm" />
               </div>
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  Constancia de Alta (PDF)
-                  <HelpTooltip text="Adjuntar constancia en formato PDF." />
-                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">Constancia de Alta (PDF) <HelpTooltip text="Adjuntar constancia en formato PDF." /></label>
                 <input type="file" accept=".pdf" onChange={(e) => setConstanciaFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border rounded-lg text-sm" />
               </div>
             </>
@@ -405,10 +544,13 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
               </div>
             </>
           )}
-          {isControladorFiscal && (
-            <p className="text-gray-500 text-sm">Completá los datos que te haya indicado el equipo y subí los archivos necesarios.</p>
+          {isControladorFiscalLegacy && productType === '' && (
+            <p className="text-gray-500 text-sm">Completá los datos del controlador fiscal y el alta en AFIP.</p>
           )}
-          {isAltaGeneral && !clientBillingChoice && (
+          {isAltaGeneral && !productType && !clientBillingChoice && (
+            <p className="text-gray-500 text-sm">Elegí el tipo de facturación para ver los campos a completar.</p>
+          )}
+          {isSoftwareGestion && !clientBillingChoice && (
             <p className="text-gray-500 text-sm">Elegí el tipo de facturación para ver los campos a completar.</p>
           )}
 

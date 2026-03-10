@@ -3,6 +3,11 @@ import { getImageUrl } from '../../utils/imageUrl';
 import SectionCard from '../Common/SectionCard';
 
 const FORM_LABELS: Record<string, string> = {
+  product_type: 'Tipo de producto',
+  model: 'Marca/Modelo',
+  software_type: 'Tipo de Software',
+  afip_alta_type: 'Alta en AFIP',
+  departments: 'Departamentos / Rubros',
   invoice_number: 'N° Factura',
   tipo_instalacion: 'Tipo Instalación',
   tipo_rubro: 'Tipo Rubro',
@@ -17,6 +22,16 @@ const FORM_LABELS: Record<string, string> = {
   inicio_actividades: 'Inicio Actividades',
   email: 'Email',
   razon_social_cuil: 'Razón Social / CUIL'
+};
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  controlador_fiscal: 'Controlador Fiscal',
+  software_gestion: 'Software de Gestión'
+};
+
+const AFIP_ALTA_LABELS: Record<string, string> = {
+  nosotros: 'Nosotros (Brindar Clave Fiscal)',
+  su_contador: 'Su Contador (Servicio Delegado)'
 };
 
 const FORM_TYPE_LABELS: Record<string, string> = {
@@ -51,15 +66,42 @@ interface ActivationPlanillaCardProps {
 const ActivationPlanillaCard: React.FC<ActivationPlanillaCardProps> = ({ activationData }) => {
   const { form_type, form_data } = activationData;
   const formTypeLabel = FORM_TYPE_LABELS[form_type] || form_type;
+  const data = form_data || {};
+  const productType = (data.product_type as string) || '';
+  const model = (data.model as string) || '';
+  const softwareType = (data.software_type as string) || '';
+  const afipAltaType = (data.afip_alta_type as string) || '';
+  const departments = (data.departments as string) || '';
 
-  const entries = Object.entries(form_data || {}).filter(
-    ([k]) => k !== '_uploads' && !k.startsWith('_')
+  const entries = Object.entries(data).filter(
+    ([k]) => k !== '_uploads' && !k.startsWith('_') && !['product_type', 'model', 'software_type', 'afip_alta_type', 'departments'].includes(k)
   );
 
   const uploads = (form_data?._uploads as Array<{ field?: string; path?: string; originalName?: string }>) || [];
+  const hasProductInfo = productType || model || softwareType || afipAltaType || departments;
 
   return (
     <SectionCard title={`📄 Planilla de Activación (${formTypeLabel})`}>
+      {hasProductInfo && (
+        <div className="mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg space-y-2 text-sm">
+          <p className="font-semibold text-indigo-800">Datos del producto</p>
+          {productType && (
+            <p><span className="font-medium text-gray-600">Tipo de producto:</span> {PRODUCT_TYPE_LABELS[productType] || productType}</p>
+          )}
+          {model && (
+            <p><span className="font-medium text-gray-600">Marca/Modelo:</span> {model}</p>
+          )}
+          {softwareType && (
+            <p><span className="font-medium text-gray-600">Tipo de Software:</span> {softwareType}</p>
+          )}
+          {afipAltaType && (
+            <p><span className="font-medium text-gray-600">Alta en AFIP:</span> {AFIP_ALTA_LABELS[afipAltaType] || afipAltaType}</p>
+          )}
+          {departments && (
+            <p><span className="font-medium text-gray-600">Departamentos / Rubros:</span> <span className="whitespace-pre-wrap">{departments}</span></p>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
         {entries.map(([key, val]) => {
           if (val === undefined || val === null || val === '') return null;
