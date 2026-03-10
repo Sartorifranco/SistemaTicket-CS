@@ -7,6 +7,7 @@ import { formatDateArgentina, formatDateForInput, formatNowArgentina } from '../
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
+import CreatableAutocomplete from '../components/Common/CreatableAutocomplete';
 import { FaWhatsapp, FaSave, FaTimes, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 
@@ -723,42 +724,26 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                <input
-                  type="text"
-                  name="brand"
-                  list="brand-list"
+                <CreatableAutocomplete
+                  options={brandOptions}
                   value={form.brand}
-                  onChange={handleChange}
-                  disabled={!canEditEquipment}
+                  onChange={(v) => setForm((f) => ({ ...f, brand: v }))}
                   placeholder="Escribir o elegir de la lista"
-                  autoComplete="off"
+                  disabled={!canEditEquipment}
                   className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
-                <datalist id="brand-list">
-                  {brandOptions.map((v) => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
                 <p className="text-xs text-gray-500 mt-0.5">Podés escribir una marca nueva si no está en la lista.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                <input
-                  type="text"
-                  name="model"
-                  list="model-list"
+                <CreatableAutocomplete
+                  options={modelOptions}
                   value={form.model}
-                  onChange={handleChange}
-                  disabled={!canEditEquipment}
+                  onChange={(v) => setForm((f) => ({ ...f, model: v }))}
                   placeholder="Escribir o elegir de la lista"
-                  autoComplete="off"
+                  disabled={!canEditEquipment}
                   className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
-                <datalist id="model-list">
-                  {modelOptions.map((v) => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
                 <p className="text-xs text-gray-500 mt-0.5">Podés escribir un modelo nuevo si no está en la lista.</p>
               </div>
               <div>

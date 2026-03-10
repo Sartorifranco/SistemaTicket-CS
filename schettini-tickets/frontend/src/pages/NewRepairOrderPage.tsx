@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
+import CreatableAutocomplete from '../components/Common/CreatableAutocomplete';
 import WebcamCapture, { CapturedPhoto } from '../components/RepairOrders/WebcamCapture';
 import NewClientModal from '../components/RepairOrders/NewClientModal';
 import { User } from '../types';
@@ -534,12 +535,22 @@ const NewRepairOrderPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                    <CreatableOption category="brand" itemIndex={idx} value={item.brand} onChange={(v) => updateItem(idx, 'brand', v)} placeholder="Escribir o elegir de la lista" />
+                    <CreatableAutocomplete
+                      options={(optionsByCategory['brand'] || []).map((o) => o.value)}
+                      value={item.brand}
+                      onChange={(v) => updateItem(idx, 'brand', v)}
+                      placeholder="Escribir o elegir de la lista"
+                    />
                     <p className="text-xs text-gray-500 mt-0.5">Podés escribir una marca nueva si no está en la lista.</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                    <CreatableOption category="model" itemIndex={idx} value={item.model} onChange={(v) => updateItem(idx, 'model', v)} placeholder="Escribir o elegir de la lista" />
+                    <CreatableAutocomplete
+                      options={(optionsByCategory['model'] || []).map((o) => o.value)}
+                      value={item.model}
+                      onChange={(v) => updateItem(idx, 'model', v)}
+                      placeholder="Escribir o elegir de la lista"
+                    />
                     <p className="text-xs text-gray-500 mt-0.5">Podés escribir un modelo nuevo si no está en la lista.</p>
                   </div>
                   <div>
