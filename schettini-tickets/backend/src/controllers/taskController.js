@@ -116,58 +116,79 @@ const createTask = async (req, res) => {
 };
 
 /**
- * Actualizar tarea (estado, etc.)
- * - El asignado puede marcar completada o cambiar estado
- * - El asignador (admin/supervisor) puede editar todo
+ * Actualizar tarea (solo Admin o Supervisor): title, description, priority, dueDate.
+ * Solo actualiza los campos enviados en el body. Devuelve la tarea actualizada.
  */
 const updateTask = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, status, due_date, due_time, priority } = req.body;
-        const userId = req.user.id;
-        const role = req.user.role;
+        const { title, description, priority, dueDate, due_date, due_time, status } = req.body;
 
         const [task] = await pool.query('SELECT * FROM agent_tasks WHERE id = ?', [id]);
         if (task.length === 0) return res.status(404).json({ message: 'Tarea no encontrada' });
-        const t = task[0];
-
-        const isAssignedTo = t.assigned_to_user_id === userId;
-        const isAssigner = t.assigned_by_user_id === userId;
-        const isAdmin = role === 'admin';
-        const fullEdit = isAdmin || isAssigner;
-
-        // El asignado solo puede cambiar el estado (marcar completada, etc.)
-        if (!fullEdit && isAssignedTo && status !== undefined) {
-            const allowedStatuses = ['pending', 'in_progress', 'completed'];
-            if (!allowedStatuses.includes(status)) return res.status(400).json({ message: 'Estado no válido' });
-            await pool.query(
-                'UPDATE agent_tasks SET status = ?, completed_at = ? WHERE id = ? AND assigned_to_user_id = ?',
-                [status, status === 'completed' ? new Date() : null, id, userId]
-            );
-            return res.json({ success: true, message: 'Tarea actualizada' });
-        }
-        if (!fullEdit) {
-            return res.status(403).json({ message: 'No tienes permiso para editar esta tarea' });
-        }
 
         const updates = [];
         const values = [];
         if (title !== undefined) { updates.push('title = ?'); values.push(title); }
         if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+        if (priority !== undefined) { updates.push('priority = ?'); values.push(priority); }
+        const dueDateVal = dueDate !== undefined ? dueDate : due_date;
+        if (dueDateVal !== undefined) { updates.push('due_date = ?'); values.push(dueDateVal || null); }
+        if (due_time !== undefined) { updates.push('due_time = ?'); values.push(due_time); }
         if (status !== undefined) { updates.push('status = ?'); values.push(status); }
         if (status === 'completed') { updates.push('completed_at = NOW()'); }
-        if (due_date !== undefined) { updates.push('due_date = ?'); values.push(due_date); }
-        if (due_time !== undefined) { updates.push('due_time = ?'); values.push(due_time); }
-        if (priority !== undefined) { updates.push('priority = ?'); values.push(priority); }
 
         if (updates.length === 0) return res.status(400).json({ message: 'No hay campos para actualizar' });
 
         values.push(id);
         await pool.query(`UPDATE agent_tasks SET ${updates.join(', ')} WHERE id = ?`, values);
-        res.json({ success: true, message: 'Tarea actualizada' });
+
+        const [updated] = await pool.query(
+            'SELECT t.*, a.username as assignee_name, b.username as assigner_name FROM agent_tasks t LEFT JOIN Users a ON t.assigned_to_user_id = a.id LEFT JOIN Users b ON t.assigned_by_user_id = b.id WHERE t.id = ?',
+            [id]
+        );
+        res.json({ success: true, data: updated[0] || null, message: 'Tarea actualizada correctamente' });
     } catch (error) {
         console.error('updateTask error:', error);
         res.status(500).json({ success: false, message: 'Error al actualizar tarea' });
+    }
+};
+
+/**
+ * Actualizar solo el estado de una tarea (pendiente / en progreso / completada).
+ * Puede usarlo el asignado (agente) o admin/supervisor.
+ */
+const updateTaskStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const userId = req.user.id;
+        const role = req.user.role;
+
+        const allowedStatuses = ['pending', 'in_progress', 'completed'];
+        if (!status || !allowedStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Estado no válido' });
+        }
+
+        const [task] = await pool.query('SELECT id, assigned_to_user_id, assigned_by_user_id FROM agent_tasks WHERE id = ?', [id]);
+        if (task.length === 0) return res.status(404).json({ message: 'Tarea no encontrada' });
+        const t = task[0];
+        const isAssignedTo = t.assigned_to_user_id === userId;
+        const isAssigner = t.assigned_by_user_id === userId;
+        const isAdmin = role === 'admin';
+        const isSupervisor = role === 'supervisor';
+        if (!isAssignedTo && !isAssigner && !isAdmin && !isSupervisor) {
+            return res.status(403).json({ message: 'No tienes permiso para cambiar el estado de esta tarea' });
+        }
+
+        await pool.query(
+            'UPDATE agent_tasks SET status = ?, completed_at = ? WHERE id = ?',
+            [status, status === 'completed' ? new Date() : null, id]
+        );
+        res.json({ success: true, message: 'Estado actualizado' });
+    } catch (error) {
+        console.error('updateTaskStatus error:', error);
+        res.status(500).json({ success: false, message: 'Error al actualizar estado' });
     }
 };
 
@@ -223,4 +244,4 @@ const getAssignableUsers = async (req, res) => {
     }
 };
 
-module.exports = { getTasks, createTask, updateTask, deleteTask, getAssignableUsers };
+module.exports = { getTasks, createTask, updateTask, updateTaskStatus, deleteTask, getAssignableUsers };

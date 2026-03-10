@@ -1,19 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { getTasks, createTask, updateTask, deleteTask, getAssignableUsers } = require('../controllers/taskController');
+const { getTasks, createTask, updateTask, updateTaskStatus, deleteTask, getAssignableUsers } = require('../controllers/taskController');
 const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 
 router.use(protect);
 
-// Ver y actualizar tareas: quien tenga permiso tickets_view (admin siempre)
+// Ver tareas: quien tenga permiso tickets_view (admin siempre)
 router.get('/', authorizeByPermission('tickets_view', 'tasks_view'), getTasks);
 router.get('/assignable-users', authorize('admin', 'supervisor'), getAssignableUsers);
 
 // Crear: solo Admin y Supervisor
 router.post('/', authorize('admin', 'supervisor'), createTask);
 
-// Actualizar: quien tenga tickets_view; eliminar: solo Admin y Supervisor
-router.put('/:id', authorizeByPermission('tickets_view', 'tasks_edit', 'tasks_manage'), updateTask);
+// Editar tarea (title, description, priority, dueDate): solo Admin y Supervisor
+router.put('/:id', authorize('admin', 'supervisor'), updateTask);
+// Cambiar estado (Completar / En progreso): asignado, admin o supervisor
+router.patch('/:id/status', authorizeByPermission('tickets_view', 'tasks_view'), updateTaskStatus);
+
 router.delete('/:id', authorize('admin', 'supervisor'), deleteTask);
 
 module.exports = router;

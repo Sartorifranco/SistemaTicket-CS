@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
 import SectionCard from '../components/Common/SectionCard';
-import { FaPlus, FaCalendarAlt, FaList, FaTrash, FaCheck, FaTasks } from 'react-icons/fa';
+import { FaPlus, FaCalendarAlt, FaList, FaTrash, FaCheck, FaTasks, FaEdit, FaTimes } from 'react-icons/fa';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -45,6 +45,12 @@ const AgentTasksPage: React.FC<AgentTasksPageProps> = ({ mode }) => {
     const [calendarMonth, setCalendarMonth] = useState(new Date());
     const [filterAssignedTo, setFilterAssignedTo] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('');
+    const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDescription, setEditDescription] = useState('');
+    const [editPriority, setEditPriority] = useState('medium');
+    const [editDueDate, setEditDueDate] = useState('');
 
     // Form state
     const [newTitle, setNewTitle] = useState('');
@@ -115,11 +121,43 @@ const AgentTasksPage: React.FC<AgentTasksPageProps> = ({ mode }) => {
 
     const handleUpdateStatus = async (id: number, status: Task['status']) => {
         try {
-            await api.put(`/api/tasks/${id}`, { status });
+            await api.patch(`/api/tasks/${id}/status`, { status });
             toast.success('Estado actualizado');
             fetchTasks();
         } catch (e) {
             toast.error('Error al actualizar');
+        }
+    };
+
+    const openEditModal = (t: Task) => {
+        setEditingTask(t);
+        setEditTitle(t.title);
+        setEditDescription(t.description || '');
+        setEditPriority(t.priority || 'medium');
+        setEditDueDate(t.due_date ? t.due_date.slice(0, 10) : '');
+        setIsEditTaskModalOpen(true);
+    };
+
+    const handleUpdateTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingTask) return;
+        try {
+            await api.put(`/api/tasks/${editingTask.id}`, {
+                title: editTitle.trim(),
+                description: editDescription.trim() || null,
+                priority: editPriority,
+                dueDate: editDueDate || null
+            });
+            toast.success('Tarea actualizada correctamente');
+            setIsEditTaskModalOpen(false);
+            setEditingTask(null);
+            setEditTitle('');
+            setEditDescription('');
+            setEditDueDate('');
+            fetchTasks();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al actualizar';
+            toast.error(msg);
         }
     };
 
@@ -146,6 +184,7 @@ const AgentTasksPage: React.FC<AgentTasksPageProps> = ({ mode }) => {
     const getPriorityColor = (p: string) => {
         switch (p) {
             case 'high': return 'border-l-red-500';
+            case 'urgent': return 'border-l-red-600';
             case 'low': return 'border-l-gray-400';
             default: return 'border-l-amber-500';
         }
@@ -313,6 +352,11 @@ const AgentTasksPage: React.FC<AgentTasksPageProps> = ({ mode }) => {
                                                         className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Completar</button>
                                                 </>
                                             )}
+                                            {user?.role === 'admin' && (
+                                                <button onClick={() => openEditModal(t)} className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded flex items-center gap-1" title="Editar tarea">
+                                                    <FaEdit size={12} /> Editar
+                                                </button>
+                                            )}
                                             {(isAdmin || t.assigned_by_user_id === user?.id) && (
                                                 <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700">
                                                     <FaTrash size={14} />
@@ -373,6 +417,73 @@ const AgentTasksPage: React.FC<AgentTasksPageProps> = ({ mode }) => {
                         })}
                     </div>
                 </SectionCard>
+            )}
+
+            {/* Modal Editar Tarea (solo visible para admin) */}
+            {isEditTaskModalOpen && editingTask && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setIsEditTaskModalOpen(false); setEditingTask(null); }}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Editar tarea</h3>
+                            <button type="button" onClick={() => { setIsEditTaskModalOpen(false); setEditingTask(null); }} className="text-gray-400 hover:text-gray-600">
+                                <FaTimes />
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdateTask} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Título</label>
+                                <input
+                                    type="text"
+                                    value={editTitle}
+                                    onChange={e => setEditTitle(e.target.value)}
+                                    required
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    placeholder="Ej: Revisar documentación"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Descripción</label>
+                                <textarea
+                                    value={editDescription}
+                                    onChange={e => setEditDescription(e.target.value)}
+                                    rows={3}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
+                                    placeholder="Detalles opcionales"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Prioridad</label>
+                                <select
+                                    value={editPriority}
+                                    onChange={e => setEditPriority(e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                >
+                                    <option value="low">Baja</option>
+                                    <option value="medium">Media</option>
+                                    <option value="high">Alta</option>
+                                    <option value="urgent">Urgente</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Fecha de vencimiento</label>
+                                <input
+                                    type="date"
+                                    value={editDueDate}
+                                    onChange={e => setEditDueDate(e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end pt-2">
+                                <button type="button" onClick={() => { setIsEditTaskModalOpen(false); setEditingTask(null); }} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium">
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">
+                                    Guardar cambios
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );
