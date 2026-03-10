@@ -3,8 +3,8 @@ import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
 import { getImageUrl } from '../utils/imageUrl';
 import {
-    FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaInfoCircle, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
-    FaFolderOpen, FaChevronRight, FaFolder, FaTimes
+    FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
+    FaFolderOpen, FaChevronRight, FaFolder, FaTimes, FaFolderTree
 } from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
 import DriversPage from './DriversPage';
@@ -68,6 +68,10 @@ const AdminResourcesPage: React.FC = () => {
     const [showNewFolderModal, setShowNewFolderModal] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [showNewResourceModal, setShowNewResourceModal] = useState(false);
+    const [destinationFolderId, setDestinationFolderId] = useState<string>('');
+    const [allFoldersList, setAllFoldersList] = useState<KbFolder[]>([]);
+    const [moveTargetResource, setMoveTargetResource] = useState<Resource | null>(null);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState<string>('');
     const [showSectionsManager, setShowSectionsManager] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
     const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
@@ -110,7 +114,13 @@ const AdminResourcesPage: React.FC = () => {
     useEffect(() => {
         api.get('/api/resource-sections').then(res => setSections(res.data.data || [])).catch(() => {});
         api.get('/api/ticket-config/options').then(res => setSystems(res.data.data?.systems || [])).catch(() => {});
+        api.get('/api/kb-folders/list').then(res => setAllFoldersList(res.data.data || [])).catch(() => setAllFoldersList([]));
     }, []);
+
+    const openNewResourceModal = () => {
+        setDestinationFolderId(currentFolderId != null ? String(currentFolderId) : '');
+        setShowNewResourceModal(true);
+    };
 
     const handleCreateFolder = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -148,7 +158,8 @@ const AdminResourcesPage: React.FC = () => {
         formData.append('category', category);
         formData.append('section_id', sectionId || '');
         formData.append('system_id', systemId || '');
-        if (currentFolderId != null) formData.append('folder_id', String(currentFolderId));
+        const folderId = destinationFolderId === '' ? null : parseInt(destinationFolderId, 10);
+        if (folderId !== null && !isNaN(folderId)) formData.append('folder_id', String(folderId));
 
         if (type === 'video' || type === 'image') {
             if (!file) return toast.error('Debes subir un archivo de video o imagen');
@@ -190,6 +201,22 @@ const AdminResourcesPage: React.FC = () => {
         } catch (err) {
             console.error(err);
             toast.error('Error al eliminar');
+        }
+    };
+
+    const handleMoveResource = async () => {
+        if (!moveTargetResource) return;
+        const folderId = moveTargetFolderId === '' ? null : parseInt(moveTargetFolderId, 10);
+        const payload = folderId !== null && !isNaN(folderId) ? { folder_id: folderId } : { folder_id: null };
+        try {
+            await api.patch(`/api/resources/${moveTargetResource.id}/move`, payload);
+            toast.success('Recurso movido');
+            setMoveTargetResource(null);
+            setMoveTargetFolderId('');
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al mover');
         }
     };
 
@@ -301,7 +328,7 @@ const AdminResourcesPage: React.FC = () => {
                 </button>
                 <button
                     type="button"
-                    onClick={() => setShowNewResourceModal(true)}
+                    onClick={openNewResourceModal}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
                 >
                     <FaPlus /> Nuevo Recurso
@@ -408,6 +435,14 @@ const AdminResourcesPage: React.FC = () => {
                                         <span className="capitalize">{res.type}</span>
                                     </div>
                                     <div className="flex items-center gap-1 mt-2 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={e => { e.stopPropagation(); setMoveTargetResource(res); setMoveTargetFolderId(res.folder_id != null ? String(res.folder_id) : ''); }}
+                                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded transition text-xs font-medium flex items-center gap-1"
+                                            title="Mover a otra carpeta"
+                                        >
+                                            <FaFolderTree size={12} /> Mover
+                                        </button>
                                         <select
                                             value={res.section_id || ''}
                                             onChange={e => handleUpdateResourceSection(res.id, e.target.value, String(res.system_id || ''))}
@@ -465,6 +500,34 @@ const AdminResourcesPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Modal Mover a... */}
+            {moveTargetResource && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setMoveTargetResource(null)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Mover recurso</h3>
+                            <button type="button" onClick={() => setMoveTargetResource(null)} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">“{moveTargetResource.title}” →</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Carpeta de destino</label>
+                        <select
+                            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white mb-4"
+                            value={moveTargetFolderId}
+                            onChange={e => setMoveTargetFolderId(e.target.value)}
+                        >
+                            <option value="">Inicio (raíz)</option>
+                            {allFoldersList.map(f => (
+                                <option key={f.id} value={f.id}>{f.name}</option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2 justify-end">
+                            <button type="button" onClick={() => setMoveTargetResource(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+                            <button type="button" onClick={handleMoveResource} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">Mover</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Nuevo Recurso */}
             {showNewResourceModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowNewResourceModal(false)}>
@@ -473,10 +536,21 @@ const AdminResourcesPage: React.FC = () => {
                             <h3 className="text-lg font-bold text-gray-800">Nuevo recurso</h3>
                             <button type="button" onClick={() => setShowNewResourceModal(false)} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
                         </div>
-                        {breadcrumbs.length > 1 && (
-                            <p className="text-xs text-gray-500 mb-2">Se guardará en: {breadcrumbs.map(b => b.name).join(' > ')}</p>
-                        )}
                         <form onSubmit={handleSubmitResource} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Carpeta de Destino <span className="text-red-500">*</span></label>
+                                <select
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium"
+                                    value={destinationFolderId}
+                                    onChange={e => setDestinationFolderId(e.target.value)}
+                                >
+                                    <option value="">Inicio (raíz)</option>
+                                    {allFoldersList.map(f => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-400 mt-1">Seleccioná dónde guardar el recurso. Por defecto: carpeta actual.</p>
+                            </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Título</label>
                                 <input type="text" placeholder="Ej: Manual de Usuario 2026" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" value={title} onChange={e => setTitle(e.target.value)} required />

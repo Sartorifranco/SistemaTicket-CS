@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { getResources, getExplorer, createResource, updateResource, deleteResource } = require('../controllers/resourceController');
+const { getResources, getExplorer, createResource, updateResource, deleteResource, moveResource } = require('../controllers/resourceController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Configuración de almacenamiento
@@ -35,6 +35,7 @@ router.get('/explorer', getExplorer);
 
 // ✅ RUTAS DE ADMIN, SUPERVISOR Y AGENT (Crear, editar y borrar). POST acepta file + image; PUT acepta opcional file + image.
 router.post('/', authorize('admin', 'supervisor', 'agent'), uploadFields, createResource);
+router.patch('/:id/move', authorize('admin', 'supervisor', 'agent'), moveResource);
 router.put('/:id', authorize('admin', 'supervisor', 'agent'), uploadFields, updateResource);
 router.delete('/:id', authorize('admin', 'supervisor', 'agent'), deleteResource);
 

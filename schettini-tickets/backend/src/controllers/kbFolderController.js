@@ -20,6 +20,21 @@ const getFolders = async (req, res) => {
     }
 };
 
+/** GET /api/kb-folders/list → todas las carpetas (id, name, parent_id) para selectores */
+const getFoldersList = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT id, name, parent_id FROM kb_folders ORDER BY name ASC'
+        );
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        if (e.message && e.message.includes('kb_folders')) {
+            return res.json({ success: true, data: [] });
+        }
+        res.status(500).json({ success: false, message: 'Error al listar carpetas' });
+    }
+};
+
 /** GET /api/kb-folders/breadcrumbs?folder_id= → [{ id, name }, ...] desde raíz hasta folder_id */
 const getBreadcrumbs = async (req, res) => {
     try {
@@ -123,4 +138,4 @@ const deleteFolder = async (req, res) => {
     }
 };
 
-module.exports = { getFolders, getBreadcrumbs, createFolder, updateFolder, deleteFolder };
+module.exports = { getFolders, getFoldersList, getBreadcrumbs, createFolder, updateFolder, deleteFolder };

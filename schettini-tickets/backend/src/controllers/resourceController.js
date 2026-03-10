@@ -266,4 +266,30 @@ const deleteResource = async (req, res) => {
     }
 };
 
-module.exports = { getResources, getExplorer, createResource, updateResource, deleteResource };
+/** PATCH /api/resources/:id/move — solo actualiza folder_id para reubicar el recurso */
+const moveResource = async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        if (isNaN(id)) return res.status(400).json({ message: 'ID de recurso inválido' });
+        const { folder_id } = req.body;
+        const folderId = (folder_id === undefined || folder_id === '' || folder_id === null) ? null : parseInt(folder_id, 10);
+        const effectiveFolderId = (folderId !== null && !isNaN(folderId)) ? folderId : null;
+
+        const [rows] = await pool.query('SELECT id FROM knowledge_base WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ success: false, message: 'Recurso no encontrado' });
+
+        try {
+            await pool.query('UPDATE knowledge_base SET folder_id = ? WHERE id = ?', [effectiveFolderId, id]);
+        } catch (e) {
+            if (e.message && (e.message.includes('folder_id') || e.message.includes('Unknown column'))) {
+                return res.status(400).json({ message: 'El sistema de carpetas no está disponible. Ejecutá la migración migrate-kb-folders.js' });
+            }
+            throw e;
+        }
+        res.json({ success: true, message: 'Recurso movido' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al mover recurso' });
+    }
+};
+
+module.exports = { getResources, getExplorer, createResource, updateResource, deleteResource, moveResource };

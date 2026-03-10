@@ -41,6 +41,36 @@ async function run() {
             console.log('>>> Columna folder_id en knowledge_base ya existe.');
         }
 
+        // Migración de datos: conservar todos los recursos. Los que tienen section_id se asignan a una carpeta por sección; el resto quedan en raíz (folder_id = null).
+        try {
+            const [sectionCol] = await conn.execute("SHOW COLUMNS FROM knowledge_base LIKE 'section_id'");
+            if (sectionCol.length > 0) {
+                const [sectionsWithResources] = await conn.execute(
+                    'SELECT DISTINCT kb.section_id FROM knowledge_base kb INNER JOIN resource_sections rs ON kb.section_id = rs.id WHERE kb.section_id IS NOT NULL'
+                );
+                for (const row of sectionsWithResources) {
+                    const secId = row.section_id;
+                    const [secRows] = await conn.execute('SELECT name FROM resource_sections WHERE id = ?', [secId]);
+                    if (secRows.length === 0) continue;
+                    const sectionName = (secRows[0].name || '').trim() || `Sección ${secId}`;
+                    let [existing] = await conn.execute('SELECT id FROM kb_folders WHERE name = ? AND parent_id IS NULL LIMIT 1', [sectionName]);
+                    let folderId;
+                    if (existing.length > 0) {
+                        folderId = existing[0].id;
+                    } else {
+                        const [ins] = await conn.execute('INSERT INTO kb_folders (name, parent_id, sort_order) VALUES (?, NULL, 0)', [sectionName]);
+                        folderId = ins.insertId;
+                    }
+                    await conn.execute('UPDATE knowledge_base SET folder_id = ? WHERE section_id = ?', [folderId, secId]);
+                }
+                console.log('>>> Recursos existentes asignados a carpetas por sección (sin eliminar datos).');
+            }
+        } catch (e) {
+            if (!e.message.includes('resource_sections') && !e.message.includes('Unknown column')) {
+                console.warn('>>> Advertencia migración por sección:', e.message);
+            }
+        }
+
         console.log('>>> Migración kb_folders finalizada.');
     } catch (err) {
         console.error('Error:', err.message);
