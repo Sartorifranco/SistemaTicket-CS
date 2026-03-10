@@ -1,6 +1,7 @@
 // frontend/src/components/Common/CommentList.tsx
 import React from 'react';
-import { Comment } from '../../types'; // Se importa el tipo Comment
+import { Comment } from '../../types';
+import { formatDateTimeArgentina } from '../../utils/dateFormatter';
 
 interface CommentListProps {
     comments: Comment[];
@@ -19,7 +20,7 @@ const CommentList: React.FC<CommentListProps> = ({ comments }) => {
                     {/* --- CORRECCIÓN CLAVE AQUÍ --- */}
                     {/* Se usa 'comment_text' en lugar de 'content' para coincidir con la definición en types.ts */}
                     <p className="text-gray-700 text-sm mt-1 whitespace-pre-wrap">{comment.comment_text}</p>
-                    <p className="text-xs text-gray-500 text-right mt-1">{new Date(comment.created_at).toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 text-right mt-1">{formatDateTimeArgentina(comment.created_at)}</p>
                 </div>
             ))}
         </div>

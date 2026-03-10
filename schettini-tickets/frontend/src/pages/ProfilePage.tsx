@@ -6,6 +6,7 @@ import { FaUser, FaBoxOpen, FaStore, FaMoneyBillWave, FaClock, FaCheck, FaArrowR
 import { Plan, SystemSettings, Module, ActivityLog } from '../types';
 import { translateActionType, translateDescription } from '../utils/activityTranslations';
 import { getImageUrl } from '../utils/imageUrl';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import ClientPaymentsPage from './ClientPaymentsPage';
 import SectionCard from '../components/Common/SectionCard';
 
@@ -340,7 +341,7 @@ const ProfilePage: React.FC = () => {
                                 <p className="text-sm text-gray-600 mt-1">{translateDescription(log.description || '')}</p>
                             </div>
                             <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                                {new Date((log as any).created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                {formatDateTimeArgentina((log as any).created_at)}
                             </span>
                         </div>
                     ))}

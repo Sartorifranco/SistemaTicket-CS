@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { FaArrowLeft, FaCheck, FaTimes, FaSave, FaCalendarAlt, FaCreditCard, FaFileInvoice, FaFileDownload } from 'react-icons/fa';
@@ -176,7 +177,7 @@ const AdminUserPaymentsPage: React.FC = () => {
                             ) : (
                                 payments.map(pay => (
                                     <tr key={pay.id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-sm text-gray-600">{new Date(pay.created_at).toLocaleDateString()}</td>
+                                        <td className="p-4 text-sm text-gray-600">{formatDateArgentina(pay.created_at)}</td>
                                         <td className="p-4 font-bold text-gray-800">${pay.amount}</td>
                                         <td className="p-4 text-sm text-gray-600 capitalize">{pay.method}</td>
                                         <td className="p-4">

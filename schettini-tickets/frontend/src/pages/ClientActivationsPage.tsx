@@ -4,6 +4,7 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
@@ -45,11 +46,6 @@ const CONDICION_IVA_OPTIONS = [
   { value: 'monotributo', label: 'Monotributo' },
   { value: 'exento', label: 'Exento' }
 ];
-
-function formatDate(d: string | undefined): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 
 interface CloudContractTemplate {
   filename: string;
@@ -160,7 +156,7 @@ const ClientActivationsPage: React.FC = () => {
                         </span>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-2 text-sm">{formatDate(a.created_at)}</td>
+                    <td className="px-4 py-2 text-sm">{formatDateArgentina(a.created_at)}</td>
                     <td className="px-4 py-2">
                       {a.status === 'pending_client_fill' && (
                         <button

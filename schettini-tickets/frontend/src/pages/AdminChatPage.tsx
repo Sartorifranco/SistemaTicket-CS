@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../config/axiosConfig';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import io from 'socket.io-client';
@@ -166,7 +167,7 @@ const AdminChatPage: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                    <p className="text-[10px] text-gray-400 mb-1">{new Date(conv.last_message_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                    <p className="text-[10px] text-gray-400 mb-1">{formatDateTimeArgentina(conv.last_message_time)}</p>
                                     {conv.unread_count > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{conv.unread_count}</span>}
                                 </div>
                             </div>
@@ -213,7 +214,7 @@ const AdminChatPage: React.FC = () => {
                                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[70%] p-4 rounded-xl shadow-sm relative ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                                             <p className="text-sm">{msg.message}</p>
-                                            <span className={`text-[10px] block mt-2 text-right ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                            <span className={`text-[10px] block mt-2 text-right ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>{formatDateTimeArgentina(msg.created_at)}</span>
                                         </div>
                                     </div>
                                 );

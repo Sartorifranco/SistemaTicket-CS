@@ -7,6 +7,7 @@ import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
+import { formatNowArgentina } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
 import { FaFileExcel, FaSearch, FaPlus, FaTrash, FaCopy, FaWhatsapp, FaFilePdf, FaTimes } from 'react-icons/fa';
 
@@ -555,7 +556,7 @@ const QuoterPage: React.FC = () => {
     y += 6;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}`, margin, y);
+    doc.text(`Fecha: ${formatNowArgentina({ day: '2-digit', month: 'long', year: 'numeric' })}`, margin, y);
     y += 12;
 
     const totalFinal = totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel;

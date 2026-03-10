@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../config/axiosConfig';
+import { formatDateTimeArgentina } from '../../utils/dateFormatter';
 import { FaCommentDots, FaVideo, FaDownload, FaTimes, FaPaperPlane, FaChevronLeft, FaHeadset, FaQuestion, FaBook, FaLink, FaFileAlt, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import io from 'socket.io-client';
 
@@ -277,7 +278,7 @@ const HelpWidget: React.FC = () => {
                                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
                                             <div className={`max-w-[85%] p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                                                 <p className="leading-relaxed">{msg.message}</p>
-                                                <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                                <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>{formatDateTimeArgentina(msg.created_at)}</p>
                                             </div>
                                         </div>
                                     );

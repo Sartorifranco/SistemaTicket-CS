@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import SectionCard from '../components/Common/SectionCard';
 import { FaEye, FaRecycle, FaSearch, FaPaperclip, FaTimes, FaSave, FaPlus } from 'react-icons/fa';
 
@@ -40,10 +41,6 @@ function parseRecyclingPhotos(v: RecyclingOrder['recycling_photos']): string[] {
   return [];
 }
 
-function formatDate(d?: string | null): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 
 const RecyclingAreaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -248,7 +245,7 @@ const RecyclingAreaPage: React.FC = () => {
                           '—'
                         )}
                       </td>
-                      <td className="px-4 py-2 text-sm">{formatDate(o.entry_date || o.created_at)}</td>
+                      <td className="px-4 py-2 text-sm">{formatDateArgentina(o.entry_date || o.created_at)}</td>
                       <td className="px-4 py-2 text-sm max-w-xs">
                         {o.recycling_notes ? (
                           <span className="line-clamp-2 text-gray-700">{o.recycling_notes}</span>

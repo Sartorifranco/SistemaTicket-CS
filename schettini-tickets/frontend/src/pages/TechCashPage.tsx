@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/axiosConfig';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import {
@@ -86,7 +87,7 @@ const TechCashPage: React.FC = () => {
     try {
       const headers = ['Fecha', 'Tipo', 'Concepto', 'Método', 'Monto', 'Usuario', 'Orden Vinculada', 'Notas'];
       const rows = movements.map((m) => [
-        m.movement_date ? new Date(m.movement_date).toLocaleString('es-AR') : '',
+        m.movement_date ? formatDateTimeArgentina(m.movement_date) : '',
         m.type === 'ingreso' ? 'Ingreso' : 'Egreso',
         CONCEPT_LABELS[m.concept] || m.concept,
         m.payment_method || '—',
@@ -236,7 +237,7 @@ const TechCashPage: React.FC = () => {
                     movements.map((m) => (
                       <tr key={m.id} className="hover:bg-gray-50">
                         <td className="p-4 text-sm text-gray-800">
-                          {m.movement_date ? new Date(m.movement_date).toLocaleString('es-AR') : '—'}
+                          {m.movement_date ? formatDateTimeArgentina(m.movement_date) : '—'}
                         </td>
                         <td className="p-4">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${m.type === 'ingreso' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
+import { formatNowArgentina } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -154,7 +155,7 @@ const AdminReportsPage: React.FC = () => {
       const pageH = doc.internal.pageSize.getHeight();
       const margin = 15;
       const title = `Reporte de Casa Schettini - ${TABS.find((t) => t.id === activeTab)?.pdfTitle || 'Dashboard'}`;
-      const dateStr = new Date().toLocaleDateString('es-AR', {
+      const dateStr = formatNowArgentina({
         day: '2-digit',
         month: 'long',
         year: 'numeric',

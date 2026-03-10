@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../config/axiosConfig';
+import { formatDateArgentina } from '../../utils/dateFormatter';
 
 // Modal interno simple para ver lista
 const ListModal: React.FC<{ title: string; items: any[]; onClose: () => void }> = ({ title, items, onClose }) => (
@@ -15,7 +16,7 @@ const ListModal: React.FC<{ title: string; items: any[]; onClose: () => void }> 
                         {items.map((item: any, idx) => (
                             <li key={idx} className="border-b pb-2">
                                 <p className="font-bold text-gray-800">{item.alias}</p>
-                                <p className="text-xs text-gray-500">{item.company_name} - {item.last_maint ? new Date(item.last_maint).toLocaleDateString() : 'Nunca mantenido'}</p>
+                                <p className="text-xs text-gray-500">{item.company_name} - {item.last_maint ? formatDateArgentina(item.last_maint) : 'Nunca mantenido'}</p>
                             </li>
                         ))}
                     </ul>

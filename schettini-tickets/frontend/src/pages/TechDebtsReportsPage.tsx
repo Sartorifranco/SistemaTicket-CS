@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/axiosConfig';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import {
@@ -89,7 +90,7 @@ const TechDebtsReportsPage: React.FC = () => {
       const headers = ['N° Orden', 'Fecha', 'Cliente', 'Total', 'Abonado', 'Saldo Pendiente', 'Estado'];
       const rows = currentRows.map((r) => [
         r.order_number || '—',
-        r.entry_date ? new Date(r.entry_date).toLocaleDateString('es-AR') : '—',
+        r.entry_date ? formatDateArgentina(r.entry_date) : '—',
         r.client_display || '—',
         Number(r.total_cost ?? 0),
         Number(r.deposit_paid ?? 0),
@@ -236,7 +237,7 @@ const TechDebtsReportsPage: React.FC = () => {
                       <tr key={r.id} className="hover:bg-gray-50">
                         <td className="p-4 font-medium text-gray-800">{r.order_number || '—'}</td>
                         <td className="p-4 text-sm text-gray-700">
-                          {r.entry_date ? new Date(r.entry_date).toLocaleDateString('es-AR') : '—'}
+                          {r.entry_date ? formatDateArgentina(r.entry_date) : '—'}
                         </td>
                         <td className="p-4 text-sm">{r.client_display || '—'}</td>
                         <td className="p-4 text-sm text-right">${Number(r.total_cost ?? 0).toLocaleString('es-AR')}</td>

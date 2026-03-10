@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { FaWrench, FaEye, FaTimes } from 'react-icons/fa';
 
 interface RepairOrderItem {
@@ -86,7 +87,7 @@ const ClientRepairsPage: React.FC = () => {
   };
 
   const formatDateTime = (d?: string | null) =>
-    d ? new Date(d).toLocaleString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    d ? formatDateTimeArgentina(d) : '—';
 
   const formatCurrency = (n?: number | null) =>
     n != null ? `$${Number(n).toLocaleString('es-AR')}` : '—';

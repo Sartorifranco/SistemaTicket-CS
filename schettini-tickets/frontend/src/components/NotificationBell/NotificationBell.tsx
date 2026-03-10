@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Notification } from '../../types';
+import { formatDateTimeArgentina } from '../../utils/dateFormatter';
 import { FaBell } from 'react-icons/fa';
 
 /** Formatea mensaje: si viene "titulo|||mensaje" muestra título y mensaje; si no, el texto tal cual */
@@ -109,7 +110,7 @@ const NotificationBell: React.FC = () => {
                                     {title && <p className="font-semibold text-gray-800 leading-tight">{title}</p>}
                                     <p className="leading-tight">{text || notification.message}</p>
                                     <span className="text-xs text-gray-400 block mt-1">
-                                        {notification.created_at ? new Date(notification.created_at).toLocaleString('es-AR') : 'Reciente'}
+                                        {notification.created_at ? formatDateTimeArgentina(notification.created_at) : 'Reciente'}
                                     </span>
                                 </div>
                             );

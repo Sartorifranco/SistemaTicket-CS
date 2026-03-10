@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/axiosConfig';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { FaWrench, FaUser, FaClock, FaExclamationTriangle, FaArrowLeft } from 'react-icons/fa';
@@ -65,17 +66,6 @@ function isDelayed(order: MonitorOrder): boolean {
   }
   if ((status === 'ingresado' || status === 'cotizado') && days > 3) return true;
   return false;
-}
-
-function formatDate(d: string): string {
-  const dt = new Date(d);
-  return dt.toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
 }
 
 const OrderMonitorPage: React.FC = () => {
@@ -203,7 +193,7 @@ const OrderMonitorPage: React.FC = () => {
                   <FaClock className="shrink-0" />
                   <span>{elapsed.text}</span>
                   <span className="text-slate-500">•</span>
-                  <span className="text-xs">{formatDate(order.entry_date)}</span>
+                  <span className="text-xs">{formatDateTimeArgentina(order.entry_date)}</span>
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-slate-600 flex justify-between items-center">

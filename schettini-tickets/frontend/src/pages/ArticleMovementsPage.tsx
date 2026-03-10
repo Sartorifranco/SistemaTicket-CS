@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
 import { FaBoxOpen, FaSearch } from 'react-icons/fa';
 
@@ -47,11 +48,7 @@ const ArticleMovementsPage: React.FC = () => {
     fetchMovements();
   }, [searchTerm]);
 
-  const formatDate = (s: string) => {
-    if (!s) return '—';
-    const d = new Date(s);
-    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
+  const formatDate = (s: string) => (s ? formatDateTimeArgentina(s) : '—');
 
   if (loading && list.length === 0) {
     return <div className="p-8 text-center text-gray-500">Cargando movimientos...</div>;

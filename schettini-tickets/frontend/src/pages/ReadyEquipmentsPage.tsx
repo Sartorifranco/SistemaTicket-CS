@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import SectionCard from '../components/Common/SectionCard';
 import { FaBoxOpen, FaTicketAlt, FaSearch } from 'react-icons/fa';
 
@@ -16,11 +17,6 @@ interface Activation {
   client_email?: string;
   created_at?: string;
   updated_at?: string;
-}
-
-function formatDate(d: string | undefined): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 const ReadyEquipmentsPage: React.FC = () => {
@@ -116,7 +112,7 @@ const ReadyEquipmentsPage: React.FC = () => {
                         </button>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-2 text-sm">{formatDate(a.updated_at || a.created_at)}</td>
+                    <td className="px-4 py-2 text-sm">{(a.updated_at || a.created_at) ? formatDateArgentina(a.updated_at || a.created_at!) : '—'}</td>
                   </tr>
                 ))}
               </tbody>

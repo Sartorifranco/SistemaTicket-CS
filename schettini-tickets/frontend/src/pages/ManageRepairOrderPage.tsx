@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
+import { formatDateArgentina, formatDateForInput, formatNowArgentina } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
@@ -135,12 +136,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
 
-function formatDate(d?: string | null): string {
-  if (!d) return '';
-  const dt = new Date(d);
-  return dt.toISOString().slice(0, 10);
-}
-
 function buildWhatsAppTemplate(order: RepairOrder): string {
   const totalCost = order.total_cost ?? 0;
   const depositPaid = order.deposit_paid ?? 0;
@@ -162,11 +157,11 @@ ${order.reported_fault || '—'}
 INFORME TECNICO / SOLUCION:
 *${order.technical_report || '—'}*
 
-Ingreso el: ${formatDate(order.entry_date) || '—'}
-Aceptado el: ${formatDate(order.accepted_date) || '—'}
-Prometido para: ${formatDate(order.promised_date) || '—'}
-Entregado el: ${formatDate(order.delivered_date) || '—'}
-Garantía: ${formatDate(order.warranty_expiration_date) || '—'}
+Ingreso el: ${formatDateArgentina(order.entry_date) || '—'}
+Aceptado el: ${formatDateArgentina(order.accepted_date) || '—'}
+Prometido para: ${formatDateArgentina(order.promised_date) || '—'}
+Entregado el: ${formatDateArgentina(order.delivered_date) || '—'}
+Garantía: ${formatDateArgentina(order.warranty_expiration_date) || '—'}
 
 Observaciones: 
 ${order.public_notes || '—'}
@@ -290,10 +285,10 @@ const ManageRepairOrderPage: React.FC = () => {
           sparePartsCost: o.spare_parts_cost != null ? String(o.spare_parts_cost) : '',
           totalCost: o.total_cost != null ? String(o.total_cost) : '',
           depositPaid: o.deposit_paid != null ? String(o.deposit_paid) : '',
-          acceptedDate: formatDate(o.accepted_date) || '',
-          promisedDate: formatDate(o.promised_date) || '',
-          deliveredDate: formatDate(o.delivered_date) || '',
-          warrantyExpirationDate: formatDate(o.warranty_expiration_date) || '',
+          acceptedDate: formatDateForInput(o.accepted_date) || '',
+          promisedDate: formatDateForInput(o.promised_date) || '',
+          deliveredDate: formatDateForInput(o.delivered_date) || '',
+          warrantyExpirationDate: formatDateForInput(o.warranty_expiration_date) || '',
           publicNotes: o.public_notes || '',
           sparePartsDetail: o.spare_parts_detail || '',
           technicianId: o.technician_id ? String(o.technician_id) : '',
@@ -301,7 +296,7 @@ const ManageRepairOrderPage: React.FC = () => {
           isWarranty: !!o.is_warranty,
           warrantyType: o.warranty_type || '',
           purchaseInvoiceNumber: o.purchase_invoice_number || '',
-          purchaseDate: formatDate(o.purchase_date) || '',
+          purchaseDate: formatDateForInput(o.purchase_date) || '',
           originalSupplier: o.original_supplier || '',
           requiresFactoryShipping: !!o.requires_factory_shipping,
           warrantyStatus: o.warranty_status || ''
@@ -551,7 +546,7 @@ const ManageRepairOrderPage: React.FC = () => {
       if (!ok) return;
       const techName = technicians.find((t) => String(t.id) === newTechId)?.full_name || technicians.find((t) => String(t.id) === newTechId)?.username || 'Técnico';
       const prevName = technicians.find((t) => String(t.id) === originalTechId)?.full_name || technicians.find((t) => String(t.id) === originalTechId)?.username || 'Sin asignar';
-      const note = `[${new Date().toLocaleString('es-AR')}] Reasignada a ${techName}. Anterior: ${prevName}.`;
+      const note = `[${formatNowArgentina()}] Reasignada a ${techName}. Anterior: ${prevName}.`;
       finalInternalNotes = finalInternalNotes ? `${finalInternalNotes}\n${note}` : note;
     }
     setSaving(true);

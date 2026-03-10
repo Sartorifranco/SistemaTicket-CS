@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
 import { getImageUrl } from '../../utils/imageUrl';
+import { formatDateTimeArgentina } from '../../utils/dateFormatter';
 import './RepairOrderReceipt.css';
 
 const DEFAULT_LEGAL_TEXT = `1- Para el requerimiento de cualquier servicio respecto del equipo y/o el retiro del mismo, se solicitará, sin excepción, la exhibición del presente comprobante o el DNI.
@@ -52,9 +53,6 @@ export interface RepairOrderReceiptData {
   reported_fault?: string | null;
   included_accessories?: string | null;
 }
-
-const formatDate = (d?: string | null) =>
-  d ? new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
 function parseAccessoriesList(text?: string | null): string[] {
   if (!text || typeof text !== 'string') return [];
@@ -108,7 +106,7 @@ function ReceiptHalf({
           <p className="text-[9px] text-gray-600 leading-tight">{cs.email || '—'}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-[9px] mb-0.5">Entrada: {formatDate(order.entry_date || order.created_at)}</p>
+          <p className="text-[9px] mb-0.5">Entrada: {formatDateTimeArgentina(order.entry_date || order.created_at)}</p>
           <div className="border border-black p-1 text-center">
             <p className="text-[10px] font-medium">Orden de Reparación</p>
             <p className="text-lg font-bold">{order.order_number}</p>

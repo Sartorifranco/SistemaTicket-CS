@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import { FaCheckCircle, FaTicketAlt, FaBoxOpen, FaTimes, FaBell } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready' | 'rejected';
@@ -30,11 +31,6 @@ const STATUS_LABELS: Record<ActivationStatus, string> = {
   ready: 'Equipo listo',
   rejected: 'Rechazada'
 };
-
-function formatDate(d: string | undefined): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 
 const AdminActivationsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -185,7 +181,7 @@ const AdminActivationsPage: React.FC = () => {
                         </button>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-2 text-sm">{formatDate(a.created_at)}</td>
+                    <td className="px-4 py-2 text-sm">{formatDateArgentina(a.created_at)}</td>
                     {!isViewer && (
                       <td className="px-4 py-2">
                         {a.status === 'pending_validation' && (

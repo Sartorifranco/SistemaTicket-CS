@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { ticketStatusTranslations, ticketPriorityTranslations } from '../../utils/traslations';
+import { formatNowArgentina } from '../../utils/dateFormatter';
 import { toast } from 'react-toastify';
 
 // Type declaration for jspdf-autotable
@@ -81,7 +82,7 @@ const AdminReportsPage: React.FC = () => {
             doc.text('Reporte General del Sistema de Tickets', 14, 22);
             doc.setFontSize(11);
             doc.setTextColor(100);
-            doc.text(`Generado el: ${new Date().toLocaleString('es-AR')}`, 14, 30);
+            doc.text(`Generado el: ${formatNowArgentina()}`, 14, 30);
 
             autoTable(doc, {
                 startY: 40,

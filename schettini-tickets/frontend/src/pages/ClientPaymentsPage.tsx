@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
+import { formatDateArgentina } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { FaFileInvoiceDollar, FaHistory, FaCloudUploadAlt, FaEdit, FaCheckCircle, FaClock, FaTimesCircle, FaEnvelope } from 'react-icons/fa';
@@ -114,7 +115,7 @@ const ClientPaymentsPage: React.FC = () => {
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return 'Sin vencimiento';
-        return new Date(dateString).toLocaleDateString();
+        return formatDateArgentina(dateString);
     };
 
     return (
@@ -211,7 +212,7 @@ const ClientPaymentsPage: React.FC = () => {
                             ) : (
                                 payments.map(pay => (
                                     <tr key={pay.id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-sm text-gray-600">{new Date(pay.created_at).toLocaleDateString()}</td>
+                                        <td className="p-4 text-sm text-gray-600">{formatDateArgentina(pay.created_at)}</td>
                                         <td className="p-4 text-sm font-mono text-gray-500">#{pay.id}</td>
                                         <td className="p-4 text-sm text-gray-700 capitalize">{pay.method}</td>
                                         <td className="p-4 text-sm font-bold text-gray-800">${pay.amount}</td>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../config/axiosConfig';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
 import { Depositario } from '../../src/types';
 
@@ -94,7 +95,7 @@ const RouteHistoryModal: React.FC<Props> = ({ onClose }) => {
                         // --- VISTA DETALLE ---
                         <div className="animate-fade-in space-y-6">
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-wrap gap-6 text-sm text-gray-600">
-                                <div><strong>Fecha:</strong> {new Date(selectedRoute.created_at).toLocaleDateString()} {new Date(selectedRoute.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                                <div><strong>Fecha:</strong> {formatDateTimeArgentina(selectedRoute.created_at)}</div>
                                 <div><strong>Generada por:</strong> {selectedRoute.username || 'Sistema'}</div>
                                 <div><strong>Distancia:</strong> {selectedRoute.total_distance_km} km</div>
                                 <div><strong>Tiempo Est.:</strong> {Math.floor(selectedRoute.total_time_minutes / 60)}h {selectedRoute.total_time_minutes % 60}m</div>
@@ -156,7 +157,7 @@ const RouteHistoryModal: React.FC<Props> = ({ onClose }) => {
                                             <tr key={route.id} className="bg-white border-b hover:bg-gray-100 transition-colors">
                                                 <td className="px-6 py-4 font-bold text-blue-600">#{route.id}</td>
                                                 <td className="px-6 py-4">
-                                                    {new Date(route.created_at).toLocaleDateString()} <span className="text-xs text-gray-400">{new Date(route.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                    {formatDateTimeArgentina(route.created_at)}
                                                 </td>
                                                 <td className="px-6 py-4 font-medium text-gray-900">
                                                     {route.username || 'Sistema'}

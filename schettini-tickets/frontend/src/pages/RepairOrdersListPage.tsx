@@ -7,6 +7,7 @@ import SectionCard from '../components/Common/SectionCard';
 import { FaPlus, FaEye, FaPrint, FaWhatsapp, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 import type { RepairOrderReceiptData } from '../components/RepairOrder/RepairOrderReceipt';
+import { formatDateTimeArgentina } from '../utils/dateFormatter';
 
 interface RepairOrderRow {
   id: number;
@@ -78,12 +79,6 @@ const STATUS_COLORS: Record<string, string> = {
   entregado_sin_reparacion: 'bg-gray-100 text-gray-700 border-gray-300',
   abandonado: 'bg-red-200 text-red-900 border-red-500'
 };
-
-function formatDateTime(d?: string | null): string {
-  if (!d) return '—';
-  const dt = new Date(d);
-  return dt.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 function phoneToWhatsApp(phone?: string | null): string {
   if (!phone) return '';
@@ -393,7 +388,7 @@ const RepairOrdersListPage: React.FC = () => {
                           </select>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-sm">{formatDateTime(o.entry_date || o.created_at)}</td>
+                      <td className="px-4 py-2 text-sm">{formatDateTimeArgentina(o.entry_date || o.created_at)}</td>
                       <td className="px-4 py-2">
                         {badge && <span className={`px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>⚠️ {badge.text}</span>}
                       </td>
