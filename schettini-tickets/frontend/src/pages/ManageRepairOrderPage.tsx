@@ -705,22 +705,14 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
-                <input
-                  type="text"
-                  name="equipmentType"
-                  list="equipment-type-list"
+                <CreatableAutocomplete
+                  options={equipmentTypeOptions}
                   value={form.equipmentType}
-                  onChange={handleChange}
-                  disabled={!canEditEquipment}
+                  onChange={(v) => setForm((f) => ({ ...f, equipmentType: v }))}
                   placeholder="Escribir o elegir de la lista"
-                  autoComplete="off"
+                  disabled={!canEditEquipment}
                   className={`w-full px-3 py-2 border rounded-lg ${!canEditEquipment ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
-                <datalist id="equipment-type-list">
-                  {equipmentTypeOptions.map((v) => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>

@@ -531,7 +531,12 @@ const NewRepairOrderPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Equipo</label>
-                    <CreatableOption category="equipment_type" itemIndex={idx} value={item.equipment_type} onChange={(v) => updateItem(idx, 'equipment_type', v)} placeholder="Escribir o elegir de la lista" />
+                    <CreatableAutocomplete
+                      options={(optionsByCategory['equipment_type'] || []).map((o) => o.value)}
+                      value={item.equipment_type}
+                      onChange={(v) => updateItem(idx, 'equipment_type', v)}
+                      placeholder="Escribir o elegir de la lista"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
