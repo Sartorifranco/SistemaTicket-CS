@@ -96,6 +96,13 @@ if [[ -f "backend/scripts/fix-form-type-varchar.js" ]]; then
     echo ""
 fi
 
+# status en activations: añadir 'rejected' al ENUM (validación Aprobar/Rechazar)
+if [[ -f "backend/scripts/add-activation-status-rejected.js" ]]; then
+    echo ">>> Añadiendo status 'rejected' en activations..."
+    (cd backend && node scripts/add-activation-status-rejected.js) || true
+    echo ""
+fi
+
 # Tabla article_movements y agents_can_view_movements (Fase 3 Movimientos de Artículos)
 if [[ -f "backend/scripts/add-article-movements-and-setting.js" ]]; then
     echo ">>> Ejecutando migración article_movements y agents_can_view_movements..."

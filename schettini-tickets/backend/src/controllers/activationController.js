@@ -55,18 +55,11 @@ const requestActivation = async (req, res) => {
   }
 };
 
-// PUT /api/activations/:id/validate — Admin/Supervisor valida con { form_type }
+// PUT /api/activations/:id/validate — Admin/Supervisor aprueba o rechaza (body: { action: 'approve' | 'reject' })
 const validateActivation = async (req, res) => {
   try {
     const id = req.params.id;
-    const { form_type } = req.body;
-
-    if (!form_type || !VALID_FORM_TYPES.includes(String(form_type))) {
-      return res.status(400).json({
-        success: false,
-        message: `form_type inválido. Valores: ${VALID_FORM_TYPES.join(', ')}`
-      });
-    }
+    const action = req.body.action === 'reject' ? 'reject' : 'approve';
 
     const [rows] = await pool.query(
       'SELECT id, client_id, status FROM activations WHERE id = ?',
@@ -80,16 +73,40 @@ const validateActivation = async (req, res) => {
     }
     const clientId = rows[0].client_id;
 
+    if (action === 'reject') {
+      await pool.query(
+        `UPDATE activations SET status = 'rejected', updated_at = NOW() WHERE id = ?`,
+        [id]
+      );
+      if (clientId) {
+        await createNotification(
+          clientId,
+          'Solicitud de Planilla Rechazada',
+          'Tu solicitud de planilla ha sido rechazada. Contactá al equipo para más información.',
+          'warning',
+          req.io || null,
+          parseInt(id, 10),
+          'activation'
+        );
+      }
+      return res.json({
+        success: true,
+        message: 'Solicitud rechazada.',
+        data: { id: parseInt(id, 10), status: 'rejected' }
+      });
+    }
+
+    // Aprobar: habilitar al cliente para completar la planilla (sin cambiar form_type)
     await pool.query(
-      `UPDATE activations SET form_type = ?, status = 'pending_client_fill', updated_at = NOW() WHERE id = ?`,
-      [form_type, id]
+      `UPDATE activations SET status = 'pending_client_fill', updated_at = NOW() WHERE id = ?`,
+      [id]
     );
 
     if (clientId) {
       await createNotification(
         clientId,
         'Actualización de Planilla',
-        'El estado de tu planilla ha cambiado a: Pendiente de completar por vos.',
+        'Tu solicitud fue aprobada. Podés completar la planilla con tus datos.',
         'info',
         req.io || null,
         parseInt(id, 10),
@@ -99,8 +116,8 @@ const validateActivation = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Activación validada. El cliente puede completar el formulario.',
-      data: { id: parseInt(id, 10), form_type, status: 'pending_client_fill' }
+      message: 'Activación aprobada. El cliente puede completar el formulario.',
+      data: { id: parseInt(id, 10), status: 'pending_client_fill' }
     });
   } catch (error) {
     console.error('Error validateActivation:', error);
@@ -143,16 +160,18 @@ const submitForm = async (req, res) => {
       await pool.query('UPDATE Users SET billing_type = ?, updated_at = NOW() WHERE id = ?', [body.billing_type, clientId]);
     }
 
-    const cloudNubeFile = files.find(f => (f.fieldname || '') === 'cloud_nube_contrato');
-    if (cloudNubeFile && cloudNubeFile.filename) {
-      try {
-        await pool.query(
-          'INSERT INTO user_documents (user_id, document_name, document_type, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)',
-          [clientId, 'Contrato Cloud Nube firmado', 'cloud_nube_contrato', `/uploads/${cloudNubeFile.filename}`, clientId]
-        );
-      } catch (docErr) {
-        if (!docErr.message || !docErr.message.includes("doesn't exist")) {
-          console.error('Error guardando contrato Cloud Nube en user_documents:', docErr);
+    const cloudNubeFiles = files.filter(f => (f.fieldname || '') === 'cloud_nube_contrato');
+    for (const cloudNubeFile of cloudNubeFiles) {
+      if (cloudNubeFile && cloudNubeFile.filename) {
+        try {
+          await pool.query(
+            'INSERT INTO user_documents (user_id, document_name, document_type, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)',
+            [clientId, 'Contrato Cloud Nube firmado', 'cloud_nube_contrato', `/uploads/${cloudNubeFile.filename}`, clientId]
+          );
+        } catch (docErr) {
+          if (!docErr.message || !docErr.message.includes("doesn't exist")) {
+            console.error('Error guardando contrato Cloud Nube en user_documents:', docErr);
+          }
         }
       }
     }

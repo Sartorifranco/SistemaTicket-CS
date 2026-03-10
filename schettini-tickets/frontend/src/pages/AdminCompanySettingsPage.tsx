@@ -25,7 +25,9 @@ import {
   FaTags,
   FaToolbox,
   FaList,
-  FaCube
+  FaCube,
+  FaCloud,
+  FaUpload
 } from 'react-icons/fa';
 
 interface CompanySettings {
@@ -70,7 +72,7 @@ const defaultSettings: CompanySettings = {
   agents_can_view_movements: false,
 };
 
-type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets';
+type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets' | 'cloud-contracts';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <FaBuilding /> },
@@ -81,6 +83,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'tipos-equipo', label: 'Tipos de Equipo', icon: <FaList /> },
   { id: 'modelos', label: 'Modelos', icon: <FaCube /> },
   { id: 'categorias-tickets', label: 'Categorías de Tickets', icon: <FaTicketAlt /> },
+  { id: 'cloud-contracts', label: 'Gestor Contratos Cloud', icon: <FaCloud /> },
 ];
 
 /** Componente genérico para gestionar listas de system_options por categoría */
@@ -209,6 +212,62 @@ const AdminCompanySettingsPage: React.FC = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [sparePartsUploading, setSparePartsUploading] = useState(false);
   const sparePartsInputRef = useRef<HTMLInputElement>(null);
+
+  const [cloudContracts, setCloudContracts] = useState<{ filename: string; label: string; url: string }[]>([]);
+  const [cloudContractsLoading, setCloudContractsLoading] = useState(false);
+  const [cloudContractUploading, setCloudContractUploading] = useState(false);
+  const cloudContractInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchCloudContracts = async () => {
+    setCloudContractsLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; data: { filename: string; label: string; url: string }[] }>('/api/settings/cloud-contracts');
+      setCloudContracts(res.data.data || []);
+    } catch {
+      toast.error('No se pudieron cargar los contratos Cloud');
+    } finally {
+      setCloudContractsLoading(false);
+    }
+  };
+
+  const handleUploadCloudContract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Solo se permiten archivos PDF');
+      return;
+    }
+    setCloudContractUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      await api.post('/api/settings/cloud-contracts', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Contrato subido correctamente');
+      fetchCloudContracts();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al subir';
+      toast.error(msg);
+    } finally {
+      setCloudContractUploading(false);
+      if (cloudContractInputRef.current) cloudContractInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteCloudContract = async (filename: string) => {
+    if (!window.confirm('¿Eliminar este contrato?')) return;
+    try {
+      await api.delete(`/api/settings/cloud-contracts/${encodeURIComponent(filename)}`);
+      toast.success('Contrato eliminado');
+      fetchCloudContracts();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar';
+      toast.error(msg);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'cloud-contracts') fetchCloudContracts();
+  }, [activeTab]);
 
   const fetchTicketCategories = async () => {
     setCategoriesLoading(true);
@@ -912,8 +971,73 @@ const AdminCompanySettingsPage: React.FC = () => {
                     <FaTrash />
                   </button>
                 </li>
-              ))}
-            </ul>
+              )          )}
+        </ul>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'cloud-contracts' && (
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+          <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+            <FaCloud className="text-indigo-600" /> Gestor de Contratos Cloud
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Subí las plantillas PDF de contratos Cloud Nube (ej. Sysoft, StarPOS). Los clientes verán un enlace de descarga por cada contrato al completar la planilla.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <input
+              ref={cloudContractInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleUploadCloudContract}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => cloudContractInputRef.current?.click()}
+              disabled={cloudContractUploading}
+              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              <FaUpload /> {cloudContractUploading ? 'Subiendo...' : 'Subir nuevo PDF'}
+            </button>
+          </div>
+          {cloudContractsLoading ? (
+            <p className="text-gray-500">Cargando contratos...</p>
+          ) : cloudContracts.length === 0 ? (
+            <p className="text-gray-500 italic">No hay contratos subidos. Subí al menos un PDF para que los clientes puedan descargarlo.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-200 rounded-lg">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Contrato</th>
+                    <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {cloudContracts.map((c) => (
+                    <tr key={c.filename} className="hover:bg-gray-50">
+                      <td className="px-4 py-2">
+                        <a href={getImageUrl(c.url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-medium">
+                          {c.label || c.filename}
+                        </a>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCloudContract(c.filename)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Eliminar"
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

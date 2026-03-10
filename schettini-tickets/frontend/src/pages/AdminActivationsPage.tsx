@@ -6,9 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
 import { FaCheckCircle, FaTicketAlt, FaBoxOpen, FaTimes, FaBell } from 'react-icons/fa';
 
-type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
-type FormType = 'general' | 'controlador_fiscal';
-type FormTypeApi = FormType | 'alta_general' | 'fiscal' | 'no_fiscal' | 'none';
+type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready' | 'rejected';
+type FormTypeApi = 'general' | 'controlador_fiscal' | 'alta_general' | 'fiscal' | 'no_fiscal' | 'none';
 
 interface Activation {
   id: number;
@@ -28,13 +27,9 @@ const STATUS_LABELS: Record<ActivationStatus, string> = {
   pending_validation: 'Pendiente validación',
   pending_client_fill: 'Esperando al cliente',
   processing: 'Alta pendiente',
-  ready: 'Equipo listo'
+  ready: 'Equipo listo',
+  rejected: 'Rechazada'
 };
-
-const FORM_TYPE_OPTIONS: { value: FormType; label: string }[] = [
-  { value: 'general', label: 'Planilla Estándar (El cliente completará sus datos)' },
-  { value: 'controlador_fiscal', label: 'Controlador Fiscal' }
-];
 
 function formatDate(d: string | undefined): string {
   if (!d) return '—';
@@ -50,8 +45,8 @@ const AdminActivationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({ pending_validation: 0, pending_client_fill: 0, processing: 0, ready: 0 });
   const [validateModalId, setValidateModalId] = useState<number | null>(null);
-  const [selectedFormType, setSelectedFormType] = useState<FormType>('general');
   const [validating, setValidating] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [markingReadyId, setMarkingReadyId] = useState<number | null>(null);
   const [confirmReadyModal, setConfirmReadyModal] = useState<{ id: number; invoice_number: string } | null>(null);
 
@@ -76,17 +71,30 @@ const AdminActivationsPage: React.FC = () => {
     fetchList();
   }, [fetchList]);
 
-  const handleValidate = () => {
+  const handleApprove = () => {
     if (!validateModalId) return;
     setValidating(true);
-    api.put(`/api/activations/${validateModalId}/validate`, { form_type: selectedFormType })
+    api.put(`/api/activations/${validateModalId}/validate`, { action: 'approve' })
       .then(() => {
-        toast.success('Activación validada. El cliente puede completar la planilla.');
+        toast.success('Solicitud aprobada. El cliente puede completar la planilla.');
         setValidateModalId(null);
         fetchList();
       })
-      .catch((err) => toast.error(err.response?.data?.message || 'Error al validar'))
+      .catch((err) => toast.error(err.response?.data?.message || 'Error al aprobar'))
       .finally(() => setValidating(false));
+  };
+
+  const handleReject = () => {
+    if (!validateModalId) return;
+    setRejecting(true);
+    api.put(`/api/activations/${validateModalId}/validate`, { action: 'reject' })
+      .then(() => {
+        toast.success('Solicitud rechazada.');
+        setValidateModalId(null);
+        fetchList();
+      })
+      .catch((err) => toast.error(err.response?.data?.message || 'Error al rechazar'))
+      .finally(() => setRejecting(false));
   };
 
   const handleMarkReady = () => {
@@ -160,7 +168,8 @@ const AdminActivationsPage: React.FC = () => {
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                         a.status === 'ready' ? 'bg-green-100 text-green-800' :
                         a.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                        a.status === 'pending_client_fill' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'
+                        a.status === 'pending_client_fill' ? 'bg-amber-100 text-amber-800' :
+                        a.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
                       }`}>
                         {STATUS_LABELS[a.status]}
                       </span>
@@ -182,7 +191,7 @@ const AdminActivationsPage: React.FC = () => {
                         {a.status === 'pending_validation' && (
                           <button
                             type="button"
-                            onClick={() => { setValidateModalId(a.id); setSelectedFormType('general'); }}
+                            onClick={() => setValidateModalId(a.id)}
                             className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
                           >
                             <FaCheckCircle /> Validar
@@ -237,22 +246,18 @@ const AdminActivationsPage: React.FC = () => {
                 <FaTimes />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Seleccioná el tipo de formulario que debe completar el cliente.</p>
-            <select
-              value={selectedFormType}
-              onChange={(e) => setSelectedFormType(e.target.value as FormType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
-            >
-              {FORM_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-2">
+            <p className="text-sm text-gray-600 mb-4">
+              ¿Confirma que el N° de Factura ingresado por el cliente es válido?
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
               <button type="button" onClick={() => setValidateModalId(null)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                 Cancelar
               </button>
-              <button type="button" onClick={handleValidate} disabled={validating} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">
-                {validating ? 'Validando...' : 'Validar'}
+              <button type="button" onClick={handleReject} disabled={rejecting || validating} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                {rejecting ? 'Rechazando...' : 'Rechazar Solicitud'}
+              </button>
+              <button type="button" onClick={handleApprove} disabled={validating || rejecting} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                {validating ? 'Aprobando...' : 'Aprobar'}
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt } from 'react-icons/fa';
@@ -50,6 +51,12 @@ function formatDate(d: string | undefined): string {
   return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+interface CloudContractTemplate {
+  filename: string;
+  label: string;
+  url: string;
+}
+
 const ClientActivationsPage: React.FC = () => {
   const [list, setList] = useState<Activation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +65,7 @@ const ClientActivationsPage: React.FC = () => {
   const [requesting, setRequesting] = useState(false);
   const [completeModalId, setCompleteModalId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [cloudContracts, setCloudContracts] = useState<CloudContractTemplate[]>([]);
 
   const fetchList = useCallback(() => {
     setLoading(true);
@@ -70,6 +78,12 @@ const ClientActivationsPage: React.FC = () => {
   useEffect(() => {
     fetchList();
   }, [fetchList]);
+
+  useEffect(() => {
+    api.get<{ success: boolean; data: CloudContractTemplate[] }>('/api/settings/cloud-contracts')
+      .then((res) => setCloudContracts(res.data.data || []))
+      .catch(() => {});
+  }, []);
 
   const handleRequest = () => {
     const v = (invoiceNumber || '').trim();
@@ -200,6 +214,7 @@ const ClientActivationsPage: React.FC = () => {
       {completeModalId && activationToComplete && (
         <ActivationFormModal
           activation={activationToComplete}
+          cloudContracts={cloudContracts}
           onClose={() => setCompleteModalId(null)}
           onSuccess={() => {
             setCompleteModalId(null);
@@ -215,15 +230,14 @@ const ClientActivationsPage: React.FC = () => {
 
 interface ActivationFormModalProps {
   activation: Activation;
+  cloudContracts: CloudContractTemplate[];
   onClose: () => void;
   onSuccess: () => void;
   submitting: boolean;
   setSubmitting: (v: boolean) => void;
 }
 
-const CONTRATO_CLOUD_NUBE_BLANCO_URL = '/documents/contrato-cloud-nube-blank.pdf';
-
-const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, onClose, onSuccess, submitting, setSubmitting }) => {
+const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, cloudContracts, onClose, onSuccess, submitting, setSubmitting }) => {
   const isAltaGeneral = activation.form_type === 'alta_general' || activation.form_type === 'general';
   const isControladorFiscal = activation.form_type === 'controlador_fiscal';
   const isLegacyFiscal = activation.form_type === 'fiscal';
@@ -235,7 +249,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
   const [constanciaFile, setConstanciaFile] = useState<File | null>(null);
   const [noClaveFiscal, setNoClaveFiscal] = useState(false);
   const [cloudNubeDesea, setCloudNubeDesea] = useState(false);
-  const [cloudNubeContratoFile, setCloudNubeContratoFile] = useState<File | null>(null);
+  const [cloudNubeContratoFiles, setCloudNubeContratoFiles] = useState<File[]>([]);
 
   const showFiscalFields = isAltaGeneral ? clientBillingChoice === 'fiscal' : isLegacyFiscal;
   const showNoFiscalFields = isAltaGeneral ? clientBillingChoice === 'no_fiscal' : isLegacyNoFiscal;
@@ -246,8 +260,8 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
       toast.warn('Seleccioná el tipo de facturación deseada.');
       return;
     }
-    if (cloudNubeDesea && !cloudNubeContratoFile) {
-      toast.warn('Si desea contratar Cloud Nube, debe adjuntar el contrato firmado.');
+    if (cloudNubeDesea && cloudNubeContratoFiles.length === 0) {
+      toast.warn('Si desea contratar Cloud Nube, debe adjuntar al menos un contrato firmado.');
       return;
     }
     const fd = new FormData();
@@ -256,7 +270,9 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
     if (noClaveFiscal) fd.append('no_brindar_clave_fiscal', '1');
     if (logoFile) fd.append('logo', logoFile);
     if (constanciaFile && showFiscalFields) fd.append('constancia_alta', constanciaFile);
-    if (cloudNubeDesea && cloudNubeContratoFile) fd.append('cloud_nube_contrato', cloudNubeContratoFile);
+    if (cloudNubeDesea && cloudNubeContratoFiles.length > 0) {
+      cloudNubeContratoFiles.forEach((file) => fd.append('cloud_nube_contrato', file));
+    }
 
     setSubmitting(true);
     api.post(`/api/activations/${activation.id}/submit-form`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -407,27 +423,39 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, o
               <input
                 type="checkbox"
                 checked={cloudNubeDesea}
-                onChange={(e) => { setCloudNubeDesea(e.target.checked); if (!e.target.checked) setCloudNubeContratoFile(null); }}
+                onChange={(e) => { setCloudNubeDesea(e.target.checked); if (!e.target.checked) setCloudNubeContratoFiles([]); }}
                 className="rounded border-gray-300 text-indigo-600"
               />
               <span className="text-sm text-gray-700">¿Desea contratar Cloud Nube?</span>
             </label>
             {cloudNubeDesea && (
               <div className="pl-6 space-y-2">
-                <p className="text-xs text-gray-600">
-                  <a href={CONTRATO_CLOUD_NUBE_BLANCO_URL} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
-                    Descargar Contrato en Blanco
-                  </a>
-                </p>
+                {cloudContracts.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-600">Descargar plantillas de contrato:</p>
+                    <ul className="list-none space-y-1">
+                      {cloudContracts.map((c) => (
+                        <li key={c.filename}>
+                          <a href={getImageUrl(c.url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-sm">
+                            Descargar Contrato {c.label || c.filename}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">No hay plantillas disponibles en este momento.</p>
+                )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contrato Firmado (PDF o imagen) <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contrato(s) firmado(s) (PDF o imagen) <span className="text-red-500">*</span></label>
                   <input
                     type="file"
                     accept=".pdf,image/*"
-                    onChange={(e) => setCloudNubeContratoFile(e.target.files?.[0] || null)}
+                    multiple
+                    onChange={(e) => setCloudNubeContratoFiles(e.target.files ? Array.from(e.target.files) : [])}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                   />
-                  {cloudNubeContratoFile && <p className="text-xs text-gray-500 mt-1">{cloudNubeContratoFile.name}</p>}
+                  {cloudNubeContratoFiles.length > 0 && <p className="text-xs text-gray-500 mt-1">{cloudNubeContratoFiles.length} archivo(s) seleccionado(s)</p>}
                 </div>
               </div>
             )}
