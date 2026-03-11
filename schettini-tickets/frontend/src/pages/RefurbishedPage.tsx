@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api, { API_BASE_URL } from '../config/axiosConfig';
+import api from '../config/axiosConfig';
+import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -399,7 +400,7 @@ const RefurbishedPage: React.FC = () => {
                                         {existingPhotos.map((url, i) => (
                                             <div key={i} className="relative inline-block">
                                                 <img
-                                                    src={url.startsWith('http') ? url : `${API_BASE_URL}${url}`}
+                                                    src={getImageUrl(url)}
                                                     alt=""
                                                     className="w-16 h-16 object-cover rounded border"
                                                 />
