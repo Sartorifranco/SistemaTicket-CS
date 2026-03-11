@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
-import { FaPlus, FaEye, FaPrint, FaWhatsapp, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
+import { FaPlus, FaEye, FaPrint, FaWhatsapp, FaTimes, FaExclamationTriangle, FaTrash } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 import type { RepairOrderReceiptData } from '../components/RepairOrder/RepairOrderReceipt';
 import { formatDateTimeArgentina } from '../utils/dateFormatter';
@@ -135,6 +135,7 @@ const RepairOrdersListPage: React.FC = () => {
   const [showAbandonadoModal, setShowAbandonadoModal] = useState(false);
   const [abandonadoOrder, setAbandonadoOrder] = useState<RepairOrderRow | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   useReceiptPrintPortal();
 
   const [filters, setFilters] = useState({
@@ -191,6 +192,21 @@ const RepairOrdersListPage: React.FC = () => {
       setTechnicians(res.data.data || []);
     }).catch(() => {});
   }, []);
+
+  const handleDeleteOrder = async (order: RepairOrderRow) => {
+    const msg = '¿Estás seguro de eliminar esta orden? Esta acción borrará la orden, sus fotos y movimientos de caja. Es irreversible.';
+    if (!window.confirm(msg)) return;
+    setDeletingId(order.id);
+    try {
+      await api.delete(`/api/repair-orders/${order.id}`);
+      toast.success('Orden eliminada');
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    } catch {
+      toast.error('Error al eliminar la orden');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handlePrintComprobante = async (order: RepairOrderRow) => {
     try {
@@ -397,6 +413,16 @@ const RepairOrdersListPage: React.FC = () => {
                           <button onClick={() => navigate(`${basePath}/${o.id}`)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Ver Detalles"><FaEye /></button>
                           <button onClick={() => handlePrintComprobante(o)} className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg" title="Imprimir comprobante"><FaPrint /></button>
                           <button onClick={() => enviarWhatsApp(o)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Enviar WhatsApp"><FaWhatsapp /></button>
+                          {user?.role === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteOrder(o)}
+                              disabled={deletingId === o.id}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
+                              title="Eliminar orden"
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

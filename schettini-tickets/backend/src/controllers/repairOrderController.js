@@ -976,16 +976,39 @@ const updateRepairOrderStatus = async (req, res) => {
   }
 };
 
-// DELETE - Eliminar orden
+// DELETE - Eliminar orden (solo admin). Borrado en cascada: fotos físicas, status_history, article_movements, tech_cash, items, photos.
 const deleteRepairOrder = async (req, res) => {
   try {
     const id = req.params.id;
-    const [existing] = await pool.query('SELECT id FROM repair_orders WHERE id = ?', [id]);
+    const [existing] = await pool.query('SELECT id, order_number FROM repair_orders WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Orden no encontrada' });
     }
+    const orderNumber = existing[0].order_number;
 
+    // 1. Eliminar archivos físicos de las fotos
+    const [photos] = await pool.query('SELECT id, photo_url FROM repair_order_photos WHERE repair_order_id = ?', [id]);
+    for (const row of photos) {
+      const relativePath = (row.photo_url || '').replace(/^\//, '');
+      if (relativePath) {
+        const filePath = path.join(process.cwd(), relativePath);
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error('Error al borrar archivo de foto:', filePath, err.message);
+        }
+      }
+    }
+
+    // 2. Tablas vinculadas (evitar FK constraint)
     await pool.query('DELETE FROM repair_order_photos WHERE repair_order_id = ?', [id]);
+    await pool.query('DELETE FROM repair_order_status_history WHERE repair_order_id = ?', [id]);
+    await pool.query('DELETE FROM article_movements WHERE order_id = ?', [id]);
+    await pool.query(
+      "DELETE FROM tech_cash_movements WHERE linked_reference = ? OR linked_reference = CONCAT('REP-', ?)",
+      [orderNumber, orderNumber]
+    );
+    await pool.query('UPDATE factory_shipments SET linked_order_id = NULL WHERE linked_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_order_items WHERE repair_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_orders WHERE id = ?', [id]);
 
