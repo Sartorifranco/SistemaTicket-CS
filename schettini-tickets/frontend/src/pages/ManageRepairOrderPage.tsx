@@ -5,6 +5,7 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import { formatDateArgentina, formatDateForInput, formatNowArgentina } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
+import { hasAnyPermission } from '../utils/permissions';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import CreatableAutocomplete from '../components/Common/CreatableAutocomplete';
@@ -196,6 +197,8 @@ const ManageRepairOrderPage: React.FC = () => {
   const basePath = isAdmin ? '/admin/repair-orders' : '/agent/repair-orders';
 
   const canEdit = user?.role === 'admin' || user?.role === 'agent' || user?.role === 'supervisor';
+  /** Ver botón eliminar foto: quien puede editar O quien tiene permiso repairs_edit (ej. viewer con ese permiso) */
+  const canDeletePhoto = canEdit || hasAnyPermission(user?.permissions || [], ['repairs_edit']);
   const canEditEquipment = user?.role === 'admin';
   const isAgentBlind = user?.role === 'agent';
 
@@ -1116,34 +1119,45 @@ const ManageRepairOrderPage: React.FC = () => {
       </SectionCard>
 
       {existingPhotos.length > 0 && (
-        <SectionCard title="Fotos">
+        <SectionCard title="Fotos" overflowVisible>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {existingPhotos
               .filter((p) => p && p.photo_url)
               .map((p) => (
-                <div key={p.id} className="relative group space-y-1">
+                <div key={p.id} className="flex flex-col gap-1">
                   <img
                     src={getImageUrl(p.photo_url)}
                     alt={p.perspective_label || 'Foto'}
                     className="w-full aspect-square object-cover rounded-lg border"
                   />
-                  {canEdit && (
+                  <p className="text-xs text-gray-500">{p.perspective_label}</p>
+                  {canDeletePhoto && (
                     <button
                       type="button"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (window.confirm('¿Eliminar esta foto? Se aplicará al guardar cambios.')) {
+                        const msg = canEdit
+                          ? '¿Eliminar esta foto? Se aplicará al guardar cambios.'
+                          : '¿Eliminar esta foto de la orden?';
+                        if (!window.confirm(msg)) return;
+                        if (canEdit) {
                           setExistingPhotos((prev) => prev.filter((photo) => photo.id !== p.id));
+                          return;
+                        }
+                        try {
+                          await api.delete(`/api/repair-orders/${id}/photos/${p.id}`);
+                          toast.success('Foto eliminada');
+                          fetchOrder();
+                        } catch {
+                          toast.error('Error al eliminar la foto');
                         }
                       }}
-                      className="absolute top-1 right-1 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 shadow opacity-95 hover:opacity-100 border-2 border-white"
-                      title="Eliminar foto"
+                      className="flex items-center justify-center gap-1 w-full py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded hover:bg-red-100"
                     >
-                      <FaTimes className="w-4 h-4" />
+                      <FaTrash className="w-3.5 h-3.5" /> Eliminar foto
                     </button>
                   )}
-                  <p className="text-xs text-gray-500">{p.perspective_label}</p>
                 </div>
               ))}
           </div>
