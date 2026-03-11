@@ -231,6 +231,9 @@ const ManageRepairOrderPage: React.FC = () => {
   const [recyclingPhotos, setRecyclingPhotos] = useState<File[]>([]);
   const [savingRecycling, setSavingRecycling] = useState(false);
 
+  /** Fotos actuales de la orden (estado local para poder eliminar antes de guardar) */
+  const [existingPhotos, setExistingPhotos] = useState<{ id: number; photo_url: string; perspective_label: string }[]>([]);
+
   const [form, setForm] = useState({
     status: '',
     equipmentType: '',
@@ -269,6 +272,7 @@ const ManageRepairOrderPage: React.FC = () => {
       .then((res) => {
         const o = res.data.data;
         setOrder(o);
+        setExistingPhotos(Array.isArray(o.photos) ? o.photos : []);
         const rawAccessories = (o.items?.[0]?.included_accessories ?? o.included_accessories ?? '') || '';
         const parsedAccessories = rawAccessories.split(/\s*,\s*/).map((s: string) => s.trim()).filter(Boolean);
         setAccessoriesArray(parsedAccessories);
@@ -580,7 +584,8 @@ const ManageRepairOrderPage: React.FC = () => {
         purchaseDate: form.isWarranty ? form.purchaseDate || null : null,
         originalSupplier: form.isWarranty ? form.originalSupplier?.trim() || null : null,
         requiresFactoryShipping: form.isWarranty ? form.requiresFactoryShipping : undefined,
-        warrantyStatus: form.isWarranty && form.warrantyStatus ? form.warrantyStatus : null
+        warrantyStatus: form.isWarranty && form.warrantyStatus ? form.warrantyStatus : null,
+        photoIds: existingPhotos.map((p) => p.id)
       });
       toast.success('Orden actualizada');
       fetchOrder();
@@ -1110,18 +1115,32 @@ const ManageRepairOrderPage: React.FC = () => {
         {order.client_email && <p className="text-sm">Email: {order.client_email}</p>}
       </SectionCard>
 
-      {order.photos && order.photos.length > 0 && (
+      {existingPhotos.length > 0 && (
         <SectionCard title="Fotos">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {order.photos
+            {existingPhotos
               .filter((p) => p && p.photo_url)
               .map((p) => (
-                <div key={p.id} className="space-y-1">
+                <div key={p.id} className="relative group space-y-1">
                   <img
                     src={getImageUrl(p.photo_url)}
                     alt={p.perspective_label || 'Foto'}
                     className="w-full aspect-square object-cover rounded-lg border"
                   />
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('¿Eliminar esta foto? Se aplicará al guardar cambios.')) {
+                          setExistingPhotos((prev) => prev.filter((photo) => photo.id !== p.id));
+                        }
+                      }}
+                      className="absolute top-1 right-1 w-8 h-8 flex items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 shadow opacity-90 hover:opacity-100"
+                      title="Eliminar foto"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  )}
                   <p className="text-xs text-gray-500">{p.perspective_label}</p>
                 </div>
               ))}

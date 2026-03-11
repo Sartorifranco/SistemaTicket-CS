@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const pool = require('../config/db');
 const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 const { registerDepositMovementFromRepairOrder } = require('./techCashController');
@@ -627,6 +629,7 @@ const updateRepairOrder = async (req, res) => {
   try {
     const id = req.params.id;
     const {
+      photoIds,
       clientId,
       entryDate,
       status,
@@ -876,6 +879,28 @@ const updateRepairOrder = async (req, res) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [id, it.equipment_type || null, it.brand || null, it.model || null, it.serial_number || null, it.reported_fault || null, it.included_accessories || null, isWarranty, it.warranty_invoice || null, i]
         );
+      }
+    }
+
+    // Sincronizar fotos: si el frontend envía photoIds, mantener solo esas y borrar el resto (y el archivo físico)
+    if (Array.isArray(photoIds)) {
+      const keepIds = photoIds.filter((pid) => Number.isInteger(pid) || (typeof pid === 'string' && /^\d+$/.test(pid))).map((pid) => parseInt(pid, 10));
+      const [currentPhotos] = await pool.query(
+        'SELECT id, photo_url FROM repair_order_photos WHERE repair_order_id = ?',
+        [id]
+      );
+      const toDelete = currentPhotos.filter((row) => !keepIds.includes(row.id));
+      for (const row of toDelete) {
+        const relativePath = (row.photo_url || '').replace(/^\//, '');
+        if (relativePath) {
+          const filePath = path.join(process.cwd(), relativePath);
+          try {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error('Error al borrar archivo de foto:', filePath, err.message);
+          }
+        }
+        await pool.query('DELETE FROM repair_order_photos WHERE id = ?', [row.id]);
       }
     }
 
