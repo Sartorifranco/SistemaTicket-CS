@@ -124,12 +124,21 @@ if [[ -f "backend/scripts/migrate-kb-folders.js" ]]; then
     echo ""
 fi
 
-# Build del frontend (instalar dependencias si faltan)
+# Build del frontend (limpio: borrar build anterior para que no queden JS viejos)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend
 npm install --production=false
-echo ">>> Build del frontend..."
+echo ">>> Limpiando build anterior..."
+rm -rf build
+echo ">>> Build del frontend (esto puede tardar 1-2 min)..."
 npm run build
+# Mostrar qué main.js se generó (para verificar que el deploy incluye los cambios)
+MAIN_JS=$(ls build/static/js/main.*.js 2>/dev/null | head -1)
+if [[ -n "$MAIN_JS" ]]; then
+  echo ">>> Build generado: $(basename "$MAIN_JS")"
+else
+  echo ">>> AVISO: No se encontró main.*.js; revisar si npm run build falló."
+fi
 cd ..
 echo ">>> Build listo."
 echo ""
@@ -141,3 +150,9 @@ echo ""
 
 echo ">>> Despliegue terminado."
 pm2 list
+echo ""
+echo "--- Si NO ves los cambios en el navegador (ej. botón Eliminar foto) ---"
+echo "1. Verificar qué build sirve el backend: curl -s http://localhost:5050/api/build-info"
+echo "2. Si usás Nginx, puede estar sirviendo otra carpeta. Ejecutá: bash scripts/verificar-frontend-nginx.sh"
+echo "3. Recarga forzada en el navegador: Ctrl+F5 o ventana de incógnito."
+echo "   Ver: schettini-tickets/VERIFICAR-FRONTEND-SERVIDO.md"

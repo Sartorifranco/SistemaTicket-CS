@@ -5,6 +5,7 @@
 
 # Archivos de build y cache
 /build
+/frontend/build
 /dist
 .cache
 *.pack
