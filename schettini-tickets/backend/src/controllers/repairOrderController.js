@@ -813,6 +813,28 @@ const updateRepairOrder = async (req, res) => {
       );
     }
 
+    // Saldo final en Caja Técnica: solo cuando la orden pasa a "Entregado" por primera vez (no duplicar)
+    const incomingStatus = (status !== undefined && status !== '') ? String(status).toLowerCase() : null;
+    const isNowDelivered = incomingStatus === 'entregado' || incomingStatus === 'entregado_sin_reparacion';
+    const wasDelivered = (String(existing.status || '').toLowerCase() === 'entregado') || (String(existing.status || '').toLowerCase() === 'entregado_sin_reparacion');
+    if (isNowDelivered && !wasDelivered) {
+      const effectiveTotal = parseFloat(totalCost !== undefined ? totalCost : existing.total_cost) || 0;
+      const effectiveDeposit = depositPaid !== undefined ? newDeposit : (parseFloat(existing.deposit_paid) || 0);
+      const saldoFinal = effectiveTotal - effectiveDeposit;
+      if (saldoFinal > 0) {
+        await registerDepositMovementFromRepairOrder(
+          id,
+          existing.order_number,
+          saldoFinal,
+          'ingreso',
+          paymentMethodOrder || existing.payment_method || 'Efectivo',
+          existing.client_id,
+          req.user?.id,
+          `Cobro de saldo final - Orden #${existing.order_number}`
+        );
+      }
+    }
+
     if (requiresFactoryShipping !== undefined && newRequiresFactory && !existing.requires_factory_shipping) {
       const [orderData] = await pool.query(
         `SELECT ro.order_number, ro.equipment_type, ro.model, ro.serial_number, ro.original_supplier,
