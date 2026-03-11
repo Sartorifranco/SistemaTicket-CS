@@ -361,16 +361,17 @@ const getAgents = async (req, res) => {
 /** Permisos que otorgan acceso al módulo Taller (para Técnico Asignado) */
 const TALLER_PERMISSIONS = ['repairs_view', 'repairs_edit', 'repairs_create', 'repair_orders'];
 
-// --- Técnicos (agentes con permiso de taller, excluye admin) ---
+// --- Técnicos (agentes, supervisores y admins con permiso de taller) ---
 const getTechnicians = async (req, res) => {
     try {
         const [rows] = await pool.query(`
             SELECT id, username, email, role, COALESCE(full_name, username) as full_name, permissions
             FROM Users 
-            WHERE role = 'agent' AND status = 'active'
-            ORDER BY username ASC
+            WHERE role IN ('agent', 'supervisor', 'admin') AND status = 'active'
+            ORDER BY CASE role WHEN 'admin' THEN 1 WHEN 'supervisor' THEN 2 ELSE 3 END, username ASC
         `);
         const technicians = rows.filter((u) => {
+            if (u.role === 'admin' || u.role === 'supervisor') return true;
             const perms = parsePermissions(u.permissions);
             return perms.some((p) => TALLER_PERMISSIONS.includes(p));
         }).map(({ permissions, ...u }) => u);

@@ -121,7 +121,7 @@ const TicketDetailForm: React.FC<TicketDetailFormProps> = ({ ticket, onSave, onC
                         <label className="block text-sm font-medium">Asignado a</label>
                         <select name="assigned_to_user_id" value={formData.assigned_to_user_id || ''} onChange={handleChange} className="w-full p-2 border rounded mt-1">
                             <option value="">Sin Asignar</option>
-                            {users.filter(u => u.role === 'agent' || u.role === 'admin').map(agent => <option key={agent.id} value={agent.id}>{agent.username}</option>)}
+                            {users.filter(u => u.role === 'agent' || u.role === 'admin' || u.role === 'supervisor').map(agent => <option key={agent.id} value={agent.id}>{agent.username}</option>)}
                         </select>
                     </div>
                 </div>

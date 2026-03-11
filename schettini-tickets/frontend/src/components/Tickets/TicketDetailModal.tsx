@@ -127,7 +127,7 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ isOpen, onClose, 
                             <label className="block text-sm font-medium text-gray-700">Asignado a:</label>
                             <select value={editedAgentId || ''} onChange={(e) => setEditedAgentId(Number(e.target.value))} className="w-full p-2 border rounded mt-1" disabled={!isAdmin}>
                                 <option value="">Sin Asignar</option>
-                                {users.filter(u => u.role === 'agent' || u.role === 'admin').map(agent => <option key={agent.id} value={agent.id}>{agent.username}</option>)}
+                                {users.filter(u => u.role === 'agent' || u.role === 'admin' || u.role === 'supervisor').map(agent => <option key={agent.id} value={agent.id}>{agent.username}</option>)}
                             </select>
                         </div>
                         <div>

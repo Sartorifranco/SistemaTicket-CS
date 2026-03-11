@@ -107,7 +107,7 @@ const Tickets: React.FC<TicketsProps> = ({ onEditTicket, onCreateTicket, departm
                     <select value={assignedToFilter} onChange={(e) => setAssignedToFilter(e.target.value)} className="w-full p-2 border rounded-md">
                         <option value="">Todos los Agentes</option>
                         <option value="null">Sin Asignar</option>
-                        {users.filter(u => u.role === 'agent' || u.role === 'admin').map(agent => <option key={agent.id} value={agent.id}>{agent.username}</option>)}
+                        {users.filter(u => u.role === 'agent' || u.role === 'admin' || u.role === 'supervisor').map(agent => <option key={agent.id} value={agent.id}>{agent.username}</option>)}
                     </select>
                 )}
                  {isAdmin && (
