@@ -1130,12 +1130,14 @@ const ManageRepairOrderPage: React.FC = () => {
                   {canEdit && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         if (window.confirm('¿Eliminar esta foto? Se aplicará al guardar cambios.')) {
                           setExistingPhotos((prev) => prev.filter((photo) => photo.id !== p.id));
                         }
                       }}
-                      className="absolute top-1 right-1 w-8 h-8 flex items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 shadow opacity-90 hover:opacity-100"
+                      className="absolute top-1 right-1 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 shadow opacity-95 hover:opacity-100 border-2 border-white"
                       title="Eliminar foto"
                     >
                       <FaTimes className="w-4 h-4" />

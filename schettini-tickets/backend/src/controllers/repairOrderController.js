@@ -883,13 +883,23 @@ const updateRepairOrder = async (req, res) => {
     }
 
     // Sincronizar fotos: si el frontend envía photoIds, mantener solo esas y borrar el resto (y el archivo físico)
-    if (Array.isArray(photoIds)) {
-      const keepIds = photoIds.filter((pid) => Number.isInteger(pid) || (typeof pid === 'string' && /^\d+$/.test(pid))).map((pid) => parseInt(pid, 10));
+    let requestedPhotoIds = photoIds ?? req.body.photo_ids;
+    if (typeof requestedPhotoIds === 'string') {
+      try {
+        requestedPhotoIds = JSON.parse(requestedPhotoIds);
+      } catch {
+        requestedPhotoIds = null;
+      }
+    }
+    if (Array.isArray(requestedPhotoIds)) {
+      const keepIds = requestedPhotoIds
+        .filter((pid) => Number.isInteger(pid) || (typeof pid === 'string' && /^\d+$/.test(pid)))
+        .map((pid) => parseInt(pid, 10));
       const [currentPhotos] = await pool.query(
         'SELECT id, photo_url FROM repair_order_photos WHERE repair_order_id = ?',
         [id]
       );
-      const toDelete = currentPhotos.filter((row) => !keepIds.includes(row.id));
+      const toDelete = currentPhotos.filter((row) => !keepIds.includes(Number(row.id)));
       for (const row of toDelete) {
         const relativePath = (row.photo_url || '').replace(/^\//, '');
         if (relativePath) {
