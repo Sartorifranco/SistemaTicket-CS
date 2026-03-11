@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const { createDraftFromRepairOrder } = require('./factoryShipmentController');
-const { registerPaymentFromRepairOrder } = require('./techCashController');
+const { registerDepositMovementFromRepairOrder } = require('./techCashController');
 const { createNotification } = require('../utils/notificationManager');
 
 /** Convierte un string de fecha/hora MySQL (sin Z) o un Date a ISO con Z para que el frontend la interprete como UTC. */
@@ -532,6 +532,19 @@ const createRepairOrder = async (req, res) => {
 
     const repairOrderId = result.insertId;
 
+    if (depositPaid && parseFloat(depositPaid) > 0) {
+      await registerDepositMovementFromRepairOrder(
+        repairOrderId,
+        orderNumber,
+        parseFloat(depositPaid),
+        'ingreso',
+        paymentMethod || 'Efectivo',
+        clientId,
+        req.user?.id,
+        `Seña Orden #${orderNumber}`
+      );
+    }
+
     if (sparePartsDetail && String(sparePartsDetail).trim()) {
       await insertArticleMovementsFromSpareParts(repairOrderId, sparePartsDetail, req.user?.id);
     }
@@ -772,15 +785,31 @@ const updateRepairOrder = async (req, res) => {
 
     const oldDeposit = parseFloat(existing.deposit_paid) || 0;
     const newDeposit = depositPaid !== undefined ? (depositPaid === '' || depositPaid == null ? 0 : parseFloat(depositPaid)) : oldDeposit;
+    const paymentMethodOrder = req.body.payment_method !== undefined ? req.body.payment_method : existing.payment_method;
     if (depositPaid !== undefined && newDeposit > oldDeposit) {
       const delta = newDeposit - oldDeposit;
-      await registerPaymentFromRepairOrder(
+      await registerDepositMovementFromRepairOrder(
         id,
         existing.order_number,
         delta,
-        req.body.paymentMethod || existing.payment_method,
+        'ingreso',
+        paymentMethodOrder || 'Efectivo',
         existing.client_id,
-        req.user?.id
+        req.user?.id,
+        `Agregado a Seña Orden #${existing.order_number}`
+      );
+    }
+    if (depositPaid !== undefined && newDeposit < oldDeposit) {
+      const delta = oldDeposit - newDeposit;
+      await registerDepositMovementFromRepairOrder(
+        id,
+        existing.order_number,
+        delta,
+        'egreso',
+        paymentMethodOrder || 'Efectivo',
+        existing.client_id,
+        req.user?.id,
+        `Devolución parcial/total de Seña Orden #${existing.order_number}`
       );
     }
 

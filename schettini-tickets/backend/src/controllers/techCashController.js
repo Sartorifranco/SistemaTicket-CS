@@ -214,14 +214,43 @@ const deleteMovement = async (req, res) => {
 const registerPaymentFromRepairOrder = async (orderId, orderNumber, amount, paymentMethod, clientId, userId) => {
   try {
     if (!amount || amount <= 0) return;
+    const notes = orderNumber ? `Seña Orden #${orderNumber}` : `Seña Orden #${orderId}`;
     await pool.query(
       `INSERT INTO tech_cash_movements (movement_date, type, concept, linked_reference, client_id, payment_method, amount, user_id, notes)
        VALUES (NOW(), 'ingreso', 'taller', ?, ?, ?, ?, ?, ?)`,
-      [`REP-${orderNumber || orderId}`, clientId, paymentMethod || 'Efectivo', amount, userId]
+      [`REP-${orderNumber || orderId}`, clientId, paymentMethod || 'Efectivo', amount, userId, notes]
     );
     console.log(`[TechCash] Ingreso $${amount} registrado por orden REP-${orderNumber || orderId}`);
   } catch (err) {
     console.error('[TechCash] Error registrando pago:', err);
+  }
+};
+
+/**
+ * Registra en Caja Técnica un movimiento vinculado a la seña de una orden de reparación.
+ * @param {number} orderId - ID de repair_orders
+ * @param {string} orderNumber - Número de orden (ej. "2025-001")
+ * @param {number} amount - Monto (siempre positivo)
+ * @param {string} type - 'ingreso' o 'egreso'
+ * @param {string} paymentMethod - Método de pago (o 'Efectivo')
+ * @param {number|null} clientId - client_id de la orden
+ * @param {number|null} userId - req.user.id
+ * @param {string} notesConcept - Texto para notes (ej. "Seña Orden #2025-001", "Devolución parcial...")
+ */
+const registerDepositMovementFromRepairOrder = async (orderId, orderNumber, amount, type, paymentMethod, clientId, userId, notesConcept) => {
+  try {
+    if (!amount || amount <= 0) return;
+    if (!type || !['ingreso', 'egreso'].includes(type)) return;
+    const linkedRef = `REP-${orderNumber || orderId}`;
+    const payment = paymentMethod && String(paymentMethod).trim() ? String(paymentMethod).trim() : 'Efectivo';
+    await pool.query(
+      `INSERT INTO tech_cash_movements (movement_date, type, concept, linked_reference, client_id, payment_method, amount, user_id, notes)
+       VALUES (NOW(), ?, 'taller', ?, ?, ?, ?, ?, ?)`,
+      [type, linkedRef, clientId || null, payment, amount, userId || null, notesConcept || linkedRef]
+    );
+    console.log(`[TechCash] ${type} $${amount} - ${notesConcept || linkedRef}`);
+  } catch (err) {
+    console.error('[TechCash] Error registrando movimiento por orden:', err);
   }
 };
 
@@ -231,5 +260,6 @@ module.exports = {
   getMovementById,
   updateMovement,
   deleteMovement,
-  registerPaymentFromRepairOrder
+  registerPaymentFromRepairOrder,
+  registerDepositMovementFromRepairOrder
 };
