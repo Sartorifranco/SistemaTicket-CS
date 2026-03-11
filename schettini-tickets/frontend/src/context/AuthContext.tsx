@@ -13,8 +13,8 @@ import io from 'socket.io-client';
 // Esto evita todos los errores de "Value vs Type" y "No exported member".
 type SocketType = ReturnType<typeof io>;
 
-// URL del Backend
-const SOCKET_URL = 'http://localhost:5050'; 
+// URL del Backend: localhost en desarrollo, dominio en producción
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5050' : 'https://sch-soporte.com.ar'; 
 
 interface LoginData {
     email: string;

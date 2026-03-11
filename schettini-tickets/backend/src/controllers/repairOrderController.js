@@ -1008,7 +1008,6 @@ const deleteRepairOrder = async (req, res) => {
       "DELETE FROM tech_cash_movements WHERE linked_reference = ? OR linked_reference = CONCAT('REP-', ?)",
       [orderNumber, orderNumber]
     );
-    await pool.query('UPDATE factory_shipments SET linked_order_id = NULL WHERE linked_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_order_items WHERE repair_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_orders WHERE id = ?', [id]);
 

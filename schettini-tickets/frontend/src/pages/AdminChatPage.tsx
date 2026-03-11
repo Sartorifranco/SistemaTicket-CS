@@ -40,8 +40,8 @@ const AdminChatPage: React.FC = () => {
 
     useEffect(() => {
         if (token) {
-            const currentHost = window.location.hostname;
-            const newSocket = io(`http://${currentHost}:5050`, { auth: { token } });
+            const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5050' : 'https://sch-soporte.com.ar';
+            const newSocket = io(SOCKET_URL, { auth: { token } });
             setSocket(newSocket);
 
             newSocket.on('support_message_received', (msg: any) => {
