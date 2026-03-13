@@ -36,10 +36,10 @@ router.use(protect);
 // --- RUTAS ESPECÍFICAS (Importante: Deben ir ANTES de /:id) ---
 
 // 1. Obtener lista de agentes/supervisores (Evita que "agents" se tome como ID)
-router.get('/agents', authorize('admin', 'agent', 'supervisor'), getAgents);
+router.get('/agents', authorize('admin', 'agent', 'supervisor', 'viewer'), getAgents);
 
 // 2. Técnicos asignables a órdenes de reparación (solo agent con permiso taller, excluye admin)
-router.get('/technicians', authorize('admin', 'agent', 'supervisor'), getTechnicians);
+router.get('/technicians', authorize('admin', 'agent', 'supervisor', 'viewer'), getTechnicians);
 
 // 3. Ruta para obtener tickets activos de un usuario (Dashboard)
 router.get('/:id/active-tickets', authorize('admin', 'agent', 'supervisor', 'client'), getUserActiveTickets);
@@ -57,12 +57,12 @@ router.post('/:id/documents', authorize('admin', 'supervisor', 'agent', 'client'
 
 // --- RUTAS GENERALES ---
 router.route('/')
-    .get(authorize('admin', 'agent', 'supervisor'), getUsers)
+    .get(authorize('admin', 'agent', 'supervisor', 'viewer'), getUsers)
     .post(authorize('admin', 'supervisor', 'agent'), createUser);
 
 // --- RUTAS POR ID ---
 router.route('/:id')
-    .get(authorize('admin', 'agent', 'supervisor', 'client'), getUserById)
+    .get(authorize('admin', 'agent', 'supervisor', 'client', 'viewer'), getUserById)
     .put(authorize('admin', 'supervisor', 'agent'), updateUser)
     .delete(authorize('admin', 'supervisor', 'agent'), deleteUser);
 

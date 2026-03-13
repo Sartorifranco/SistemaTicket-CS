@@ -203,7 +203,7 @@ const Layout: React.FC = () => {
                     <>
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Vista (solo lectura)</li>
                         <li><NavLink to="/agent" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
-                        {(hasResources || !perms.length) && <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>}
+                        {hasResources && <li><NavLink to="/agent/knowledge-base" className={getLinkClassName}><FaBook /> Centro de Ayuda</NavLink></li>}
                         {hasTickets && (
                             <>
                                 <li><NavLink to="/agent/tickets" className={getLinkClassName}><FaTicketAlt /> Tickets</NavLink></li>
@@ -233,7 +233,7 @@ const Layout: React.FC = () => {
                                 <li><NavLink to="/admin/tech-debts" className={getLinkClassName}><FaFileInvoiceDollar /> Reportes de Deudas</NavLink></li>
                             </>
                         )}
-                        {(hasClients || !perms.length) && (
+                        {hasClients && (
                             <>
                                 <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Clientes</li>
                                 <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>

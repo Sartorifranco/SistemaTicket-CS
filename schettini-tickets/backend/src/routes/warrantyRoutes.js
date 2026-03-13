@@ -5,7 +5,7 @@ const { getWarrantyStats, getWarranties } = require('../controllers/warrantyCont
 
 router.use(protect);
 
-router.get('/stats', authorize('admin', 'supervisor', 'agent'), getWarrantyStats);
-router.get('/', authorize('admin', 'supervisor', 'agent'), getWarranties);
+router.get('/stats', authorize('admin', 'supervisor', 'agent', 'viewer'), getWarrantyStats);
+router.get('/', authorize('admin', 'supervisor', 'agent', 'viewer'), getWarranties);
 
 module.exports = router;

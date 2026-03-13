@@ -153,14 +153,14 @@ const authorizeTechFinances = (req, res, next) => {
     throw new Error('No tenés permiso para Finanzas Técnicas');
 };
 
-/** Admin siempre; agent/supervisor solo con permiso reports_view */
+/** Admin siempre; agent/supervisor/viewer con permiso reports_view */
 const authorizeReports = asyncHandler(async (req, res, next) => {
     if (!req.user) {
         res.status(403);
         throw new Error('No autorizado');
     }
     if (req.user.role === 'admin') return next();
-    if (req.user.role === 'agent' || req.user.role === 'supervisor') {
+    if (req.user.role === 'agent' || req.user.role === 'supervisor' || req.user.role === 'viewer') {
         const [rows] = await pool.query(
             'SELECT permissions FROM Users WHERE id = ? AND status = ?',
             [req.user.id, 'active']
