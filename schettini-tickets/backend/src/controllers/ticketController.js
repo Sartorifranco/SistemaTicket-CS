@@ -209,14 +209,19 @@ const reassignTicket = async (req, res) => {
 
         if (!newAgentId) return res.status(400).json({ message: 'Se requiere el ID del agente.' });
 
-        // Restricciones de reasignación: agente y supervisor NO pueden asignar a admin
+        // Validar que el destino exista y sea personal (nunca un cliente/viewer)
+        const [targetUser] = await pool.query('SELECT role FROM Users WHERE id = ?', [newAgentId]);
+        if (targetUser.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        const allowedRoles = ['admin', 'supervisor', 'agent'];
+        if (!allowedRoles.includes(targetUser[0].role)) {
+            return res.status(403).json({ message: 'Solo se puede asignar tickets a agentes, supervisores o admins.' });
+        }
+
+        // Restricciones adicionales por rol del solicitante
         if (req.user.role === 'agent' || req.user.role === 'supervisor') {
-            const [targetUser] = await pool.query('SELECT role FROM Users WHERE id = ?', [newAgentId]);
-            if (targetUser.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
             if (targetUser[0].role === 'admin') {
                 return res.status(403).json({ message: 'No se puede reasignar tickets a administradores.' });
             }
-            // Agente solo puede reasignar a otros agentes; supervisor puede a agentes o supervisores
             if (req.user.role === 'agent' && targetUser[0].role === 'supervisor') {
                 return res.status(403).json({ message: 'Los agentes no pueden reasignar a supervisores.' });
             }

@@ -138,6 +138,13 @@ if [[ -f "backend/scripts/migrate-planilla-suboptions.js" ]]; then
     echo ""
 fi
 
+# Reparar tickets con clientes como agente asignado (bug histórico)
+if [[ -f "backend/scripts/fix-ticket-assigned-clients.js" ]]; then
+    echo ">>> Reparando tickets con clientes asignados como agentes..."
+    (cd backend && node scripts/fix-ticket-assigned-clients.js) || true
+    echo ""
+fi
+
 # Build del frontend (limpio: borrar build anterior para que no queden JS viejos)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend
