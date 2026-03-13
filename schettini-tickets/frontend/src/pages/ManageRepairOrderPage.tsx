@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
-import { formatDateArgentina, formatDateForInput, formatNowArgentina } from '../utils/dateFormatter';
+import { formatDateArgentina, formatDateForInput, formatNowArgentina, toDateOnly } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
 import { hasAnyPermission } from '../utils/permissions';
 import SectionCard from '../components/Common/SectionCard';
@@ -573,10 +573,10 @@ const ManageRepairOrderPage: React.FC = () => {
         sparePartsCost: isOficialFabricante ? 0 : (effectiveSparePartsTotal || null),
         totalCost: isOficialFabricante ? 0 : (effectiveTotalEfectivo || null),
         depositPaid: form.depositPaid ? parseFloat(form.depositPaid) : null,
-        acceptedDate: form.acceptedDate || null,
-        promisedDate: form.promisedDate || null,
-        deliveredDate: form.deliveredDate || null,
-        warrantyExpirationDate: form.warrantyExpirationDate || null,
+        acceptedDate: toDateOnly(form.acceptedDate) ?? null,
+        promisedDate: toDateOnly(form.promisedDate) ?? null,
+        deliveredDate: toDateOnly(form.deliveredDate) ?? null,
+        warrantyExpirationDate: toDateOnly(form.warrantyExpirationDate) ?? null,
         publicNotes: form.publicNotes || null,
         sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
         technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null,
@@ -584,7 +584,7 @@ const ManageRepairOrderPage: React.FC = () => {
         isWarranty: form.isWarranty,
         warrantyType: form.isWarranty ? form.warrantyType || null : null,
         purchaseInvoiceNumber: form.isWarranty ? form.purchaseInvoiceNumber?.trim() || null : null,
-        purchaseDate: form.isWarranty ? form.purchaseDate || null : null,
+        purchaseDate: form.isWarranty ? (toDateOnly(form.purchaseDate) ?? null) : null,
         originalSupplier: form.isWarranty ? form.originalSupplier?.trim() || null : null,
         requiresFactoryShipping: form.isWarranty ? form.requiresFactoryShipping : undefined,
         warrantyStatus: form.isWarranty && form.warrantyStatus ? form.warrantyStatus : null,
