@@ -10,6 +10,7 @@ import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import CreatableAutocomplete from '../components/Common/CreatableAutocomplete';
 import { FaWhatsapp, FaSave, FaTimes, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
+import WebcamCapture, { CapturedPhoto } from '../components/RepairOrders/WebcamCapture';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 
 interface CompanySettings {
@@ -236,6 +237,9 @@ const ManageRepairOrderPage: React.FC = () => {
 
   /** Fotos actuales de la orden (estado local para poder eliminar antes de guardar) */
   const [existingPhotos, setExistingPhotos] = useState<{ id: number; photo_url: string; perspective_label: string }[]>([]);
+
+  /** Nuevas fotos tomadas o subidas en la vista de edición (se envían al backend al guardar). */
+  const [newPhotos, setNewPhotos] = useState<CapturedPhoto[]>([]);
 
   const [form, setForm] = useState({
     status: '',
@@ -560,37 +564,91 @@ const ManageRepairOrderPage: React.FC = () => {
     setSaving(true);
     try {
       const sparePartsDetailJson = sparePartsList.length > 0 ? JSON.stringify(sparePartsList) : null;
-      await api.put(`/api/repair-orders/${id}`, {
-        status: form.status || null,
-        equipmentType: form.equipmentType || null,
-        brand: form.brand || null,
-        model: form.model || null,
-        serialNumber: form.serialNumber || null,
-        reportedFault: form.reportedFault || null,
-        includedAccessories: accessoriesArray.length > 0 ? accessoriesArray.join(', ') : null,
-        technicalReport: form.technicalReport || null,
-        laborCost: isOficialFabricante ? 0 : (effectiveLaborNum || null),
-        sparePartsCost: isOficialFabricante ? 0 : (effectiveSparePartsTotal || null),
-        totalCost: isOficialFabricante ? 0 : (effectiveTotalEfectivo || null),
-        depositPaid: form.depositPaid ? parseFloat(form.depositPaid) : null,
-        acceptedDate: toDateOnly(form.acceptedDate) ?? null,
-        promisedDate: toDateOnly(form.promisedDate) ?? null,
-        deliveredDate: toDateOnly(form.deliveredDate) ?? null,
-        warrantyExpirationDate: toDateOnly(form.warrantyExpirationDate) ?? null,
-        publicNotes: form.publicNotes || null,
-        sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
-        technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null,
-        internalNotes: finalInternalNotes || null,
-        isWarranty: form.isWarranty,
-        warrantyType: form.isWarranty ? form.warrantyType || null : null,
-        purchaseInvoiceNumber: form.isWarranty ? form.purchaseInvoiceNumber?.trim() || null : null,
-        purchaseDate: form.isWarranty ? (toDateOnly(form.purchaseDate) ?? null) : null,
-        originalSupplier: form.isWarranty ? form.originalSupplier?.trim() || null : null,
-        requiresFactoryShipping: form.isWarranty ? form.requiresFactoryShipping : undefined,
-        warrantyStatus: form.isWarranty && form.warrantyStatus ? form.warrantyStatus : null,
-        photoIds: existingPhotos.map((p) => p.id)
-      });
+      const keptPhotoIds = existingPhotos.map((p) => p.id);
+
+      // Si no hay fotos nuevas, mantenemos el flujo JSON existente (sin multipart)
+      if (newPhotos.length === 0) {
+        await api.put(`/api/repair-orders/${id}`, {
+          status: form.status || null,
+          equipmentType: form.equipmentType || null,
+          brand: form.brand || null,
+          model: form.model || null,
+          serialNumber: form.serialNumber || null,
+          reportedFault: form.reportedFault || null,
+          includedAccessories: accessoriesArray.length > 0 ? accessoriesArray.join(', ') : null,
+          technicalReport: form.technicalReport || null,
+          laborCost: isOficialFabricante ? 0 : (effectiveLaborNum || null),
+          sparePartsCost: isOficialFabricante ? 0 : (effectiveSparePartsTotal || null),
+          totalCost: isOficialFabricante ? 0 : (effectiveTotalEfectivo || null),
+          depositPaid: form.depositPaid ? parseFloat(form.depositPaid) : null,
+          acceptedDate: toDateOnly(form.acceptedDate) ?? null,
+          promisedDate: toDateOnly(form.promisedDate) ?? null,
+          deliveredDate: toDateOnly(form.deliveredDate) ?? null,
+          warrantyExpirationDate: toDateOnly(form.warrantyExpirationDate) ?? null,
+          publicNotes: form.publicNotes || null,
+          sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
+          technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null,
+          internalNotes: finalInternalNotes || null,
+          isWarranty: form.isWarranty,
+          warrantyType: form.isWarranty ? form.warrantyType || null : null,
+          purchaseInvoiceNumber: form.isWarranty ? form.purchaseInvoiceNumber?.trim() || null : null,
+          purchaseDate: form.isWarranty ? (toDateOnly(form.purchaseDate) ?? null) : null,
+          originalSupplier: form.isWarranty ? form.originalSupplier?.trim() || null : null,
+          requiresFactoryShipping: form.isWarranty ? form.requiresFactoryShipping : undefined,
+          warrantyStatus: form.isWarranty && form.warrantyStatus ? form.warrantyStatus : null,
+          photoIds: keptPhotoIds
+        });
+      } else {
+        // Cuando hay fotos nuevas, usamos FormData para enviar archivos + campos + ids de fotos que se conservan.
+        const formData = new FormData();
+        formData.append('status', form.status || '');
+        formData.append('equipmentType', form.equipmentType || '');
+        formData.append('brand', form.brand || '');
+        formData.append('model', form.model || '');
+        formData.append('serialNumber', form.serialNumber || '');
+        formData.append('reportedFault', form.reportedFault || '');
+        formData.append('includedAccessories', accessoriesArray.length > 0 ? accessoriesArray.join(', ') : '');
+        formData.append('technicalReport', form.technicalReport || '');
+        formData.append('laborCost', String(isOficialFabricante ? 0 : (effectiveLaborNum || '')));
+        formData.append('sparePartsCost', String(isOficialFabricante ? 0 : (effectiveSparePartsTotal || '')));
+        formData.append('totalCost', String(isOficialFabricante ? 0 : (effectiveTotalEfectivo || '')));
+        if (form.depositPaid) {
+          formData.append('depositPaid', form.depositPaid);
+        }
+        formData.append('acceptedDate', toDateOnly(form.acceptedDate) ?? '');
+        formData.append('promisedDate', toDateOnly(form.promisedDate) ?? '');
+        formData.append('deliveredDate', toDateOnly(form.deliveredDate) ?? '');
+        formData.append('warrantyExpirationDate', toDateOnly(form.warrantyExpirationDate) ?? '');
+        formData.append('publicNotes', form.publicNotes || '');
+        formData.append('sparePartsDetail', sparePartsDetailJson || form.sparePartsDetail || '');
+        if (form.technicianId) {
+          formData.append('technicianId', form.technicianId);
+        }
+        formData.append('internalNotes', finalInternalNotes || '');
+        formData.append('isWarranty', form.isWarranty ? 'true' : 'false');
+        if (form.isWarranty) {
+          formData.append('warrantyType', form.warrantyType || '');
+          formData.append('purchaseInvoiceNumber', form.purchaseInvoiceNumber?.trim() || '');
+          formData.append('purchaseDate', toDateOnly(form.purchaseDate) ?? '');
+          formData.append('originalSupplier', form.originalSupplier?.trim() || '');
+          formData.append('requiresFactoryShipping', form.requiresFactoryShipping ? 'true' : 'false');
+          if (form.warrantyStatus) {
+            formData.append('warrantyStatus', form.warrantyStatus);
+          }
+        }
+
+        // Fotos existentes que se conservan (ids) y nuevas fotos como archivos
+        formData.append('photoIds', JSON.stringify(keptPhotoIds));
+        newPhotos.forEach((p) => formData.append('photos', p.file));
+        formData.append('perspectiveLabels', JSON.stringify(newPhotos.map((p) => p.label)));
+
+        await api.put(`/api/repair-orders/${id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+
       toast.success('Orden actualizada');
+      setNewPhotos([]);
       fetchOrder();
     } catch {
       toast.error('Error al guardar');
@@ -1118,50 +1176,102 @@ const ManageRepairOrderPage: React.FC = () => {
         {order.client_email && <p className="text-sm">Email: {order.client_email}</p>}
       </SectionCard>
 
-      {existingPhotos.length > 0 && (
-        <SectionCard title="Fotos" overflowVisible>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {existingPhotos
-              .filter((p) => p && p.photo_url)
-              .map((p) => (
-                <div key={p.id} className="flex flex-col gap-1">
-                  <img
-                    src={getImageUrl(p.photo_url)}
-                    alt={p.perspective_label || 'Foto'}
-                    className="w-full aspect-square object-cover rounded-lg border"
-                  />
-                  <p className="text-xs text-gray-500">{p.perspective_label}</p>
-                  {canDeletePhoto && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const msg = canEdit
-                          ? '¿Eliminar esta foto? Se aplicará al guardar cambios.'
-                          : '¿Eliminar esta foto de la orden?';
-                        if (!window.confirm(msg)) return;
-                        if (canEdit) {
-                          setExistingPhotos((prev) => prev.filter((photo) => photo.id !== p.id));
-                          return;
-                        }
-                        try {
-                          await api.delete(`/api/repair-orders/${id}/photos/${p.id}`);
-                          toast.success('Foto eliminada');
-                          fetchOrder();
-                        } catch {
-                          toast.error('Error al eliminar la foto');
-                        }
-                      }}
-                      className="flex items-center justify-center gap-1 w-full py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded hover:bg-red-100"
-                    >
-                      <FaTrash className="w-3.5 h-3.5" /> Eliminar foto
-                    </button>
-                  )}
-                </div>
-              ))}
-          </div>
+      {canEdit ? (
+        <SectionCard title="Fotos del Equipo" overflowVisible>
+          {existingPhotos.length > 0 && (
+            <div className="mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {existingPhotos
+                  .filter((p) => p && p.photo_url)
+                  .map((p) => (
+                    <div key={p.id} className="flex flex-col gap-1">
+                      <img
+                        src={getImageUrl(p.photo_url)}
+                        alt={p.perspective_label || 'Foto'}
+                        className="w-full aspect-square object-cover rounded-lg border"
+                      />
+                      <p className="text-xs text-gray-500">{p.perspective_label}</p>
+                      {canDeletePhoto && (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const msg = canEdit
+                              ? '¿Eliminar esta foto? Se aplicará al guardar cambios.'
+                              : '¿Eliminar esta foto de la orden?';
+                            if (!window.confirm(msg)) return;
+                            if (canEdit) {
+                              setExistingPhotos((prev) => prev.filter((photo) => photo.id !== p.id));
+                              return;
+                            }
+                            try {
+                              await api.delete(`/api/repair-orders/${id}/photos/${p.id}`);
+                              toast.success('Foto eliminada');
+                              fetchOrder();
+                            } catch {
+                              toast.error('Error al eliminar la foto');
+                            }
+                          }}
+                          className="flex items-center justify-center gap-1 w-full py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded hover:bg-red-100"
+                        >
+                          <FaTrash className="w-3.5 h-3.5" /> Eliminar foto
+                        </button>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          <WebcamCapture photos={newPhotos} onPhotosChange={setNewPhotos} />
         </SectionCard>
+      ) : (
+        existingPhotos.length > 0 && (
+          <SectionCard title="Fotos" overflowVisible>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {existingPhotos
+                .filter((p) => p && p.photo_url)
+                .map((p) => (
+                  <div key={p.id} className="flex flex-col gap-1">
+                    <img
+                      src={getImageUrl(p.photo_url)}
+                      alt={p.perspective_label || 'Foto'}
+                      className="w-full aspect-square object-cover rounded-lg border"
+                    />
+                    <p className="text-xs text-gray-500">{p.perspective_label}</p>
+                    {canDeletePhoto && (
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const msg = canEdit
+                            ? '¿Eliminar esta foto? Se aplicará al guardar cambios.'
+                            : '¿Eliminar esta foto de la orden?';
+                          if (!window.confirm(msg)) return;
+                          if (canEdit) {
+                            setExistingPhotos((prev) => prev.filter((photo) => photo.id !== p.id));
+                            return;
+                          }
+                          try {
+                            await api.delete(`/api/repair-orders/${id}/photos/${p.id}`);
+                            toast.success('Foto eliminada');
+                            fetchOrder();
+                          } catch {
+                            toast.error('Error al eliminar la foto');
+                          }
+                        }}
+                        className="flex items-center justify-center gap-1 w-full py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded hover:bg-red-100"
+                      >
+                        <FaTrash className="w-3.5 h-3.5" /> Eliminar foto
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </SectionCard>
+        )
       )}
 
       {/* Modal Procesar a Reciclaje */}

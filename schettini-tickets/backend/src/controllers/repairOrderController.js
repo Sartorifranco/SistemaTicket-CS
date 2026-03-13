@@ -914,6 +914,31 @@ const updateRepairOrder = async (req, res) => {
       }
     }
 
+    // Si llegan archivos nuevos en la edición, se agregan (append) a las fotos existentes conservadas.
+    const newFiles = req.files || [];
+    if (Array.isArray(newFiles) && newFiles.length > 0) {
+      let perspectiveLabels = [];
+      try {
+        perspectiveLabels = req.body.perspectiveLabels
+          ? (typeof req.body.perspectiveLabels === 'string'
+            ? JSON.parse(req.body.perspectiveLabels)
+            : req.body.perspectiveLabels)
+          : [];
+      } catch (_) {
+        perspectiveLabels = [];
+      }
+
+      const inserts = newFiles.map((f, i) => [
+        id,
+        `/uploads/${f.filename}`,
+        perspectiveLabels[i] || `foto_${i + 1}`
+      ]);
+      await pool.query(
+        'INSERT INTO repair_order_photos (repair_order_id, photo_url, perspective_label) VALUES ?',
+        [inserts]
+      );
+    }
+
     if (req.io) {
       req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
     }

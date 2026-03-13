@@ -66,7 +66,12 @@ router.post(
   createRepairOrder
 );
 router.put('/:id/status', authorizeByPermission('repairs_edit'), updateRepairOrderStatus);
-router.put('/:id', authorizeByPermission('repairs_edit'), updateRepairOrder);
+router.put(
+  '/:id',
+  authorizeByPermission('repairs_edit'),
+  upload.array('photos', 10),
+  updateRepairOrder
+);
 router.delete('/:id', authorize('admin'), deleteRepairOrder);
 
 router.post('/:id/recycling', authorizeByPermission('repairs_edit'), upload.array('photos', 10), processRecyclingToAbandoned);
