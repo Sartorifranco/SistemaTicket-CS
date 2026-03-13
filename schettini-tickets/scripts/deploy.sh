@@ -131,6 +131,13 @@ if [[ -f "backend/scripts/migrate-planilla-products.js" ]]; then
     echo ""
 fi
 
+# Sub-opciones de productos de planilla (listas anidadas editables desde admin)
+if [[ -f "backend/scripts/migrate-planilla-suboptions.js" ]]; then
+    echo ">>> Ejecutando migración planilla_product_suboptions..."
+    (cd backend && node scripts/migrate-planilla-suboptions.js) || true
+    echo ""
+fi
+
 # Build del frontend (limpio: borrar build anterior para que no queden JS viejos)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend

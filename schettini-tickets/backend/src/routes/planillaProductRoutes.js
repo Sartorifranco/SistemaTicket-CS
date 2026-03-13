@@ -72,4 +72,74 @@ router.post('/', authorize('admin', 'supervisor', 'agent', 'viewer'), async (req
   }
 });
 
+// ─── Sub-opciones por producto ────────────────────────────────────────────────
+
+// GET /api/planilla-products/:id/suboptions — sub-opciones activas de un producto (clientes)
+router.get('/:id/suboptions', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name FROM planilla_product_suboptions WHERE product_id = ? AND is_active = 1 ORDER BY name ASC',
+      [req.params.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('Error GET suboptions:', err.message);
+    res.status(500).json({ success: false, message: 'Error al obtener sub-opciones' });
+  }
+});
+
+// GET /api/planilla-products/:id/suboptions/all — todas (incluyendo inactivas), solo admin/supervisor
+router.get('/:id/suboptions/all', authorize('admin', 'supervisor'), async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, is_active FROM planilla_product_suboptions WHERE product_id = ? ORDER BY name ASC',
+      [req.params.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('Error GET suboptions/all:', err.message);
+    res.status(500).json({ success: false, message: 'Error al obtener sub-opciones' });
+  }
+});
+
+// POST /api/planilla-products/:id/suboptions — crear sub-opción, solo admin/supervisor
+router.post('/:id/suboptions', authorize('admin', 'supervisor'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const name = (req.body.name || '').trim();
+    if (!name) return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+
+    const [existing] = await pool.query(
+      'SELECT id FROM planilla_product_suboptions WHERE product_id = ? AND LOWER(name) = LOWER(?)',
+      [id, name]
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Ya existe una sub-opción con ese nombre' });
+    }
+    const [result] = await pool.query(
+      'INSERT INTO planilla_product_suboptions (product_id, name) VALUES (?, ?)',
+      [id, name]
+    );
+    res.status(201).json({ success: true, data: { id: result.insertId, name, is_active: 1 } });
+  } catch (err) {
+    console.error('Error POST suboptions:', err.message);
+    res.status(500).json({ success: false, message: 'Error al crear sub-opción' });
+  }
+});
+
+// PATCH /api/planilla-products/suboptions/:subId/toggle — activar/desactivar, solo admin/supervisor
+router.patch('/suboptions/:subId/toggle', authorize('admin', 'supervisor'), async (req, res) => {
+  try {
+    const { subId } = req.params;
+    const [rows] = await pool.query('SELECT is_active FROM planilla_product_suboptions WHERE id = ?', [subId]);
+    if (!rows.length) return res.status(404).json({ success: false, message: 'Sub-opción no encontrada' });
+    const newState = rows[0].is_active ? 0 : 1;
+    await pool.query('UPDATE planilla_product_suboptions SET is_active = ? WHERE id = ?', [newState, subId]);
+    res.json({ success: true, is_active: newState });
+  } catch (err) {
+    console.error('Error PATCH suboptions toggle:', err.message);
+    res.status(500).json({ success: false, message: 'Error al cambiar estado' });
+  }
+});
+
 module.exports = router;

@@ -282,6 +282,10 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
   const [selectedProduct, setSelectedProduct] = useState<PlanillaProductOption | null>(null);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
 
+  // Sub-opciones dinámicas del producto seleccionado
+  const [suboptions, setSuboptions] = useState<{ value: string; label: string }[]>([]);
+  const [suboptionsLoading, setSuboptionsLoading] = useState(false);
+
   useEffect(() => {
     if (activation.form_type === 'controlador_fiscal' && !productType) setProductType('controlador_fiscal');
   }, [activation.form_type]);
@@ -313,6 +317,9 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
       };
       setPlanillaProductOptions((prev) => [...prev, newOpt]);
       setSelectedProduct(newOpt);
+      setSuboptions([]);
+      update('software_type', '');
+      update('model', '');
       // Mapear al productType legado si coincide
       const nameLower = res.data.data.name.toLowerCase();
       if (nameLower.includes('controlador') || nameLower.includes('fiscal')) {
@@ -320,6 +327,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
       } else {
         setProductType('software_gestion');
       }
+      // Producto nuevo: no tiene sub-opciones aún
       toast.success(`Producto "${res.data.data.name}" creado y seleccionado.`);
     } catch {
       toast.error('No se pudo crear el producto. Intente de nuevo.');
@@ -328,9 +336,28 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
     }
   };
 
+  // Cargar sub-opciones dinámicas del producto seleccionado
+  const loadSuboptions = async (productId: string) => {
+    setSuboptionsLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; data: { id: number; name: string }[] }>(
+        `/api/planilla-products/${productId}/suboptions`
+      );
+      const data = res.data.data || [];
+      setSuboptions(data.map((s) => ({ value: s.name, label: s.name })));
+    } catch {
+      setSuboptions([]);
+    } finally {
+      setSuboptionsLoading(false);
+    }
+  };
+
   // Cuando el usuario selecciona un producto existente del dropdown
   const handleSelectProduct = (opt: PlanillaProductOption | null) => {
     setSelectedProduct(opt);
+    setSuboptions([]);
+    update('software_type', '');
+    update('model', '');
     if (!opt) {
       setProductType('');
       return;
@@ -340,6 +367,10 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
       setProductType('controlador_fiscal');
     } else {
       setProductType('software_gestion');
+    }
+    // Cargar sub-opciones si el ID es numérico (producto de la BD)
+    if (!isNaN(Number(opt.value))) {
+      loadSuboptions(opt.value);
     }
   };
 
@@ -478,9 +509,10 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
                   onChange={(e) => update('model', e.target.value)}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                  disabled={suboptionsLoading}
                 >
-                  <option value="">Seleccionar...</option>
-                  {FISCAL_MODEL_OPTIONS.map((o) => (
+                  <option value="">{suboptionsLoading ? 'Cargando...' : 'Seleccionar...'}</option>
+                  {(suboptions.length > 0 ? suboptions : FISCAL_MODEL_OPTIONS).map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
@@ -532,9 +564,10 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
                   onChange={(e) => update('software_type', e.target.value)}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                  disabled={suboptionsLoading}
                 >
-                  <option value="">Seleccionar...</option>
-                  {SOFTWARE_TYPE_OPTIONS.map((o) => (
+                  <option value="">{suboptionsLoading ? 'Cargando...' : 'Seleccionar...'}</option>
+                  {(suboptions.length > 0 ? suboptions : SOFTWARE_TYPE_OPTIONS).map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>

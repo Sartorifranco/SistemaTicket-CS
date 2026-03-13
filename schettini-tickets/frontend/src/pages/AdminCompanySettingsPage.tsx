@@ -191,19 +191,120 @@ const OptionsListManager: React.FC<{
   );
 };
 
-/** Gestiona la tabla planilla_products: ver, agregar y activar/desactivar. */
+interface PlanillaSuboption { id: number; name: string; is_active: number }
+interface PlanillaProduct { id: number; name: string; is_active: number }
+
+/** Panel de sub-opciones de un producto (expandido inline) */
+const SuboptionsPanel: React.FC<{ productId: number }> = ({ productId }) => {
+  const [suboptions, setSuboptions] = useState<PlanillaSuboption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newSubName, setNewSubName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const fetchSubs = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; data: PlanillaSuboption[] }>(
+        `/api/planilla-products/${productId}/suboptions/all`
+      );
+      setSuboptions(res.data.data || []);
+    } catch {
+      toast.error('No se pudieron cargar las sub-opciones');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchSubs(); }, [productId]);
+
+  const handleAddSub = async () => {
+    const name = newSubName.trim();
+    if (!name) { toast.warn('Ingresá un nombre'); return; }
+    setSaving(true);
+    try {
+      await api.post(`/api/planilla-products/${productId}/suboptions`, { name });
+      toast.success('Sub-opción agregada');
+      setNewSubName('');
+      fetchSubs();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al agregar';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleSub = async (subId: number, currentActive: number) => {
+    try {
+      await api.patch(`/api/planilla-products/suboptions/${subId}/toggle`);
+      toast.success(currentActive ? 'Desactivada' : 'Activada');
+      fetchSubs();
+    } catch {
+      toast.error('Error al cambiar estado');
+    }
+  };
+
+  return (
+    <div className="mt-3 ml-4 pl-4 border-l-2 border-indigo-100">
+      <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">Sub-opciones</p>
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          value={newSubName}
+          onChange={(e) => setNewSubName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSub())}
+          placeholder="Ej: StarPOS Market, Epson..."
+          className="flex-1 p-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
+        />
+        <button
+          type="button"
+          onClick={handleAddSub}
+          disabled={saving}
+          className="px-3 py-1.5 bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-600 flex items-center gap-1 disabled:opacity-50"
+        >
+          <FaPlus size={11} /> Agregar
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-xs text-gray-400">Cargando...</p>
+      ) : suboptions.length === 0 ? (
+        <p className="text-xs text-gray-400 italic">Sin sub-opciones. Agregá una arriba (opcional).</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {suboptions.map((sub) => (
+            <li key={sub.id} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 text-sm">
+              <span className={sub.is_active ? 'text-gray-700' : 'text-gray-400 line-through'}>{sub.name}</span>
+              <button
+                type="button"
+                onClick={() => handleToggleSub(sub.id, sub.is_active)}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition ${
+                  sub.is_active
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                    : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                }`}
+              >
+                {sub.is_active ? 'Desactivar' : 'Activar'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+/** Gestiona la tabla planilla_products con sub-opciones expandibles. */
 const PlanillaProductsManager: React.FC = () => {
-  const [items, setItems] = useState<{ id: number; name: string; is_active: number }[]>([]);
+  const [items, setItems] = useState<PlanillaProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const res = await api.get<{ success: boolean; data: { id: number; name: string; is_active: number }[] }>(
-        '/api/planilla-products/all'
-      );
+      const res = await api.get<{ success: boolean; data: PlanillaProduct[] }>('/api/planilla-products/all');
       setItems(res.data.data || []);
     } catch {
       toast.error('No se pudieron cargar los productos de planilla');
@@ -212,9 +313,7 @@ const PlanillaProductsManager: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  useEffect(() => { fetchItems(); }, []);
 
   const handleAdd = async () => {
     const name = newName.trim();
@@ -250,7 +349,7 @@ const PlanillaProductsManager: React.FC = () => {
       </h3>
       <p className="text-sm text-gray-500 mb-4">
         Administrá los productos que los clientes pueden seleccionar al completar una planilla.
-        Los desactivados no aparecen en el formulario, pero se conservan en el historial.
+        Hacé clic en <strong>Sub-opciones</strong> para gestionar las opciones anidadas (ej: tipos de software, modelos de controlador fiscal).
       </p>
       <div className="flex gap-2 mb-4">
         <input
@@ -275,23 +374,35 @@ const PlanillaProductsManager: React.FC = () => {
       ) : items.length === 0 ? (
         <p className="text-gray-500 italic">No hay productos. Agregá uno arriba.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-              <span className={`font-medium ${item.is_active ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
-                {item.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleToggle(item.id, item.is_active)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                  item.is_active
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                    : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
-                }`}
-              >
-                {item.is_active ? 'Desactivar' : 'Activar'}
-              </button>
+            <li key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center justify-between">
+                <span className={`font-medium ${item.is_active ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
+                  {item.name}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    className="px-3 py-1 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition"
+                  >
+                    {expandedId === item.id ? 'Cerrar' : 'Sub-opciones'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(item.id, item.is_active)}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
+                      item.is_active
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                        : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                    }`}
+                  >
+                    {item.is_active ? 'Desactivar' : 'Activar'}
+                  </button>
+                </div>
+              </div>
+              {expandedId === item.id && <SuboptionsPanel productId={item.id} />}
             </li>
           ))}
         </ul>
