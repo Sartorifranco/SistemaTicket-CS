@@ -72,7 +72,7 @@ const defaultSettings: CompanySettings = {
   agents_can_view_movements: false,
 };
 
-type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets' | 'cloud-contracts';
+type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets' | 'cloud-contracts' | 'planilla-productos';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <FaBuilding /> },
@@ -84,6 +84,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'modelos', label: 'Modelos', icon: <FaCube /> },
   { id: 'categorias-tickets', label: 'Categorías de Tickets', icon: <FaTicketAlt /> },
   { id: 'cloud-contracts', label: 'Gestor Contratos Cloud', icon: <FaCloud /> },
+  { id: 'planilla-productos', label: 'Productos de Planilla', icon: <FaFileAlt /> },
 ];
 
 /** Componente genérico para gestionar listas de system_options por categoría */
@@ -181,6 +182,115 @@ const OptionsListManager: React.FC<{
                 title="Eliminar"
               >
                 <FaTrash />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+/** Gestiona la tabla planilla_products: ver, agregar y activar/desactivar. */
+const PlanillaProductsManager: React.FC = () => {
+  const [items, setItems] = useState<{ id: number; name: string; is_active: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; data: { id: number; name: string; is_active: number }[] }>(
+        '/api/planilla-products/all'
+      );
+      setItems(res.data.data || []);
+    } catch {
+      toast.error('No se pudieron cargar los productos de planilla');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const handleAdd = async () => {
+    const name = newName.trim();
+    if (!name) { toast.warn('Ingresá un nombre'); return; }
+    setSaving(true);
+    try {
+      await api.post('/api/planilla-products', { name });
+      toast.success('Producto agregado');
+      setNewName('');
+      fetchItems();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al agregar';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (id: number, currentActive: number) => {
+    try {
+      await api.patch(`/api/planilla-products/${id}/toggle`);
+      toast.success(currentActive ? 'Producto desactivado' : 'Producto activado');
+      fetchItems();
+    } catch {
+      toast.error('Error al cambiar estado');
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+      <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+        <FaFileAlt className="text-indigo-600" /> Productos de Planilla
+      </h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Administrá los productos que los clientes pueden seleccionar al completar una planilla.
+        Los desactivados no aparecen en el formulario, pero se conservan en el historial.
+      </p>
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAdd())}
+          placeholder="Ej: Balanza, Lector de código de barras..."
+          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={saving}
+          className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50"
+        >
+          <FaPlus /> Agregar
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-gray-500">Cargando...</p>
+      ) : items.length === 0 ? (
+        <p className="text-gray-500 italic">No hay productos. Agregá uno arriba.</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className={`font-medium ${item.is_active ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
+                {item.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleToggle(item.id, item.is_active)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
+                  item.is_active
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                    : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                }`}
+              >
+                {item.is_active ? 'Desactivar' : 'Activar'}
               </button>
             </li>
           ))}
@@ -975,6 +1085,10 @@ const AdminCompanySettingsPage: React.FC = () => {
         </ul>
           )}
         </div>
+      )}
+
+      {activeTab === 'planilla-productos' && (
+        <PlanillaProductsManager />
       )}
 
       {activeTab === 'cloud-contracts' && (
