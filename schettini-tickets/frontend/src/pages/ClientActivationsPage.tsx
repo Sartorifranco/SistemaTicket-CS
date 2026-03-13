@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import CreatableSelect from 'react-select/creatable';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
@@ -256,6 +257,11 @@ interface ActivationFormModalProps {
   setSubmitting: (v: boolean) => void;
 }
 
+interface PlanillaProductOption {
+  value: string;
+  label: string;
+}
+
 const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, cloudContracts, onClose, onSuccess, submitting, setSubmitting }) => {
   const isAltaGeneral = activation.form_type === 'alta_general' || activation.form_type === 'general';
   const isControladorFiscalLegacy = activation.form_type === 'controlador_fiscal';
@@ -271,9 +277,71 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
   const [cloudNubeDesea, setCloudNubeDesea] = useState(false);
   const [cloudNubeContratoFiles, setCloudNubeContratoFiles] = useState<File[]>([]);
 
+  // Productos dinámicos desde la base de datos
+  const [planillaProductOptions, setPlanillaProductOptions] = useState<PlanillaProductOption[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<PlanillaProductOption | null>(null);
+  const [isCreatingProduct, setIsCreatingProduct] = useState(false);
+
   useEffect(() => {
     if (activation.form_type === 'controlador_fiscal' && !productType) setProductType('controlador_fiscal');
   }, [activation.form_type]);
+
+  // Cargar productos desde la BD al montar el modal
+  useEffect(() => {
+    api.get<{ success: boolean; data: { id: number; name: string }[] }>('/api/planilla-products')
+      .then((res) => {
+        const opts = (res.data.data || []).map((p) => ({ value: String(p.id), label: p.name }));
+        setPlanillaProductOptions(opts);
+      })
+      .catch(() => {
+        // Si falla la carga, usamos las opciones hardcodeadas como fallback
+        setPlanillaProductOptions(PRODUCT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })));
+      });
+  }, []);
+
+  // Crear un nuevo producto en la BD y seleccionarlo
+  const handleCreateProduct = async (inputValue: string) => {
+    setIsCreatingProduct(true);
+    try {
+      const res = await api.post<{ success: boolean; data: { id: number; name: string } }>(
+        '/api/planilla-products',
+        { name: inputValue }
+      );
+      const newOpt: PlanillaProductOption = {
+        value: String(res.data.data.id),
+        label: res.data.data.name
+      };
+      setPlanillaProductOptions((prev) => [...prev, newOpt]);
+      setSelectedProduct(newOpt);
+      // Mapear al productType legado si coincide
+      const nameLower = res.data.data.name.toLowerCase();
+      if (nameLower.includes('controlador') || nameLower.includes('fiscal')) {
+        setProductType('controlador_fiscal');
+      } else {
+        setProductType('software_gestion');
+      }
+      toast.success(`Producto "${res.data.data.name}" creado y seleccionado.`);
+    } catch {
+      toast.error('No se pudo crear el producto. Intente de nuevo.');
+    } finally {
+      setIsCreatingProduct(false);
+    }
+  };
+
+  // Cuando el usuario selecciona un producto existente del dropdown
+  const handleSelectProduct = (opt: PlanillaProductOption | null) => {
+    setSelectedProduct(opt);
+    if (!opt) {
+      setProductType('');
+      return;
+    }
+    const nameLower = opt.label.toLowerCase();
+    if (nameLower.includes('controlador') || nameLower.includes('fiscal')) {
+      setProductType('controlador_fiscal');
+    } else {
+      setProductType('software_gestion');
+    }
+  };
 
   const isControladorFiscal = productType === 'controlador_fiscal' || (isControladorFiscalLegacy && productType === '');
   const isSoftwareGestion = productType === 'software_gestion';
@@ -353,26 +421,50 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
-          {/* Tipo de producto adquirido (obligatorio) */}
+          {/* Tipo de producto adquirido — selector dinámico con creación inline */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               ¿Qué producto adquirió? <span className="text-red-500">*</span>
             </label>
-            <select
-              value={productType}
-              onChange={(e) => {
-                const v = e.target.value as 'controlador_fiscal' | 'software_gestion' | '';
-                setProductType(v);
-                if (v !== 'controlador_fiscal') setAfipAltaType('');
+            <CreatableSelect<PlanillaProductOption>
+              options={planillaProductOptions}
+              value={selectedProduct}
+              onChange={(opt) => {
+                handleSelectProduct(opt as PlanillaProductOption | null);
+                if (opt) {
+                  const nameLower = (opt as PlanillaProductOption).label.toLowerCase();
+                  if (!nameLower.includes('controlador') && !nameLower.includes('fiscal')) {
+                    setAfipAltaType('');
+                  }
+                } else {
+                  setAfipAltaType('');
+                }
               }}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-            >
-              <option value="">Seleccionar...</option>
-              {PRODUCT_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+              onCreateOption={handleCreateProduct}
+              isDisabled={isCreatingProduct || submitting}
+              isLoading={isCreatingProduct}
+              placeholder="Seleccionar o escribir nuevo producto..."
+              formatCreateLabel={(inputValue) => `Crear producto: "${inputValue}"`}
+              noOptionsMessage={() => 'Escribí para crear un nuevo producto'}
+              isClearable
+              classNamePrefix="react-select"
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  borderColor: '#d1d5db',
+                  borderRadius: '0.5rem',
+                  minHeight: '42px',
+                  boxShadow: 'none',
+                  '&:hover': { borderColor: '#6366f1' }
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : 'white',
+                  color: state.isSelected ? 'white' : '#1f2937'
+                })
+              }}
+            />
+            <p className="text-xs text-gray-400 mt-1">Si el producto no está en la lista, escribilo y presioná Enter para crearlo.</p>
           </div>
 
           {/* Lógica Controlador Fiscal */}

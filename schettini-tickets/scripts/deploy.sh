@@ -124,6 +124,13 @@ if [[ -f "backend/scripts/migrate-kb-folders.js" ]]; then
     echo ""
 fi
 
+# Productos de planilla (selector dinámico con creación inline)
+if [[ -f "backend/scripts/migrate-planilla-products.js" ]]; then
+    echo ">>> Ejecutando migración planilla_products..."
+    (cd backend && node scripts/migrate-planilla-products.js) || true
+    echo ""
+fi
+
 # Build del frontend (limpio: borrar build anterior para que no queden JS viejos)
 echo ">>> Frontend: instalando dependencias..."
 cd frontend
