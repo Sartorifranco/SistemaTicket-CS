@@ -139,6 +139,18 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
 
+// Formateo de fechas para WhatsApp sin depender de timezone del navegador.
+function formatDateForWhatsApp(dateValue?: string | null): string {
+  if (!dateValue) return '—';
+  const raw = String(dateValue);
+  // Acepta 'YYYY-MM-DD', 'YYYY-MM-DD HH:MM:SS' o 'YYYY-MM-DDTHH:MM:SS'
+  const datePart = raw.split('T')[0].split(' ')[0];
+  if (!datePart) return '—';
+  const [year, month, day] = datePart.split('-');
+  if (!year || !month || !day) return '—';
+  return `${day}/${month}/${year}`;
+}
+
 function buildWhatsAppTemplate(order: RepairOrder): string {
   const totalCost = order.total_cost ?? 0;
   const depositPaid = order.deposit_paid ?? 0;
@@ -160,11 +172,11 @@ ${order.reported_fault || '—'}
 INFORME TECNICO / SOLUCION:
 *${order.technical_report || '—'}*
 
-Ingreso el: ${formatDateArgentina(order.entry_date) || '—'}
-Aceptado el: ${formatDateArgentina(order.accepted_date) || '—'}
-Prometido para: ${formatDateArgentina(order.promised_date) || '—'}
-Entregado el: ${formatDateArgentina(order.delivered_date) || '—'}
-Garantía: ${formatDateArgentina(order.warranty_expiration_date) || '—'}
+Ingreso el: ${formatDateForWhatsApp(order.entry_date)}
+Aceptado el: ${formatDateForWhatsApp(order.accepted_date)}
+Prometido para: ${formatDateForWhatsApp(order.promised_date)}
+Entregado el: ${formatDateForWhatsApp(order.delivered_date)}
+Garantía: ${formatDateForWhatsApp(order.warranty_expiration_date)}
 
 Observaciones: 
 ${order.public_notes || '—'}
@@ -1224,7 +1236,10 @@ const ManageRepairOrderPage: React.FC = () => {
             </div>
           )}
 
-          <WebcamCapture photos={newPhotos} onPhotosChange={setNewPhotos} />
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">Agregar nuevas fotos (cámara o dispositivo)</p>
+            <WebcamCapture photos={newPhotos} onPhotosChange={setNewPhotos} />
+          </div>
         </SectionCard>
       ) : (
         existingPhotos.length > 0 && (
