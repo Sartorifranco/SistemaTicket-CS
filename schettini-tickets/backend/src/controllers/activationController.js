@@ -180,10 +180,11 @@ const submitForm = async (req, res) => {
     const ticketTitle = `Alta de Sistema - Factura ${invoiceNumber}`.trim();
     const ticketDescription = `Activación/Planilla asociada. Factura/Pedido: ${invoiceNumber}. Formulario enviado por el cliente.`;
 
+    // assigned_to_user_id debe ser NULL: el cliente no puede ser agente asignado
     const [ticketResult] = await pool.query(
       `INSERT INTO Tickets (user_id, assigned_to_user_id, title, description, priority, status, created_at)
-       VALUES (?, ?, ?, ?, 'medium', ?, NOW())`,
-      [clientId, clientId, ticketTitle, ticketDescription, 'Alta pendiente']
+       VALUES (?, NULL, ?, ?, 'medium', ?, NOW())`,
+      [clientId, ticketTitle, ticketDescription, 'Alta pendiente']
     );
     const ticketId = ticketResult.insertId;
 
