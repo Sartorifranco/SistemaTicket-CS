@@ -15,11 +15,12 @@ const getResources = async (req, res) => {
         const conditions = [];
         if (section_id) { conditions.push('kb.section_id = ?'); params.push(section_id); }
         if (system_id) { conditions.push('kb.system_id = ?'); params.push(system_id); }
-        if (folder_id !== undefined && folder_id !== '') {
-            const fid = parseInt(folder_id, 10);
-            if (!isNaN(fid)) { conditions.push('kb.folder_id = ?'); params.push(fid); }
-            else { conditions.push('(kb.folder_id IS NULL OR kb.folder_id = 0)'); }
-        } else if (folder_id === '') {
+        // Jerarquía: si no se envía folder_id explícito, solo raíz (no mezclar archivos de subcarpetas)
+        const fid = (folder_id !== undefined && folder_id !== '') ? parseInt(folder_id, 10) : NaN;
+        if (!isNaN(fid)) {
+            conditions.push('kb.folder_id = ?');
+            params.push(fid);
+        } else {
             conditions.push('(kb.folder_id IS NULL OR kb.folder_id = 0)');
         }
         if (conditions.length) {
@@ -199,8 +200,9 @@ const updateResource = async (req, res) => {
         if (category !== undefined) { updates.push('category = ?'); values.push(category || 'General'); }
         if (description !== undefined) { updates.push('description = ?'); values.push(description || null); }
         if (folder_name !== undefined) { updates.push('folder_name = ?'); values.push((folder_name && String(folder_name).trim()) ? String(folder_name).trim() : 'General'); }
-        if (folder_id !== undefined) {
-            const fid = (folder_id === '' || folder_id === null) ? null : parseInt(folder_id, 10);
+        // Solo actualizar folder_id si el payload lo incluye (evitar sobrescribir con null por omisión)
+        if ('folder_id' in req.body) {
+            const fid = (req.body.folder_id === '' || req.body.folder_id === null) ? null : parseInt(req.body.folder_id, 10);
             updates.push('folder_id = ?');
             values.push((fid !== null && !isNaN(fid)) ? fid : null);
         }

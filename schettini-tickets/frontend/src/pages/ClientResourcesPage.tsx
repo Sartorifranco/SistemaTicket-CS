@@ -15,6 +15,7 @@ interface Resource {
     section_name?: string;
     system_name?: string;
     image_url?: string | null;
+    folder_id?: number | null;
 }
 
 interface KbFolder {
@@ -88,7 +89,10 @@ const ClientResourcesPage: React.FC = () => {
             (r.section_name && r.section_name.toLowerCase().includes(filter.toLowerCase()));
         const matchSection = !selectedSectionId || r.section_id === selectedSectionId;
         const matchSystem = !selectedSystemId || r.system_id === selectedSystemId;
-        return matchText && matchSection && matchSystem;
+        const matchFolder = currentFolderId == null
+            ? (r.folder_id == null || r.folder_id === 0)
+            : r.folder_id === currentFolderId;
+        return matchText && matchSection && matchSystem && matchFolder;
     });
 
     const getResourceCountBySection = (sectionId: number) =>

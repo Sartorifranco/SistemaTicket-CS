@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
 import { getImageUrl } from '../utils/imageUrl';
@@ -110,6 +110,15 @@ const AdminResourcesPage: React.FC = () => {
     useEffect(() => {
         fetchExplorer(currentFolderId);
     }, [currentFolderId, fetchExplorer]);
+
+    // Solo mostrar recursos de la carpeta actual (raíz = folder_id null/0)
+    const resourcesInCurrentFolder = useMemo(() =>
+        resources.filter(r =>
+            (currentFolderId == null && (r.folder_id == null || r.folder_id === 0)) ||
+            (currentFolderId != null && r.folder_id === currentFolderId)
+        ),
+        [resources, currentFolderId]
+    );
 
     useEffect(() => {
         api.get('/api/resource-sections').then(res => setSections(res.data.data || [])).catch(() => {});
@@ -408,7 +417,7 @@ const AdminResourcesPage: React.FC = () => {
                             </button>
                         </div>
                     ))}
-                    {resources.map(res => {
+                    {resourcesInCurrentFolder.map(res => {
                         const thumbUrl = getResourceThumbnailUrl(res);
                         return (
                             <div
@@ -469,7 +478,7 @@ const AdminResourcesPage: React.FC = () => {
                 </div>
             )}
 
-            {!loading && folders.length === 0 && resources.length === 0 && (
+            {!loading && folders.length === 0 && resourcesInCurrentFolder.length === 0 && (
                 <p className="text-gray-500 text-center py-12">Esta carpeta está vacía. Creá una carpeta o agregá un recurso.</p>
             )}
 
