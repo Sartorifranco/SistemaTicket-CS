@@ -10,7 +10,8 @@ const {
   getActivations,
   getClientActivations,
   getActivationById,
-  updateActivationStatus
+  updateActivationStatus,
+  deleteActivation
 } = require('../controllers/activationController');
 
 const storage = multer.diskStorage({
@@ -43,5 +44,6 @@ router.get('/:id', getActivationById);
 router.put('/:id/validate', authorize('admin', 'supervisor', 'agent'), validateActivation);
 router.put('/:id', authorize('admin', 'supervisor', 'agent'), updateActivationStatus);
 router.post('/:id/submit-form', upload.any(), submitForm);
+router.delete('/:id', authorize('admin'), deleteActivation);
 
 module.exports = router;

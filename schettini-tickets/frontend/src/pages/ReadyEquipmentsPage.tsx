@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { formatDateArgentina } from '../utils/dateFormatter';
 import SectionCard from '../components/Common/SectionCard';
-import { FaBoxOpen, FaTicketAlt, FaSearch } from 'react-icons/fa';
+import { FaBoxOpen, FaTicketAlt, FaSearch, FaTrash } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
 interface Activation {
   id: number;
@@ -21,6 +22,7 @@ interface Activation {
 
 const ReadyEquipmentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [list, setList] = useState<Activation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -50,7 +52,21 @@ const ReadyEquipmentsPage: React.FC = () => {
     );
   }, [list, searchText]);
 
-  const isAdmin = window.location.pathname.startsWith('/admin');
+  const isAdminPath = window.location.pathname.startsWith('/admin');
+  const canDelete = user?.role === 'admin';
+
+  const handleDelete = async (id: number) => {
+    if (!canDelete) return;
+    const ok = window.confirm('¿Eliminar este registro de Equipos Listos? Esta acción no se puede deshacer.');
+    if (!ok) return;
+    try {
+      await api.delete(`/api/activations/${id}`);
+      setList((prev) => prev.filter((a) => a.id !== id));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'No se pudo eliminar el registro';
+      alert(msg);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -93,6 +109,9 @@ const ReadyEquipmentsPage: React.FC = () => {
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Ticket</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Fecha</th>
+                  {canDelete && (
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Acciones</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -105,7 +124,7 @@ const ReadyEquipmentsPage: React.FC = () => {
                       {a.ticket_id ? (
                         <button
                           type="button"
-                          onClick={() => navigate(isAdmin ? `/admin/tickets/${a.ticket_id}` : `/agent/tickets/${a.ticket_id}`)}
+                          onClick={() => navigate(isAdminPath ? `/admin/tickets/${a.ticket_id}` : `/agent/tickets/${a.ticket_id}`)}
                           className="flex items-center gap-1 text-indigo-600 hover:underline"
                         >
                           <FaTicketAlt /> #{a.ticket_id}
@@ -113,6 +132,18 @@ const ReadyEquipmentsPage: React.FC = () => {
                       ) : '—'}
                     </td>
                     <td className="px-4 py-2 text-sm">{(a.updated_at || a.created_at) ? formatDateArgentina(a.updated_at || a.created_at!) : '—'}</td>
+                    {canDelete && (
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(a.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Eliminar"
+                        >
+                          <FaTrash /> Eliminar
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

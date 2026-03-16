@@ -365,6 +365,29 @@ const updateActivationStatus = async (req, res) => {
   }
 };
 
+// DELETE /api/activations/:id — Eliminar activación (solo admin)
+const deleteActivation = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const [rows] = await pool.query(
+      'SELECT id, status, ticket_id FROM activations WHERE id = ?',
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Activación no encontrada.' });
+    }
+
+    // Eliminación física: se usa para limpiar registros de prueba
+    await pool.query('DELETE FROM activations WHERE id = ?', [id]);
+
+    res.json({ success: true, message: 'Activación eliminada.', data: { id: parseInt(id, 10) } });
+  } catch (error) {
+    console.error('Error deleteActivation:', error);
+    res.status(500).json({ success: false, message: 'Error al eliminar activación.' });
+  }
+};
+
 module.exports = {
   requestActivation,
   validateActivation,
@@ -372,5 +395,6 @@ module.exports = {
   getActivations,
   getClientActivations,
   getActivationById,
-  updateActivationStatus
+  updateActivationStatus,
+  deleteActivation
 };
