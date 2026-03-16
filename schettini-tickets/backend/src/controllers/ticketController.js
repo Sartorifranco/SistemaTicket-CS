@@ -217,14 +217,10 @@ const reassignTicket = async (req, res) => {
             return res.status(403).json({ message: 'Solo se puede asignar tickets a agentes, supervisores o admins.' });
         }
 
-        // Restricciones adicionales por rol del solicitante
-        if (req.user.role === 'agent' || req.user.role === 'supervisor') {
-            if (targetUser[0].role === 'admin') {
-                return res.status(403).json({ message: 'No se puede reasignar tickets a administradores.' });
-            }
-            if (req.user.role === 'agent' && targetUser[0].role === 'supervisor') {
-                return res.status(403).json({ message: 'Los agentes no pueden reasignar a supervisores.' });
-            }
+        // Restricciones adicionales por rol del solicitante:
+        // - Solo un admin puede asignar tickets a otro admin.
+        if (req.user.role !== 'admin' && targetUser[0].role === 'admin') {
+            return res.status(403).json({ message: 'No se puede reasignar tickets a administradores.' });
         }
 
         await pool.query('UPDATE Tickets SET assigned_to_user_id = ? WHERE id = ?', [newAgentId, ticketId]);

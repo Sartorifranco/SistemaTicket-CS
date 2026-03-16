@@ -283,9 +283,10 @@ const AgentTicketDetailPage: React.FC = () => {
                                     className="w-full p-2 border rounded-md bg-white"
                                 >
                                     <option value="">-- Selecciona un agente --</option>
-                                    {(user?.role === 'agent' ? agents.filter((a: User) => a.role === 'agent') : 
-                                      user?.role === 'supervisor' ? agents.filter((a: User) => a.role !== 'admin') : 
-                                      agents).map((agent: User) => (
+                                    {(user?.role === 'admin'
+                                        ? agents
+                                        : agents.filter((a: User) => a.role === 'agent' || a.role === 'supervisor')
+                                    ).map((agent: User) => (
                                         <option key={agent.id} value={agent.id}>
                                             {(agent as User & { full_name?: string }).full_name || agent.username}
                                         </option>
