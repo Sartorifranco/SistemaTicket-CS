@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const path = require('path');
 const { createActivityLog } = require('../utils/activityLogger');
 const { createNotification } = require('../utils/notificationManager');
+const { sendTicketEmail } = require('../utils/mailer');
 
 const STATUS_ES = { open: 'abierto', 'in-progress': 'en progreso', in_progress: 'en progreso', resolved: 'resuelto', closed: 'cerrado', reopened: 'reabierto' };
 const tr = (s) => STATUS_ES[s] || s;
@@ -48,12 +49,30 @@ const createTicket = async (req, res) => {
             req.io.to('admin').to('agent').emit('dashboard_update', { message: 'Nuevo ticket creado' });
         }
         // Trigger notificaciones en DB para admin y agentes: nuevo trabajo ingresado
-        const [staff] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent') AND is_active = 1");
+        const [staff] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent', 'supervisor') AND (is_active = 1 OR is_active IS NULL)");
         const finalTitle = (title || '').trim() || 'Nuevo Ticket';
         for (const row of staff) {
             if (row.id !== user.id) {
                 await createNotification(row.id, 'Nuevo ticket', `Se creó un nuevo ticket: "${finalTitle}".`, 'info', req.io || null, ticketId, 'ticket');
             }
+        }
+
+        // Email a staff (no bloqueante): si falla el envío no debe afectar la respuesta
+        try {
+            const [clientRow] = await pool.query('SELECT COALESCE(full_name, username, email) AS client_name FROM Users WHERE id = ?', [effectiveUserId]);
+            const clientName = (clientRow[0] && clientRow[0].client_name) ? String(clientRow[0].client_name) : 'Un cliente';
+            const [staffWithEmail] = await pool.query(
+                "SELECT id, email FROM Users WHERE role IN ('admin', 'agent', 'supervisor') AND (is_active = 1 OR is_active IS NULL) AND email IS NOT NULL AND email != ''"
+            );
+            const subject = `Nuevo ticket #${ticketId}: ${finalTitle}`;
+            const htmlBody = `<p>Se ha creado un nuevo ticket.</p><p><strong>Ticket #${ticketId}</strong>: ${finalTitle}</p><p>Cliente: ${clientName}</p><p>Revisá el panel para asignarlo y responder.</p>`;
+            staffWithEmail.forEach((row) => {
+                if (row.email && row.id !== user.id) {
+                    sendTicketEmail(row.email, subject, htmlBody).catch(() => {});
+                }
+            });
+        } catch (mailErr) {
+            console.error('[createTicket] email notification error:', mailErr.message);
         }
 
         await createActivityLog(user.id, 'ticket', 'created', `Ticket #${ticketId} creado: "${finalTitle}"`, ticketId, null, { title: finalTitle, status: 'abierto' });
@@ -243,9 +262,11 @@ const addCommentToTicket = async (req, res) => {
         const internal = req.user.role !== 'client' && is_internal ? 1 : 0;
         const ticketId = req.params.id;
 
-        // Obtener user_id del ticket (cliente) para notificaciones
-        const [ticketRows] = await pool.query('SELECT user_id FROM Tickets WHERE id = ?', [ticketId]);
+        // Obtener user_id y assigned_to_user_id del ticket para notificaciones y email
+        const [ticketRows] = await pool.query('SELECT user_id, assigned_to_user_id, title FROM Tickets WHERE id = ?', [ticketId]);
         const clientId = ticketRows.length > 0 ? ticketRows[0].user_id : null;
+        const assignedAgentId = ticketRows.length > 0 ? ticketRows[0].assigned_to_user_id : null;
+        const ticketTitle = ticketRows.length > 0 ? (ticketRows[0].title || `#${ticketId}`) : `#${ticketId}`;
 
         await pool.query('INSERT INTO comments (ticket_id, user_id, comment_text, is_internal, created_at) VALUES (?, ?, ?, ?, NOW())',
             [ticketId, req.user.id, comment_text, internal]);
@@ -257,6 +278,29 @@ const addCommentToTicket = async (req, res) => {
         if (isStaff && !internal && clientId && clientId !== req.user.id) {
             const message = `Tienes una nueva respuesta en tu ticket #${ticketId}.`;
             await createNotification(clientId, 'Nueva respuesta en tu ticket', message, 'info', req.io || null, parseInt(ticketId, 10), 'ticket');
+        }
+
+        // Email (no bloqueante): staff comenta -> email al cliente; cliente comenta -> email al agente asignado
+        try {
+            const preview = (comment_text || '').trim().substring(0, 200);
+            const escapedPreview = preview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (isStaff && !internal && clientId && clientId !== req.user.id) {
+                const [clientUser] = await pool.query('SELECT email FROM Users WHERE id = ?', [clientId]);
+                if (clientUser.length > 0 && clientUser[0].email) {
+                    const subject = `Nuevo mensaje en tu ticket #${ticketId}`;
+                    const htmlBody = `<p>Tenés una nueva respuesta en tu ticket <strong>#${ticketId}: ${ticketTitle}</strong>.</p><p>Mensaje:</p><p>${escapedPreview}${preview.length >= 200 ? '...' : ''}</p><p>Revisá el panel de tickets para ver el mensaje completo.</p>`;
+                    sendTicketEmail(clientUser[0].email, subject, htmlBody).catch(() => {});
+                }
+            } else if (commenterRole === 'client' && assignedAgentId && assignedAgentId !== req.user.id) {
+                const [agentUser] = await pool.query('SELECT email FROM Users WHERE id = ?', [assignedAgentId]);
+                if (agentUser.length > 0 && agentUser[0].email) {
+                    const subject = `Nuevo mensaje en ticket #${ticketId}`;
+                    const htmlBody = `<p>El cliente respondió en el ticket <strong>#${ticketId}: ${ticketTitle}</strong>.</p><p>Mensaje:</p><p>${escapedPreview}${preview.length >= 200 ? '...' : ''}</p><p>Revisá el panel de tickets para responder.</p>`;
+                    sendTicketEmail(agentUser[0].email, subject, htmlBody).catch(() => {});
+                }
+            }
+        } catch (mailErr) {
+            console.error('[addCommentToTicket] email notification error:', mailErr.message);
         }
 
         res.json({ success: true, message: 'Comentario agregado' });
