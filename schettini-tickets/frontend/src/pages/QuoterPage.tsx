@@ -434,15 +434,17 @@ const QuoterPage: React.FC = () => {
   const costoBaseManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
   const costoConMargen = costoBaseManual * (1 + profitMarginPct / 100);
   const manualLaborNum = (manualLaborValue === '' || manualLaborValue == null) ? 0 : toNumStrict(manualLaborValue);
-  const ivaManual = costoConMargen * (ivaPct / 100);
-  const totalEfectivoManual = costoConMargen + ivaManual + manualLaborNum;
+  // Repuestos ya incluyen IVA: total repuestos = costo+margen+iva; IVA informativo = Total Repuestos - (Total Repuestos / 1.21)
+  const repuestosConIvaManual = costoConMargen * (1 + ivaPct / 100);
+  const ivaManual = repuestosConIvaManual - repuestosConIvaManual / 1.21;
+  const totalEfectivoManual = repuestosConIvaManual + manualLaborNum;
   const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
 
-  // Cotizador Automático (izquierda): IVA solo sobre repuestos; Total = Repuestos+IVA + Mano de obra
+  // Cotizador Automático: precios repuestos ya incluyen IVA. Total = Repuestos + Mano de obra (no se suma IVA al total)
   const laborAutoNum = (laborCotizadorAutomatico === '' || laborCotizadorAutomatico == null) ? 0 : toNumStrict(laborCotizadorAutomatico);
   const baseRepuestosAuto = Number(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel);
-  const ivaAuto = baseRepuestosAuto * (ivaPct / 100);
-  const totalEfectivoAuto = baseRepuestosAuto + ivaAuto + laborAutoNum;
+  const ivaAuto = baseRepuestosAuto - baseRepuestosAuto / 1.21;
+  const totalEfectivoAuto = baseRepuestosAuto + laborAutoNum;
   const totalListaAuto = surchargePct > 0 ? totalEfectivoAuto * (1 + surchargePct / 100) : totalEfectivoAuto;
 
   const generarTextoCotizacion = (): string => {
@@ -464,7 +466,10 @@ const QuoterPage: React.FC = () => {
       lines.push('');
     });
     lines.push('───────────────────────────────────');
-    lines.push(`TOTAL: $${Math.round(totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel).toLocaleString('es-AR')}`);
+    const totalRepuestos = totales.totalACobrar > 0 ? totales.totalACobrar : totales.totalPesosExcel;
+    lines.push(`TOTAL REPUESTOS: $${Math.round(totalRepuestos).toLocaleString('es-AR')}`);
+    lines.push(`Mano de obra: $${Math.round(laborAutoNum).toLocaleString('es-AR')}`);
+    lines.push(`TOTAL EFECTIVO: $${Math.round(totalEfectivoAuto).toLocaleString('es-AR')}`);
     lines.push('');
     lines.push(`Dólar: $${effectiveDolar}`);
     lines.push('═══════════════════════════════════════');
@@ -580,20 +585,21 @@ const QuoterPage: React.FC = () => {
 
     y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
 
-    const subtotal = totalFinal;
-    const taxPct = cs.tax_percentage ?? 0;
-    const iva = taxPct > 0 ? subtotal * (taxPct / 100) : 0;
-    const totalPagar = subtotal + iva;
+    const totalRepuestosPdf = totalFinal;
+    const taxPct = cs.tax_percentage ?? 21;
+    const ivaIncluido = totalRepuestosPdf - totalRepuestosPdf / 1.21;
+    const totalPagar = totalRepuestosPdf + laborAutoNum;
 
     doc.setFontSize(10);
-    doc.text('Subtotal:', pageW - margin - 70, y);
-    doc.text(`$ ${Math.round(subtotal).toLocaleString('es-AR')}`, pageW - margin - 15, y);
+    doc.text('Repuestos:', pageW - margin - 70, y);
+    doc.text(`$ ${Math.round(totalRepuestosPdf).toLocaleString('es-AR')}`, pageW - margin - 15, y);
     y += 6;
-    if (taxPct > 0) {
-      doc.text(`IVA ${taxPct}%:`, pageW - margin - 70, y);
-      doc.text(`$ ${Math.round(iva).toLocaleString('es-AR')}`, pageW - margin - 15, y);
-      y += 6;
-    }
+    doc.text(`IVA (${taxPct}% incluido en repuestos):`, pageW - margin - 70, y);
+    doc.text(`$ ${Math.round(ivaIncluido).toLocaleString('es-AR')}`, pageW - margin - 15, y);
+    y += 6;
+    doc.text('Mano de obra:', pageW - margin - 70, y);
+    doc.text(`$ ${Math.round(laborAutoNum).toLocaleString('es-AR')}`, pageW - margin - 15, y);
+    y += 6;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text('TOTAL A PAGAR:', pageW - margin - 70, y);
@@ -818,7 +824,7 @@ const QuoterPage: React.FC = () => {
                   </div>
                   <div className="text-sm">
                     <p className="flex justify-between"><span>Repuestos:</span> <strong>{formatCurrency(baseRepuestosAuto)}</strong></p>
-                    <p className="flex justify-between"><span>IVA ({ivaPct}% sobre repuestos):</span> {formatCurrency(ivaAuto)}</p>
+                    <p className="flex justify-between"><span>IVA ({ivaPct}% incluido en repuestos):</span> {formatCurrency(ivaAuto)}</p>
                     <p className="flex justify-between"><span>Mano de obra:</span> <strong>{formatCurrency(laborAutoNum)}</strong></p>
                     <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Efectivo:</span> {formatCurrency(totalEfectivoAuto)}</p>
                     <p className="flex justify-between text-indigo-700 font-bold"><span>Total Lista:</span> {formatCurrency(totalListaAuto)}</p>
@@ -928,14 +934,14 @@ const QuoterPage: React.FC = () => {
             <div className="p-4 bg-white rounded-lg border border-gray-300 space-y-2">
               {!isAgentBlind && (
                 <>
-                  <p className="flex justify-between text-sm text-gray-600"><span>Repuestos (costo + margen):</span> <strong>{formatCurrency(costoConMargen)}</strong></p>
-                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}% sobre repuestos):</span> {formatCurrency(ivaManual)}</p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>Repuestos (costo + margen + IVA):</span> <strong>{formatCurrency(repuestosConIvaManual)}</strong></p>
+                  <p className="flex justify-between text-sm text-gray-600"><span>IVA ({ivaPct}% incluido en repuestos):</span> {formatCurrency(ivaManual)}</p>
                   <p className="flex justify-between text-sm text-gray-600"><span>Mano de obra:</span> <strong>{formatCurrency(manualLaborNum)}</strong></p>
                 </>
               )}
               <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL EFECTIVO:</span> {formatCurrency(totalEfectivoManual)}</p>
               <p className="flex justify-between text-base font-bold text-green-600 bg-green-50 -mx-2 px-2 py-1 rounded"><span>TOTAL LISTA (Tarjetas):</span> {formatCurrency(totalListaManual)}</p>
-              {!isAgentBlind && <p className="text-xs text-gray-400 mt-2">IVA ({ivaPct}%), Margen ({profitMarginPct}%), Recargo ({surchargePct}%), Dólar: Config. Central</p>}
+              {!isAgentBlind && <p className="text-xs text-gray-400 mt-2">IVA ({ivaPct}% incluido en repuestos), Margen ({profitMarginPct}%), Recargo ({surchargePct}%), Dólar: Config. Central</p>}
             </div>
           </div>
         </div>
