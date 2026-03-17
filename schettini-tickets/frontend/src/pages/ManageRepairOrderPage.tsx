@@ -420,8 +420,9 @@ const ManageRepairOrderPage: React.FC = () => {
   const sparePartsTotal = useMemo(() => sparePartsList.reduce((s, i) => s + Number(i.precio_ars), 0), [sparePartsList]);
   const laborNum = laborValue ? Number(parseFloat(String(laborValue))) : 0;
   const ivaPct = Number(companySettings?.default_iva_percent ?? companySettings?.tax_percentage ?? 21);
-  const ivaAmount = sparePartsTotal * (ivaPct / 100);
-  const totalEfectivo = sparePartsTotal + ivaAmount + laborNum;
+  // Repuestos ya incluyen IVA: total = repuestos + mano de obra; IVA solo informativo = Total Repuestos - (Total Repuestos / 1.21)
+  const ivaAmount = sparePartsTotal - sparePartsTotal / 1.21;
+  const totalEfectivo = sparePartsTotal + laborNum;
   const surchargePct = Number(companySettings?.list_price_surcharge_percent ?? 0);
   const totalLista = surchargePct > 0 ? totalEfectivo * (1 + surchargePct / 100) : totalEfectivo;
 
@@ -431,8 +432,9 @@ const ManageRepairOrderPage: React.FC = () => {
   const costoBasePesosManual = manualCostIsUsd ? manualCostNum * usdRate : manualCostNum;
   const costoConMargen = costoBasePesosManual * (1 + profitMarginPct / 100);
   const manualLaborNum = Number(parseFloat(String(manualLaborValue)) || 0);
-  const ivaManual = costoConMargen * (ivaPct / 100);
-  const totalEfectivoManual = costoConMargen + ivaManual + manualLaborNum;
+  const repuestosConIvaManual = costoConMargen * (1 + ivaPct / 100);
+  const ivaManual = repuestosConIvaManual - repuestosConIvaManual / 1.21;
+  const totalEfectivoManual = repuestosConIvaManual + manualLaborNum;
   const totalListaManual = surchargePct > 0 ? totalEfectivoManual * (1 + surchargePct / 100) : totalEfectivoManual;
 
   const applyManualQuote = () => {
@@ -534,8 +536,8 @@ const ManageRepairOrderPage: React.FC = () => {
   const isOficialFabricante = form.isWarranty && form.warrantyType === 'oficial_fabricante';
   const effectiveLaborNum = isOficialFabricante ? 0 : laborNum;
   const effectiveSparePartsTotal = isOficialFabricante ? 0 : sparePartsTotal;
-  const effectiveIvaAmount = effectiveSparePartsTotal * (ivaPct / 100);
-  const effectiveTotalEfectivo = effectiveSparePartsTotal + effectiveIvaAmount + effectiveLaborNum;
+  const effectiveIvaAmount = effectiveSparePartsTotal - effectiveSparePartsTotal / 1.21;
+  const effectiveTotalEfectivo = effectiveSparePartsTotal + effectiveLaborNum;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1040,7 +1042,7 @@ const ManageRepairOrderPage: React.FC = () => {
                     </div>
                     <div className="pt-3 border-t border-gray-200 space-y-1 text-sm">
                       <p className="flex justify-between"><span>Repuestos:</span> <strong>${effectiveSparePartsTotal.toLocaleString('es-AR')}</strong></p>
-                      <p className="flex justify-between"><span>IVA ({ivaPct}% sobre repuestos):</span> ${effectiveIvaAmount.toLocaleString('es-AR')}</p>
+                      <p className="flex justify-between"><span>IVA ({ivaPct}% incluido en repuestos):</span> ${effectiveIvaAmount.toLocaleString('es-AR')}</p>
                       <p className="flex justify-between"><span>Mano de obra:</span> <strong>${effectiveLaborNum.toLocaleString('es-AR')}</strong></p>
                       <p className="flex justify-between text-green-700 font-bold"><span>Total Efectivo:</span> ${effectiveTotalEfectivo.toLocaleString('es-AR')}</p>
                       {surchargePct > 0 && <p className="flex justify-between text-amber-700 font-medium"><span>Total Lista ({surchargePct}%):</span> ${(effectiveTotalEfectivo * (1 + surchargePct / 100)).toLocaleString('es-AR')}</p>}
@@ -1101,8 +1103,8 @@ const ManageRepairOrderPage: React.FC = () => {
                     <div className="pt-3 border-t border-gray-300 space-y-1 text-sm bg-white p-3 rounded">
                       {!isAgentBlind && (
                         <>
-                          <p className="flex justify-between text-gray-600"><span>Repuestos (costo + margen):</span> <strong>${costoConMargen.toLocaleString('es-AR')}</strong></p>
-                          <p className="flex justify-between text-gray-600"><span>IVA ({ivaPct}% sobre repuestos):</span> ${ivaManual.toLocaleString('es-AR')}</p>
+                          <p className="flex justify-between text-gray-600"><span>Repuestos (costo + margen + IVA):</span> <strong>${repuestosConIvaManual.toLocaleString('es-AR')}</strong></p>
+                          <p className="flex justify-between text-gray-600"><span>IVA ({ivaPct}% incluido en repuestos):</span> ${ivaManual.toLocaleString('es-AR')}</p>
                           <p className="flex justify-between text-gray-600"><span>Mano de obra:</span> <strong>${manualLaborNum.toLocaleString('es-AR')}</strong></p>
                         </>
                       )}
