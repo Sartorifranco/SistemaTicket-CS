@@ -471,7 +471,6 @@ const QuoterPage: React.FC = () => {
     lines.push(`Mano de obra: $${Math.round(laborAutoNum).toLocaleString('es-AR')}`);
     lines.push(`TOTAL EFECTIVO: $${Math.round(totalEfectivoAuto).toLocaleString('es-AR')}`);
     lines.push('');
-    lines.push(`Dólar: $${effectiveDolar}`);
     lines.push('═══════════════════════════════════════');
     return lines.join('\n');
   };
@@ -609,7 +608,7 @@ const QuoterPage: React.FC = () => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(100, 100, 100);
-    const footerText = cs.quote_footer_text?.trim() || 'Presupuesto válido por 15 días. Precios sujetos a variación del dólar.';
+    const footerText = cs.quote_footer_text?.trim() || 'Presupuesto válido por 15 días. Precios sujetos a variación.';
     doc.text(footerText, margin, y);
 
     doc.save(`Presupuesto-${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -789,11 +788,6 @@ const QuoterPage: React.FC = () => {
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">{item.descripcion || item.codigo}</p>
-                            {!isAgentBlind && (
-                              <p className="text-xs text-gray-500">
-                                Pesos: ${(Number(item.precioVentaPesos) || 0).toLocaleString('es-AR')} | USD: ${(Number(item.precioVentaUsd) || 0).toFixed(2)}
-                              </p>
-                            )}
                             <p className="text-xs font-semibold text-indigo-600 mt-0.5">
                               Precio a Cobrar: ${Math.round(Number(precio) || Number(item.precioVentaPesos) || 0).toLocaleString('es-AR')}
                             </p>
@@ -828,12 +822,6 @@ const QuoterPage: React.FC = () => {
                     <p className="flex justify-between"><span>Mano de obra:</span> <strong>{formatCurrency(laborAutoNum)}</strong></p>
                     <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Efectivo:</span> {formatCurrency(totalEfectivoAuto)}</p>
                     <p className="flex justify-between text-indigo-700 font-bold"><span>Total Lista:</span> {formatCurrency(totalListaAuto)}</p>
-                    {!isAgentBlind && (
-                      <>
-                        <p className="flex justify-between mt-2 text-gray-500"><span>Total (Excel Pesos):</span> <strong>{formatCurrency(totales.totalPesosExcel)}</strong></p>
-                        <p className="flex justify-between text-gray-500"><span>Total (Excel USD):</span> <strong>{formatCurrency(totales.totalUsdExcel)}</strong></p>
-                      </>
-                    )}
                     <p className="flex justify-between text-indigo-700 font-bold mt-1"><span>Total Final:</span> {formatCurrency(totalEfectivoAuto)}</p>
                   </div>
 
