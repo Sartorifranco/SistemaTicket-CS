@@ -60,14 +60,37 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// --- Archivos subidos: PÚBLICO y ANTES de body parsers y rutas /api ---
+// Si express.static no encuentra el archivo, por defecto hace next() y la petición
+// caería en app.use('/api', dataRoutes) → authenticateToken → "No autorizado, sin token".
+// Por eso, tras cada static de uploads, un handler devuelve 404 sin pasar por JWT.
+// express.static usa `send` → soporte Range/Accept-Ranges (streaming en iOS/Android).
+// __dirname = backend/src → ../uploads = backend/uploads
+const uploadsPath = path.join(__dirname, '..', 'uploads');
+const staticUploadsOpts = {
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    const lower = (filePath || '').toLowerCase();
+    if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.ogg') || lower.endsWith('.mov')) {
+      res.setHeader('Accept-Ranges', 'bytes');
+    }
+  }
+};
+app.use('/uploads', express.static(uploadsPath, staticUploadsOpts));
+app.use('/uploads', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  res.status(404).json({ success: false, message: 'Archivo no encontrado' });
+});
+app.use('/api/uploads', express.static(uploadsPath, staticUploadsOpts));
+app.use('/api/uploads', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  res.status(404).json({ success: false, message: 'Archivo no encontrado' });
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Servir archivos estáticos (imágenes, adjuntos de tickets, fotos de taller)
-// __dirname = backend/src → ../uploads = backend/uploads (raíz del backend)
-const uploadsPath = path.join(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(uploadsPath));
-app.use('/api/uploads', express.static(uploadsPath));
 
 // --- 3. SOCKET.IO ---
 const io = new Server(server, {
