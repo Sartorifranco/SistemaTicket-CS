@@ -33,7 +33,7 @@ router.use(protect);
 router.get('/', getResources);
 router.get('/explorer', getExplorer);
 
-// ✅ RUTAS DE ADMIN, SUPERVISOR Y AGENT (Crear, editar y borrar). POST acepta file + image; PUT acepta opcional file + image.
+// ✅ RUTAS DE ADMIN, SUPERVISOR Y AGENT (Crear, editar y borrar). POST/PUT con uploadFields: file (principal), image, thumbnail (portada).
 router.post('/', authorize('admin', 'supervisor', 'agent'), uploadFields, createResource);
 router.patch('/:id/move', authorize('admin', 'supervisor', 'agent'), moveResource);
 router.put('/:id', authorize('admin', 'supervisor', 'agent'), uploadFields, updateResource);

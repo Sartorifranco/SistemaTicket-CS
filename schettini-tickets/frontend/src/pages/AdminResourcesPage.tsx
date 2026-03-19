@@ -21,6 +21,8 @@ interface Resource {
     system_name?: string;
     image_url?: string | null;
     folder_id?: number | null;
+    description?: string | null;
+    folder_name?: string | null;
 }
 
 interface KbFolder {
@@ -72,6 +74,9 @@ const AdminResourcesPage: React.FC = () => {
     const [allFoldersList, setAllFoldersList] = useState<KbFolder[]>([]);
     const [moveTargetResource, setMoveTargetResource] = useState<Resource | null>(null);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState<string>('');
+    const [thumbnailEditResource, setThumbnailEditResource] = useState<Resource | null>(null);
+    const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
+    const [savingThumbnail, setSavingThumbnail] = useState(false);
     const [showSectionsManager, setShowSectionsManager] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
     const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
@@ -237,6 +242,43 @@ const AdminResourcesPage: React.FC = () => {
         } catch (err) {
             console.error(err);
             toast.error('Error al actualizar');
+        }
+    };
+
+    /** Actualizar solo la portada (miniatura): PUT multipart para que el backend reciba el archivo */
+    const handleSaveThumbnail = async () => {
+        if (!thumbnailEditResource || !editThumbnailFile) {
+            toast.warn('Seleccioná una imagen de portada.');
+            return;
+        }
+        setSavingThumbnail(true);
+        try {
+            const fd = new FormData();
+            fd.append('title', thumbnailEditResource.title);
+            fd.append('type', thumbnailEditResource.type);
+            fd.append('category', thumbnailEditResource.category || 'General');
+            if (thumbnailEditResource.description != null && thumbnailEditResource.description !== '') {
+                fd.append('description', thumbnailEditResource.description);
+            }
+            fd.append('section_id', thumbnailEditResource.section_id != null ? String(thumbnailEditResource.section_id) : '');
+            fd.append('system_id', thumbnailEditResource.system_id != null ? String(thumbnailEditResource.system_id) : '');
+            if (thumbnailEditResource.folder_id != null) {
+                fd.append('folder_id', String(thumbnailEditResource.folder_id));
+            }
+            if (thumbnailEditResource.folder_name) {
+                fd.append('folder_name', thumbnailEditResource.folder_name);
+            }
+            fd.append('thumbnail', editThumbnailFile);
+            await api.put(`/api/resources/${thumbnailEditResource.id}`, fd);
+            toast.success('Portada actualizada correctamente');
+            setThumbnailEditResource(null);
+            setEditThumbnailFile(null);
+            fetchExplorer(currentFolderId);
+        } catch (err) {
+            console.error(err);
+            toast.error('No se pudo actualizar la portada');
+        } finally {
+            setSavingThumbnail(false);
         }
     };
 
@@ -446,6 +488,18 @@ const AdminResourcesPage: React.FC = () => {
                                     <div className="flex items-center gap-1 mt-2 flex-wrap">
                                         <button
                                             type="button"
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setThumbnailEditResource(res);
+                                                setEditThumbnailFile(null);
+                                            }}
+                                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 p-1.5 rounded transition text-xs font-medium flex items-center gap-1"
+                                            title="Actualizar imagen de portada"
+                                        >
+                                            <FaImage size={12} /> Portada
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={e => { e.stopPropagation(); setMoveTargetResource(res); setMoveTargetFolderId(res.folder_id != null ? String(res.folder_id) : ''); }}
                                             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded transition text-xs font-medium flex items-center gap-1"
                                             title="Mover a otra carpeta"
@@ -505,6 +559,45 @@ const AdminResourcesPage: React.FC = () => {
                                 <button type="submit" className="px-4 py-2 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600">Crear</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal actualizar portada / miniatura */}
+            {thumbnailEditResource && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { if (!savingThumbnail) { setThumbnailEditResource(null); setEditThumbnailFile(null); } }}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Actualizar imagen de portada</h3>
+                            <button type="button" disabled={savingThumbnail} onClick={() => { setThumbnailEditResource(null); setEditThumbnailFile(null); }} className="text-gray-400 hover:text-gray-600 disabled:opacity-50">
+                                <FaTimes />
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2 truncate" title={thumbnailEditResource.title}>Recurso: <strong>{thumbnailEditResource.title}</strong></p>
+                        {getResourceThumbnailUrl(thumbnailEditResource) ? (
+                            <div className="mb-4 rounded-lg overflow-hidden border border-gray-200 aspect-video bg-gray-100">
+                                <img src={getResourceThumbnailUrl(thumbnailEditResource)} alt="Portada actual" className="w-full h-full object-cover max-h-40" />
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-500 mb-4">Sin portada actual. Subí una imagen para mostrarla en la Base de Conocimientos.</p>
+                        )}
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Actualizar Imagen de Portada</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            disabled={savingThumbnail}
+                            onChange={e => setEditThumbnailFile(e.target.files?.[0] ?? null)}
+                            className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700"
+                        />
+                        {editThumbnailFile && <p className="text-xs text-gray-500 mt-2">Seleccionado: {editThumbnailFile.name}</p>}
+                        <div className="flex gap-2 justify-end mt-6">
+                            <button type="button" disabled={savingThumbnail} onClick={() => { setThumbnailEditResource(null); setEditThumbnailFile(null); }} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                                Cancelar
+                            </button>
+                            <button type="button" disabled={savingThumbnail} onClick={() => void handleSaveThumbnail()} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50">
+                                {savingThumbnail ? 'Guardando...' : 'Guardar portada'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
