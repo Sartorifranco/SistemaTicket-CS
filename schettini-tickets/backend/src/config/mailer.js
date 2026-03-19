@@ -2,10 +2,13 @@ const nodemailer = require('nodemailer');
 
 // Configuración del servidor SMTP
 // Se ajusta automáticamente a las variables de tu .env
+const cfgPort = parseInt(process.env.EMAIL_PORT, 10);
+const mailPort = Number.isNaN(cfgPort) ? 587 : cfgPort;
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT),
-    secure: false, // false para puerto 587 (STARTTLS)
+    port: mailPort,
+    // 587 = STARTTLS → false; 465 = SSL directo → true
+    secure: mailPort === 465,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS

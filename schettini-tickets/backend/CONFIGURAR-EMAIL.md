@@ -1,6 +1,6 @@
 # Configuración del correo para recuperación de contraseña
 
-Para que funcione **"Recuperar contraseña"** y el envío de emails del sistema, Tenes que configurar un servidor SMTP en el back.
+Para que funcione **"Recuperar contraseña"**, las **notificaciones de tickets y comentarios** y el resto del envío de emails, tenés que configurar un servidor SMTP en el back (todas usan las mismas variables `EMAIL_*`).
 
 ## Variables necesarias
 

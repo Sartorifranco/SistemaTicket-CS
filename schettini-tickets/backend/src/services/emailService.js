@@ -1,10 +1,13 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config(); // Asegura que las variables de entorno se carguen
 
+const emailPortNum = parseInt(process.env.EMAIL_PORT, 10);
+const emailPort = Number.isNaN(emailPortNum) ? 587 : emailPortNum;
+// 587 = STARTTLS → secure false; solo 465 usa SSL directo
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: process.env.EMAIL_PORT == 465, // true para 465, false para otros puertos
+    port: emailPort,
+    secure: emailPort === 465,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,

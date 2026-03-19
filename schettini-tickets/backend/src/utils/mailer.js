@@ -1,6 +1,7 @@
 /**
  * Servicio de envío de correos para notificaciones de tickets y comentarios.
- * Usa Nodemailer con variables de entorno: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS.
+ * Variables de entorno: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS.
+ * Opcional: EMAIL_FROM (remitente visible; si no, se usa EMAIL_USER).
  */
 const nodemailer = require('nodemailer');
 
@@ -8,17 +9,21 @@ let transporter = null;
 
 function getTransporter() {
     if (transporter) return transporter;
-    const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT, 10) || 587;
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+    const host = process.env.EMAIL_HOST;
+    const portRaw = parseInt(process.env.EMAIL_PORT, 10);
+    const port = Number.isNaN(portRaw) ? 587 : portRaw;
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
     if (!host || !user || !pass) {
+        console.warn('[mailer] Falta configuración EMAIL_HOST / EMAIL_USER / EMAIL_PASS. No se enviarán correos de tickets.');
         return null;
     }
+    // 587 = STARTTLS → secure debe ser false. Solo 465 usa SSL implícito (secure: true).
+    const secure = port === 465;
     transporter = nodemailer.createTransport({
         host,
-        port: Number.isNaN(port) ? 587 : port,
-        secure: port === 465,
+        port,
+        secure,
         auth: { user, pass }
     });
     return transporter;
@@ -36,16 +41,18 @@ async function sendTicketEmail(to, subject, htmlBody) {
     const trans = getTransporter();
     if (!trans) return false;
     try {
-        const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@localhost';
+        const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@localhost';
+        console.log('Intentando enviar email a:', to);
         await trans.sendMail({
             from,
             to: to.trim(),
             subject: subject || 'Notificación',
             html: htmlBody || '<p>Sin contenido.</p>'
         });
+        console.log('✅ Email enviado correctamente a:', to);
         return true;
-    } catch (err) {
-        console.error('[mailer] sendTicketEmail error:', err.message);
+    } catch (error) {
+        console.error('❌ Error enviando email:', error);
         return false;
     }
 }
