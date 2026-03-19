@@ -5,6 +5,7 @@ import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
+import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
 import { FaPrint } from 'react-icons/fa';
 
 interface RepairOrderItem {
@@ -19,7 +20,7 @@ interface RepairOrderItem {
 interface RepairOrder {
   id: number;
   order_number: string;
-  client_id: number;
+  client_id: number | null;
   client_name?: string;
   client_business_name?: string;
   client_phone?: string;
@@ -121,8 +122,7 @@ const RepairOrderDetailPage: React.FC = () => {
       </h1>
 
       <SectionCard title="Cliente">
-        <p className="font-medium">{order.client_name || 'Sin nombre'}</p>
-        {order.client_business_name && <p className="text-sm text-gray-500">{order.client_business_name}</p>}
+        <p className="font-medium">{formatRepairOrderClientDisplay(order)}</p>
       </SectionCard>
 
       <SectionCard title="Equipo">

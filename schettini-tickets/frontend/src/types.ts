@@ -353,7 +353,7 @@ export interface RepairOrderItemType {
 export interface RepairOrder {
     id: number;
     order_number: string;
-    client_id: number;
+    client_id: number | null;
     client_name?: string;
     client_business_name?: string;
     client_email?: string;

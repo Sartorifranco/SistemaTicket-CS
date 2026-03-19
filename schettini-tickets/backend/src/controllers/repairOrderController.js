@@ -158,6 +158,7 @@ const getMonitorOrders = async (req, res) => {
     }
     const [rows] = await pool.query(
       `SELECT ro.id, ro.order_number, ro.entry_date, ro.status, ro.promised_date,
+        ro.client_id,
         COALESCE(ro.priority, 'Normal') AS priority,
         u.username AS client_name, u.business_name AS client_business_name,
         t.username AS technician_name, t.full_name AS technician_full_name
@@ -207,6 +208,7 @@ const getRepairOrders = async (req, res) => {
     const userId = req.user.id;
     const userRole = req.user.role;
 
+    // LEFT JOIN Users: órdenes con client_id NULL (externas/reciclaje) siguen apareciendo en el listado.
     let query = `
       SELECT ro.*,
         ro.entry_date, ro.updated_at,
@@ -288,6 +290,7 @@ const getRepairOrders = async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error getRepairOrders:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener órdenes' });
   }
 };
 
@@ -339,6 +342,7 @@ const getRepairOrderById = async (req, res) => {
     const userId = req.user.id;
     const userRole = req.user.role;
 
+    // LEFT JOIN Users: permite detalle de orden sin cliente (client_id NULL).
     const [orders] = await pool.query(
       `SELECT ro.*,
         u.username AS client_name,
@@ -738,7 +742,14 @@ const updateRepairOrder = async (req, res) => {
       setClause.push(`${col} = ?`);
       setParams.push(isNum && (val === '' || val == null) ? null : (isNum && val != null ? parseFloat(val) : val));
     };
-    if (clientId !== undefined) add('client_id', clientId);
+    if (clientId !== undefined) {
+      let cid = null;
+      if (clientId !== '' && clientId != null) {
+        const n = parseInt(String(clientId), 10);
+        cid = Number.isNaN(n) ? null : n;
+      }
+      add('client_id', cid);
+    }
     if (entryDate !== undefined) add('entry_date', entryDate);
     if (status !== undefined && status !== '') add('status', status);
     if (finalLaborCost !== undefined) add('labor_cost', finalLaborCost, true);
@@ -1239,12 +1250,13 @@ const createExternalRecycledOrder = async (req, res) => {
 
     const orderNumber = await generateOrderNumber();
 
+    // client_id NULL = orden sin cliente (externa/histórica). Columnas alineadas: order_number, entry_date=NOW(), status, …
     const [result] = await pool.query(
       `INSERT INTO repair_orders (
         client_id, order_number, entry_date, status,
         is_external_recycled, external_order_number, external_equipment_status,
         recycling_photos
-      ) VALUES (?, NOW(), ?, ?, 1, ?, ?, ?)`,
+      ) VALUES (?, ?, NOW(), ?, 1, ?, ?, ?)`,
       [
         null,
         orderNumber,

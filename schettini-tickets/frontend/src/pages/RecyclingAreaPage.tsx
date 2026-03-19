@@ -6,11 +6,12 @@ import { getImageUrl } from '../utils/imageUrl';
 import { formatDateArgentina } from '../utils/dateFormatter';
 import SectionCard from '../components/Common/SectionCard';
 import { FaEye, FaRecycle, FaSearch, FaPaperclip, FaTimes, FaSave, FaPlus } from 'react-icons/fa';
+import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
 
 interface RecyclingOrder {
   id: number;
   order_number: string;
-  client_id?: number;
+  client_id?: number | null;
   client_name?: string;
   client_business_name?: string;
   status: string;
@@ -233,7 +234,7 @@ const RecyclingAreaPage: React.FC = () => {
                           o.order_number
                         )}
                       </td>
-                      <td className="px-4 py-2">{o.client_name || '—'} {o.client_business_name && <span className="text-gray-500 text-sm">({o.client_business_name})</span>}</td>
+                      <td className="px-4 py-2 text-gray-800">{formatRepairOrderClientDisplay(o)}</td>
                       <td className="px-4 py-2">
                         {o.brand || o.equipment_type || o.model ? (
                           <>

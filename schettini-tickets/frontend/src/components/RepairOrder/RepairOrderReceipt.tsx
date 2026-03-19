@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
 import { getImageUrl } from '../../utils/imageUrl';
+import { formatRepairOrderClientDisplay } from '../../utils/repairOrderLabels';
 import { formatDateTimeArgentina } from '../../utils/dateFormatter';
 import './RepairOrderReceipt.css';
 
@@ -36,7 +37,7 @@ export interface RepairOrderItemReceipt {
 export interface RepairOrderReceiptData {
   id: number;
   order_number: string;
-  client_id: number;
+  client_id?: number | null;
   client_name?: string | null;
   client_business_name?: string | null;
   client_phone?: string | null;
@@ -69,7 +70,7 @@ function ReceiptHalf({
   companySettings: CompanySettingsReceipt;
 }) {
   const cs = companySettings;
-  const clientName = order.client_name || order.client_business_name || '—';
+  const clientName = formatRepairOrderClientDisplay(order);
   const clientAddress = order.client_address || '—';
   const items = order.items && order.items.length > 0
     ? order.items

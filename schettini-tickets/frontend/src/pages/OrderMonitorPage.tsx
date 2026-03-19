@@ -4,6 +4,7 @@ import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { FaWrench, FaUser, FaClock, FaExclamationTriangle, FaArrowLeft } from 'react-icons/fa';
+import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
 
 interface MonitorOrder {
   id: number;
@@ -12,6 +13,7 @@ interface MonitorOrder {
   status: string;
   priority: string;
   promised_date: string | null;
+  client_id?: number | null;
   client_name?: string | null;
   client_business_name?: string | null;
   technician_name?: string | null;
@@ -112,7 +114,11 @@ const OrderMonitorPage: React.FC = () => {
   }
 
   const clientDisplay = (o: MonitorOrder) =>
-    o.client_business_name || o.client_name || 'Sin nombre';
+    formatRepairOrderClientDisplay({
+      client_id: o.client_id,
+      client_name: o.client_name,
+      client_business_name: o.client_business_name
+    });
   const equipmentDisplay = (o: MonitorOrder) =>
     [o.equipment_type, o.brand, o.model].filter(Boolean).join(' / ') || '—';
   const techDisplay = (o: MonitorOrder) =>

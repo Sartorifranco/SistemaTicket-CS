@@ -12,6 +12,7 @@ import CreatableAutocomplete from '../components/Common/CreatableAutocomplete';
 import { FaWhatsapp, FaSave, FaTimes, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
 import WebcamCapture, { CapturedPhoto } from '../components/RepairOrders/WebcamCapture';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
+import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
 
 interface CompanySettings {
   company_name: string;
@@ -97,7 +98,7 @@ const WARRANTY_STATUS_OPTIONS: { value: string; label: string }[] = [
 interface RepairOrder {
   id: number;
   order_number: string;
-  client_id: number;
+  client_id: number | null;
   client_name?: string;
   client_business_name?: string;
   client_email?: string;
@@ -170,7 +171,7 @@ function buildWhatsAppTemplate(order: RepairOrder): string {
   const saldo = totalCost - depositPaid;
   return `Estimado Cliente:
 Este mensaje es para informarle el Estado de su Orden Nº ${order.order_number}
-Su Nº de Cliente es: ${order.client_id}
+Su Nº de Cliente es: ${order.client_id != null ? order.client_id : 'N/A (sin cliente en sistema)'}
 
 Equipo: ${order.equipment_type || '—'}
 Modelo: ${order.model || '—'}
@@ -1222,10 +1223,9 @@ const ManageRepairOrderPage: React.FC = () => {
       )}
 
       <SectionCard title="Cliente">
-        <p className="font-medium">{order.client_name || 'Sin nombre'}</p>
-        {order.client_business_name && <p className="text-sm text-gray-500">{order.client_business_name}</p>}
-        {order.client_phone && <p className="text-sm">Tel: {order.client_phone}</p>}
-        {order.client_email && <p className="text-sm">Email: {order.client_email}</p>}
+        <p className="font-medium">{formatRepairOrderClientDisplay(order)}</p>
+        {order.client_phone?.trim() ? <p className="text-sm">Tel: {order.client_phone}</p> : null}
+        {order.client_email?.trim() ? <p className="text-sm">Email: {order.client_email}</p> : null}
       </SectionCard>
 
       {canEdit ? (
