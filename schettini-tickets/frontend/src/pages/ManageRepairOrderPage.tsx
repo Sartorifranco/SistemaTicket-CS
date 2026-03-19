@@ -33,6 +33,8 @@ interface CompanySettings {
 interface SparePartItem {
   nombre: string;
   precio_ars: number;
+  /** Código interno / SKU (catálogo, DUX/ERP) */
+  codigo?: string | null;
 }
 
 interface SparePartCatalogItem {
@@ -40,6 +42,17 @@ interface SparePartCatalogItem {
   nombre: string;
   precio_usd: number | null;
   precio_ars: number | null;
+  codigo?: string | null;
+}
+
+/** Nombre + código para lista, WhatsApp y texto legible. */
+function sparePartLineLabel(p: SparePartItem): string {
+  const nombre = (p.nombre || '').trim();
+  const code = (p.codigo || '').trim();
+  if (!code) return nombre || '—';
+  if (!nombre) return `Cód: ${code}`;
+  if (code === nombre) return nombre;
+  return `${nombre} | Cód: ${code}`;
 }
 
 interface LaborOption {
@@ -451,7 +464,8 @@ const ManageRepairOrderPage: React.FC = () => {
 
   const addSparePartFromCatalog = (item: SparePartCatalogItem) => {
     const precio = Number(item.precio_ars ?? (item.precio_usd ? item.precio_usd * Number(companySettings?.usd_exchange_rate ?? 1200) : 0));
-    setSparePartsList((p) => [...p, { nombre: item.nombre, precio_ars: precio }]);
+    const codigo = item.codigo != null && String(item.codigo).trim() !== '' ? String(item.codigo).trim() : undefined;
+    setSparePartsList((p) => [...p, { nombre: item.nombre, precio_ars: precio, ...(codigo ? { codigo } : {}) }]);
     setSparePartsSearch('');
     setShowSparePartsDropdown(false);
     setSparePartsSuggestions([]);
@@ -495,7 +509,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const openWhatsAppModal = () => {
     if (!order) return;
     const spareDetailText = sparePartsList.length > 0
-      ? sparePartsList.map((p) => `${p.nombre}: $${p.precio_ars.toLocaleString('es-AR')}`).join('\n')
+      ? sparePartsList.map((p) => `${sparePartLineLabel(p)}: $${p.precio_ars.toLocaleString('es-AR')}`).join('\n')
       : (form.sparePartsDetail || order.spare_parts_detail || '—');
     const merged: RepairOrder = {
       ...order,
@@ -976,7 +990,11 @@ const ManageRepairOrderPage: React.FC = () => {
                                 onClick={() => addSparePartFromCatalog(s)}
                                 className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm"
                               >
-                                {s.nombre}{!isAgentBlind && ` — $${(s.precio_ars ?? 0).toLocaleString('es-AR')}`}
+                                <span className="truncate">{s.nombre}</span>
+                                {s.codigo ? (
+                                  <span className="text-gray-500 text-xs ml-1">| Cód: {s.codigo}</span>
+                                ) : null}
+                                {!isAgentBlind && ` — $${(s.precio_ars ?? 0).toLocaleString('es-AR')}`}
                               </button>
                             ))}
                           </div>
@@ -1008,7 +1026,27 @@ const ManageRepairOrderPage: React.FC = () => {
                         <ul className="space-y-1">
                           {sparePartsList.map((p, i) => (
                             <li key={i} className="flex justify-between items-center text-sm bg-gray-50 px-2 py-1 rounded border">
-                              <span>{p.nombre}</span>
+                              <span className="min-w-0 break-words pr-2">
+                                {(() => {
+                                  const n = (p.nombre || '').trim();
+                                  const c = (p.codigo || '').trim();
+                                  const main = n || (c ? `Cód: ${c}` : '—');
+                                  const showChip = !!(c && n && c !== n);
+                                  return (
+                                    <>
+                                      <span className="font-medium text-gray-800">{main}</span>
+                                      {showChip ? (
+                                        <>
+                                          <span className="text-gray-400 mx-1">|</span>
+                                          <span className="inline-block align-middle px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium">
+                                            Cód: {c}
+                                          </span>
+                                        </>
+                                      ) : null}
+                                    </>
+                                  );
+                                })()}
+                              </span>
                               <span className="flex items-center gap-2">
                                 ${p.precio_ars.toLocaleString('es-AR')}
                                 <button type="button" onClick={() => removeSparePart(i)} className="text-red-600 hover:text-red-700 p-1">

@@ -116,6 +116,17 @@ function toNumStrict(val: unknown): number {
   return (n !== n || !isFinite(n)) ? 0 : n;
 }
 
+/** Línea de ítem para copiar/WhatsApp/PDF: nombre + código interno (DUX/ERP) cuando corresponde. */
+function formatQuoteItemLineText(item: PriceItem): string {
+  const desc = (item.descripcion || '').trim();
+  const code = (item.codigo || '').trim();
+  const title = desc || code || 'Sin nombre';
+  if (!code) return title;
+  if (!desc) return `Cód: ${code}`;
+  if (code === desc) return title;
+  return `${title} | Cód: ${code}`;
+}
+
 /** Formato de moneda limpio (evita ceros a la izquierda por valores string). */
 function formatCurrency(value: unknown): string {
   return Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(toNumStrict(value));
@@ -460,8 +471,7 @@ const QuoterPage: React.FC = () => {
       const precio = precioACobrar(i);
       const precioExcel = i.precioVentaPesos > 0 ? i.precioVentaPesos : i.precioVentaUsd * effectiveDolar;
       const usar = precio > 0 ? precio : precioExcel;
-      lines.push(`${idx + 1}. ${i.descripcion || i.codigo || 'Sin nombre'}`);
-      if (i.codigo) lines.push(`   Código: ${i.codigo}`);
+      lines.push(`${idx + 1}. ${formatQuoteItemLineText(i)}`);
       lines.push(`   Precio: $${Math.round(usar).toLocaleString('es-AR')}`);
       lines.push('');
     });
@@ -569,7 +579,7 @@ const QuoterPage: React.FC = () => {
       const precio = precioACobrar(i);
       const precioExcel = i.precioVentaPesos > 0 ? i.precioVentaPesos : i.precioVentaUsd * effectiveDolar;
       const unitario = precio > 0 ? precio : precioExcel;
-      const desc = `${i.descripcion || i.codigo || 'Sin nombre'}${i.codigo ? ` (${i.codigo})` : ''}`;
+      const desc = formatQuoteItemLineText(i);
       return [1, desc, `$ ${Math.round(unitario).toLocaleString('es-AR')}`, `$ ${Math.round(unitario).toLocaleString('es-AR')}`];
     });
 
@@ -783,11 +793,25 @@ const QuoterPage: React.FC = () => {
                 ) : (
                   quoteItems.map((item, idx) => {
                     const precio = precioACobrar(item);
+                    const desc = (item.descripcion || '').trim();
+                    const code = (item.codigo || '').trim();
+                    const title = desc || code || 'Sin nombre';
+                    const showCodeChip = !!(code && desc && code !== desc);
                     return (
                       <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">{item.descripcion || item.codigo}</p>
+                            <p className="text-sm font-medium text-gray-800 break-words">
+                              <span>{title}</span>
+                              {showCodeChip ? (
+                                <>
+                                  <span className="text-gray-400 font-normal mx-1">|</span>
+                                  <span className="inline-block align-middle px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium">
+                                    Cód: {code}
+                                  </span>
+                                </>
+                              ) : null}
+                            </p>
                             <p className="text-xs font-semibold text-indigo-600 mt-0.5">
                               Precio a Cobrar: ${Math.round(Number(precio) || Number(item.precioVentaPesos) || 0).toLocaleString('es-AR')}
                             </p>
