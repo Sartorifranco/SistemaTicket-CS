@@ -188,8 +188,8 @@ const ProfilePage: React.FC = () => {
 
     if (!user) return <div className="p-8 text-center">Cargando perfil...</div>;
 
-    // --- CONTENIDOS ---
-    const ProfileContent = () => (
+    // --- CONTENIDOS (variables JSX, no sub-componentes, para evitar remount en cada keystroke) ---
+    const profileContent = (
         <div className="space-y-6 animate-fade-in">
             <SectionCard title="Cuenta">
                 <div className="grid grid-cols-2 gap-4">
@@ -224,7 +224,7 @@ const ProfilePage: React.FC = () => {
         </div>
     );
 
-    const PlansContent = () => (
+    const plansContent = (
         <div className="space-y-10 animate-fade-in">
             <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Planes de Suscripción</h2>
@@ -250,7 +250,7 @@ const ProfilePage: React.FC = () => {
         </div>
     );
 
-    const PaymentsContent = () => <ClientPaymentsPage />;
+    const paymentsContent = <ClientPaymentsPage />;
 
     const handleUploadDocument = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -276,7 +276,7 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    const DocumentsContent = () => (
+    const documentsContent = (
         <SectionCard title="Mis documentos y contratos" className="animate-fade-in">
             <p className="text-sm text-gray-500 mb-4">Podés subir tu contrato firmado u otros documentos. Formatos: PDF, JPG, PNG (máx. 10 MB).</p>
             <form onSubmit={handleUploadDocument} className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -313,7 +313,7 @@ const ProfilePage: React.FC = () => {
         </SectionCard>
     );
 
-    const ActivityContent = () => (
+    const activityContent = (
         <SectionCard title="Mi Actividad" className="animate-fade-in">
             <p className="text-sm text-gray-500 mb-4">Registro de tus acciones: tickets creados, comentarios agregados, etc.</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
@@ -350,7 +350,7 @@ const ProfilePage: React.FC = () => {
         </SectionCard>
     );
 
-    const CostsContent = () => (
+    const costsContent = (
         <SectionCard title="Tarifario de Servicios Adicionales" className="animate-fade-in">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="bg-gray-50 p-8 rounded-2xl border border-gray-200 text-center flex flex-col justify-center items-center">
@@ -396,12 +396,12 @@ const ProfilePage: React.FC = () => {
                 </nav>
             </div>
             <div className="flex-1 p-6 md:p-10 overflow-y-auto">
-                {activeTab === 'profile' && <ProfileContent />}
-                {activeTab === 'plans' && <PlansContent />}
-                {activeTab === 'costs' && <CostsContent />}
-                {activeTab === 'payments' && <PaymentsContent />}
-                {activeTab === 'documents' && <DocumentsContent />}
-                {activeTab === 'activity' && <ActivityContent />}
+                {activeTab === 'profile' && profileContent}
+                {activeTab === 'plans' && plansContent}
+                {activeTab === 'costs' && costsContent}
+                {activeTab === 'payments' && paymentsContent}
+                {activeTab === 'documents' && documentsContent}
+                {activeTab === 'activity' && activityContent}
             </div>
         </div>
     );

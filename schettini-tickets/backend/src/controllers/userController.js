@@ -427,7 +427,39 @@ const uploadUserDocument = async (req, res) => {
     }
 };
 
+// --- Cambiar contraseña (propio usuario) ---
+const changePassword = async (req, res) => {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const userId = req.user?.id;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+    }
+    if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: 'Las contraseñas nuevas no coinciden.' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'La contraseña nueva debe tener al menos 6 caracteres.' });
+    }
+
+    try {
+        const [rows] = await pool.query('SELECT password FROM Users WHERE id = ?', [userId]);
+        if (!rows.length) return res.status(404).json({ message: 'Usuario no encontrado.' });
+
+        const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+        if (!isMatch) return res.status(400).json({ message: 'La contraseña actual es incorrecta.' });
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await pool.query('UPDATE Users SET password = ? WHERE id = ?', [hashed, userId]);
+
+        res.json({ success: true, message: 'Contraseña actualizada correctamente.' });
+    } catch (error) {
+        console.error('changePassword:', error);
+        res.status(500).json({ message: 'Error al actualizar la contraseña.' });
+    }
+};
+
 module.exports = {
     getUsers, getUserById, createUser, updateUser, deleteUser, getUserActiveTickets, getAgents, getTechnicians,
-    getUserDocuments, uploadUserDocument
+    getUserDocuments, uploadUserDocument, changePassword
 };

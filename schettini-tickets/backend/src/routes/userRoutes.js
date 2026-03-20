@@ -12,7 +12,8 @@ const {
     getAgents,
     getTechnicians,
     getUserDocuments,
-    uploadUserDocument
+    uploadUserDocument,
+    changePassword
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -40,6 +41,9 @@ router.get('/agents', authorize('admin', 'agent', 'supervisor', 'viewer'), getAg
 
 // 2. Técnicos asignables a órdenes de reparación (solo agent con permiso taller, excluye admin)
 router.get('/technicians', authorize('admin', 'agent', 'supervisor', 'viewer'), getTechnicians);
+
+// 3. Cambio de contraseña (cualquier usuario autenticado puede cambiar la suya)
+router.put('/change-password', changePassword);
 
 // 3. Ruta para obtener tickets activos de un usuario (Dashboard)
 router.get('/:id/active-tickets', authorize('admin', 'agent', 'supervisor', 'client'), getUserActiveTickets);
