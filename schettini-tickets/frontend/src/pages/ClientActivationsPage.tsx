@@ -378,6 +378,11 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
   const isSoftwareGestion = productType === 'software_gestion';
   const showFiscalFields = isSoftwareGestion ? clientBillingChoice === 'fiscal' : (isAltaGeneral ? clientBillingChoice === 'fiscal' : isLegacyFiscal);
   const showNoFiscalFields = isSoftwareGestion ? clientBillingChoice === 'no_fiscal' : (isAltaGeneral ? clientBillingChoice === 'no_fiscal' : isLegacyNoFiscal);
+
+  // Condicional 2: campos fiscales completos para Controlador Fiscal O Software Fiscal
+  const showEquiposFiscalesFields = isControladorFiscal || showFiscalFields;
+  // Condicional 1: Software de Gestión + No Fiscal → formulario simplificado (solo Razón Social, CUIT, Teléfono)
+  const showSoftwareNoFiscalSimple = isSoftwareGestion && clientBillingChoice === 'no_fiscal';
   const fiscalModel = (form.model || '').trim();
   const showDepartments = isControladorFiscal && (fiscalModel.toLowerCase().includes('sam4s') || fiscalModel.toLowerCase().includes('moretti'));
 
@@ -541,7 +546,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                   <p className="font-medium mb-1">Servicio delegado a su contador</p>
                   <p>Debe descargar el manual para su contador y enviarlo junto con los datos que le indiquemos.</p>
-                  <a href="/manual-contador" target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-indigo-600 font-medium hover:underline">Descargar manual para contador (placeholder)</a>
+                  <a href="/manual-contador.pdf" target="_blank" rel="noopener noreferrer" download className="inline-block mt-2 text-indigo-600 font-medium hover:underline">Descargar manual para contador</a>
                 </div>
               )}
               {showDepartments && (
@@ -614,7 +619,7 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
             <input type="text" name="invoice_number" value={form.invoice_number ?? ''} onChange={(e) => update('invoice_number', e.target.value)} placeholder="N° Factura" className="w-full px-3 py-2 border rounded-lg" />
           </div>
 
-          {showFiscalFields && (
+          {showEquiposFiscalesFields && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Condición ante el IVA <span className="text-red-500">*</span></label>
@@ -657,7 +662,19 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
               </div>
             </>
           )}
-          {showNoFiscalFields && (
+          {/* Condicional 1: Software No Fiscal — formulario simplificado */}
+          {showSoftwareNoFiscalSimple && (
+            <>
+              <input type="text" name="razon_social" value={form.razon_social ?? ''} onChange={(e) => update('razon_social', e.target.value)} placeholder="Razón Social" className="w-full px-3 py-2 border rounded-lg" />
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">CUIT <HelpTooltip text="CUIT al cual se registrará la licencia." /></label>
+                <input type="text" name="cuit" value={form.cuit ?? ''} onChange={(e) => update('cuit', e.target.value)} placeholder="CUIT" className="w-full px-3 py-2 border rounded-lg" />
+              </div>
+              <input type="text" name="telefono" value={form.telefono ?? ''} onChange={(e) => update('telefono', e.target.value)} placeholder="Teléfono" className="w-full px-3 py-2 border rounded-lg" />
+            </>
+          )}
+          {/* Formulario No Fiscal legacy (alta_general o formularios anteriores) */}
+          {showNoFiscalFields && !showSoftwareNoFiscalSimple && (
             <>
               <input type="text" name="tipo_rubro" value={form.tipo_rubro ?? ''} onChange={(e) => update('tipo_rubro', e.target.value)} placeholder="Tipo Rubro" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" className="w-full px-3 py-2 border rounded-lg" />
