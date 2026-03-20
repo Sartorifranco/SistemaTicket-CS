@@ -1244,6 +1244,7 @@ const createExternalRecycledOrder = async (req, res) => {
     const model = (req.body.model || '').trim() || null;
     const serialNumber = (req.body.serial_number || '').trim() || null;
     const equipmentStatus = (req.body.equipment_status || '').trim() || null;
+    const recyclingNotes = (req.body.recycling_notes || '').trim() || null;
     const files = req.files || [];
     const recyclingPhotoUrls = files.map((f) => `/uploads/${f.filename}`);
     const recyclingPhotosJson = recyclingPhotoUrls.length > 0 ? JSON.stringify(recyclingPhotoUrls) : null;
@@ -1255,15 +1256,16 @@ const createExternalRecycledOrder = async (req, res) => {
       `INSERT INTO repair_orders (
         client_id, order_number, entry_date, status,
         is_external_recycled, external_order_number, external_equipment_status,
-        recycling_photos
-      ) VALUES (?, ?, NOW(), ?, 1, ?, ?, ?)`,
+        recycling_photos, recycling_notes
+      ) VALUES (?, ?, NOW(), ?, 1, ?, ?, ?, ?)`,
       [
         null,
         orderNumber,
         'abandonado',
         externalOrderNumber,
         equipmentStatus,
-        recyclingPhotosJson
+        recyclingPhotosJson,
+        recyclingNotes
       ]
     );
     const repairOrderId = result.insertId;

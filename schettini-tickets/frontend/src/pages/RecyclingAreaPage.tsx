@@ -63,7 +63,8 @@ const RecyclingAreaPage: React.FC = () => {
     brand: '',
     model: '',
     serial_number: '',
-    equipment_status: ''
+    equipment_status: '',
+    recycling_notes: ''
   });
   const [externalFiles, setExternalFiles] = useState<File[]>([]);
   const [externalSending, setExternalSending] = useState(false);
@@ -107,11 +108,12 @@ const RecyclingAreaPage: React.FC = () => {
       formData.append('model', externalForm.model.trim());
       formData.append('serial_number', externalForm.serial_number.trim());
       formData.append('equipment_status', externalForm.equipment_status.trim());
+      formData.append('recycling_notes', externalForm.recycling_notes.trim());
       externalFiles.forEach((f) => formData.append('photos', f));
       await api.post('/api/repair-orders/external-recycled', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success('Orden externa cargada correctamente.');
       setModalExternalOpen(false);
-      setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '' });
+      setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '', recycling_notes: '' });
       setExternalFiles([]);
       fetchOrders();
     } catch (err: unknown) {
@@ -384,7 +386,7 @@ const RecyclingAreaPage: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center px-6 py-4 border-b">
               <h2 className="text-xl font-bold text-gray-800">Cargar Orden de Sistema Anterior</h2>
-              <button type="button" onClick={() => { setModalExternalOpen(false); setExternalFiles([]); setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '' }); }} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+              <button type="button" onClick={() => { setModalExternalOpen(false); setExternalFiles([]); setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '', recycling_notes: '' }); }} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
                 <FaTimes />
               </button>
             </div>
@@ -442,6 +444,16 @@ const RecyclingAreaPage: React.FC = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones de Reciclaje</label>
+                <textarea
+                  value={externalForm.recycling_notes}
+                  onChange={(e) => setExternalForm((f) => ({ ...f, recycling_notes: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Notas internas, estado del equipo al reciclarlo, capturas de chat..."
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Adjuntar archivos / fotos</label>
                 <input
                   type="file"
@@ -455,7 +467,7 @@ const RecyclingAreaPage: React.FC = () => {
                 )}
               </div>
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <button type="button" onClick={() => { setModalExternalOpen(false); setExternalFiles([]); setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '' }); }} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              <button type="button" onClick={() => { setModalExternalOpen(false); setExternalFiles([]); setExternalForm({ external_order_number: '', brand: '', model: '', serial_number: '', equipment_status: '', recycling_notes: '' }); }} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                 Cancelar
               </button>
               <button
