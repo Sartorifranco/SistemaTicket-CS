@@ -87,7 +87,7 @@ const createTicket = async (req, res) => {
 // --- Obtener Tickets (Con Filtros de Agente) ---
 const getTickets = async (req, res) => {
     try {
-        const { view, status, priority, agentId } = req.query;
+        const { view, status, priority, agentId, exclude_planilla } = req.query;
         const userId = req.user.id;
         const userRole = req.user.role;
 
@@ -134,6 +134,9 @@ const getTickets = async (req, res) => {
         }
         if (priority) { query += ' AND t.priority = ?'; params.push(priority); }
         if (agentId) { query += ' AND t.assigned_to_user_id = ?'; params.push(agentId); }
+        if (exclude_planilla === '1' || exclude_planilla === 'true') {
+            query += " AND t.title NOT LIKE 'Alta de Sistema - Factura%'";
+        }
         
         query += ' ORDER BY t.created_at DESC';
 

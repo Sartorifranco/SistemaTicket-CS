@@ -41,6 +41,7 @@ const AdminTicketsListPage: React.FC = () => {
             if (filterAssignedTo !== 'all') params.append('assigned_to_user_id', filterAssignedTo);
             if (filterCreatedBy !== 'all') params.append('user_id', filterCreatedBy);
             if (filterTitle) params.append('title', filterTitle);
+            params.append('exclude_planilla', '1');
 
             const response = await api.get<{ success: boolean; count: number; data: TicketData[] }>(`/api/tickets?${params.toString()}`);
             setTickets(Array.isArray(response.data.data) ? response.data.data : []);

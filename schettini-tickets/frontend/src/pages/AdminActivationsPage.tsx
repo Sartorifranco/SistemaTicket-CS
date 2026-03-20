@@ -5,7 +5,7 @@ import api from '../config/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import SectionCard from '../components/Common/SectionCard';
 import { formatDateArgentina } from '../utils/dateFormatter';
-import { FaCheckCircle, FaTicketAlt, FaBoxOpen, FaTimes, FaBell } from 'react-icons/fa';
+import { FaCheckCircle, FaTicketAlt, FaBoxOpen, FaTimes, FaBell, FaPrint } from 'react-icons/fa';
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready' | 'rejected';
 type FormTypeApi = 'general' | 'controlador_fiscal' | 'alta_general' | 'fiscal' | 'no_fiscal' | 'none';
@@ -22,6 +22,69 @@ interface Activation {
   client_email?: string;
   created_at?: string;
   updated_at?: string;
+  form_data?: string | null;
+}
+
+/** Parsea form_data y devuelve una descripción del producto/equipo */
+function parsePlanillaProductLabel(formData: string | null | undefined): string {
+  if (!formData) return '—';
+  try {
+    const data = JSON.parse(formData);
+    const pt = (data.product_type || '').toLowerCase();
+    if (pt.includes('controlador') || pt.includes('fiscal')) {
+      const model = data.model || '';
+      return model ? `CF: ${model}` : 'Controlador Fiscal';
+    }
+    if (pt.includes('software')) {
+      const sw = data.software_type || '';
+      return sw ? `SW: ${sw}` : 'Software de Gestión';
+    }
+    // fallback: buscar cualquier campo descriptivo
+    if (data.model) return data.model;
+    if (data.software_type) return data.software_type;
+    return '—';
+  } catch {
+    return '—';
+  }
+}
+
+/** Convierte el objeto form_data en pares clave/valor legibles para impresión */
+const FIELD_LABELS: Record<string, string> = {
+  product_type: 'Tipo de Producto',
+  software_type: 'Tipo de Software',
+  model: 'Marca/Modelo',
+  afip_alta_type: 'Alta AFIP',
+  billing_type: 'Facturación',
+  razon_social: 'Razón Social',
+  razon_social_cuil: 'Razón Social / CUIL',
+  cuit: 'CUIT',
+  condicion_iva: 'Condición ante IVA',
+  ingresos_brutos: 'Ingresos Brutos',
+  inicio_actividades: 'Inicio de Actividades',
+  punto_venta: 'Punto de Venta',
+  domicilio: 'Domicilio',
+  telefono: 'Teléfono',
+  email: 'Email',
+  clave_fiscal: 'Clave Fiscal',
+  tipo_instalacion: 'Tipo de Instalación',
+  tipo_rubro: 'Tipo de Rubro',
+  departments: 'Departamentos / Rubros',
+  invoice_number: 'N° Factura',
+};
+
+function parsePlanillaFields(formData: string | null | undefined): { label: string; value: string }[] {
+  if (!formData) return [];
+  try {
+    const data = JSON.parse(formData);
+    return Object.entries(data)
+      .filter(([k, v]) => k !== '_uploads' && v !== '' && v !== null && v !== undefined)
+      .map(([k, v]) => ({
+        label: FIELD_LABELS[k] || k,
+        value: String(v)
+      }));
+  } catch {
+    return [];
+  }
 }
 
 const STATUS_LABELS: Record<ActivationStatus, string> = {
@@ -45,6 +108,7 @@ const AdminActivationsPage: React.FC = () => {
   const [rejecting, setRejecting] = useState(false);
   const [markingReadyId, setMarkingReadyId] = useState<number | null>(null);
   const [confirmReadyModal, setConfirmReadyModal] = useState<{ id: number; invoice_number: string } | null>(null);
+  const [printModalActivation, setPrintModalActivation] = useState<Activation | null>(null);
 
   const fetchList = useCallback(() => {
     setLoading(true);
@@ -149,6 +213,7 @@ const AdminActivationsPage: React.FC = () => {
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">N° Factura</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Cliente</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Producto / Equipo</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Estado</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Ticket</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Fecha</th>
@@ -160,6 +225,9 @@ const AdminActivationsPage: React.FC = () => {
                   <tr key={a.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 font-medium">{a.invoice_number}</td>
                     <td className="px-4 py-2 text-sm">{a.client_name || a.client_business_name || '—'}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <span className="text-gray-700">{parsePlanillaProductLabel(a.form_data)}</span>
+                    </td>
                     <td className="px-4 py-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                         a.status === 'ready' ? 'bg-green-100 text-green-800' :
@@ -184,6 +252,7 @@ const AdminActivationsPage: React.FC = () => {
                     <td className="px-4 py-2 text-sm">{formatDateArgentina(a.created_at)}</td>
                     {!isViewer && (
                       <td className="px-4 py-2">
+                        <div className="flex flex-wrap gap-1.5">
                         {a.status === 'pending_validation' && (
                           <button
                             type="button"
@@ -202,6 +271,17 @@ const AdminActivationsPage: React.FC = () => {
                             <FaBoxOpen /> Marcar listo y notificar
                           </button>
                         )}
+                        {a.form_data && (
+                          <button
+                            type="button"
+                            onClick={() => setPrintModalActivation(a)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                            title="Ver e imprimir planilla como DDJJ"
+                          >
+                            <FaPrint /> DDJJ
+                          </button>
+                        )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -259,6 +339,61 @@ const AdminActivationsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Imprimir DDJJ */}
+      {printModalActivation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 print:hidden">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Planilla / DDJJ</h2>
+                <p className="text-sm text-gray-500">Factura: {printModalActivation.invoice_number} — Cliente: {printModalActivation.client_name || printModalActivation.client_business_name || '—'}</p>
+              </div>
+              <button type="button" onClick={() => setPrintModalActivation(null)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                <FaTimes />
+              </button>
+            </div>
+            <div id="planilla-print-area" className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="print-only-header hidden">
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">Declaración Jurada — Alta de Sistema</h2>
+                <p className="text-sm text-gray-600 mb-4">Factura: {printModalActivation.invoice_number} | Cliente: {printModalActivation.client_name || printModalActivation.client_business_name || '—'} | Fecha: {formatDateArgentina(printModalActivation.created_at)}</p>
+                <hr className="mb-4" />
+              </div>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                {parsePlanillaFields(printModalActivation.form_data).map(({ label, value }) => (
+                  <div key={label} className="border-b border-gray-100 pb-2">
+                    <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</dt>
+                    <dd className="text-sm text-gray-900 font-medium mt-0.5 break-all">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <button type="button" onClick={() => setPrintModalActivation(null)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 bg-white">
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                <FaPrint /> Imprimir como DDJJ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Estilos de impresión para la planilla DDJJ */}
+      <style>{`
+        @media print {
+          body > *:not(#root) { display: none !important; }
+          #root > *:not(.planilla-print-wrapper) { display: none !important; }
+          .print\\:hidden { display: none !important; }
+          #planilla-print-area .print-only-header { display: block !important; }
+          nav, header, aside, footer, button { display: none !important; }
+          #planilla-print-area { overflow: visible !important; max-height: none !important; }
+        }
+      `}</style>
     </div>
   );
 };

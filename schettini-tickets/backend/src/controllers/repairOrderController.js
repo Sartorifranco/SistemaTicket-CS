@@ -158,7 +158,7 @@ const getMonitorOrders = async (req, res) => {
     }
     const [rows] = await pool.query(
       `SELECT ro.id, ro.order_number, ro.entry_date, ro.status, ro.promised_date,
-        ro.client_id,
+        ro.client_id, ro.is_warranty,
         COALESCE(ro.priority, 'Normal') AS priority,
         u.username AS client_name, u.business_name AS client_business_name,
         t.username AS technician_name, t.full_name AS technician_full_name

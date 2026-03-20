@@ -82,6 +82,7 @@ const AgentTicketsPage: React.FC = () => {
             if (filters.endDate) params.append('endDate', filters.endDate);
             if (filters.agentId) params.append('agentId', filters.agentId);
             if (filters.priority) params.append('priority', filters.priority); 
+            params.append('exclude_planilla', '1');
 
             const [ticketsResponse, agentsResponse, usersResponse, deptsResponse] = await Promise.all([
                 api.get(`/api/tickets?${params.toString()}`),

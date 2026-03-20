@@ -3,8 +3,8 @@ import api from '../config/axiosConfig';
 import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
-import { FaWrench, FaUser, FaClock, FaExclamationTriangle, FaArrowLeft } from 'react-icons/fa';
-import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
+import { FaWrench, FaUser, FaClock, FaExclamationTriangle, FaArrowLeft, FaShieldAlt } from 'react-icons/fa';
+import { formatRepairOrderClientDisplay, formatOrderNumber } from '../utils/repairOrderLabels';
 
 interface MonitorOrder {
   id: number;
@@ -21,6 +21,7 @@ interface MonitorOrder {
   equipment_type?: string | null;
   brand?: string | null;
   model?: string | null;
+  is_warranty?: number | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -161,6 +162,8 @@ const OrderMonitorPage: React.FC = () => {
             const elapsed = getElapsed(order.entry_date);
             const delayed = isDelayed(order);
             const priorityStyle = PRIORITY_STYLES[order.priority] || PRIORITY_STYLES.Normal;
+            const isWarranty = !!order.is_warranty;
+            const displayNumber = formatOrderNumber(order.order_number, isWarranty);
 
             return (
               <div
@@ -168,11 +171,18 @@ const OrderMonitorPage: React.FC = () => {
                 className={`rounded-xl p-4 md:p-5 border-2 transition-all ${
                   delayed
                     ? 'bg-red-900/30 border-red-500'
+                    : isWarranty
+                    ? 'bg-orange-900/30 border-orange-500 hover:border-orange-400'
                     : 'bg-slate-800/80 border-slate-600 hover:border-slate-500'
                 }`}
               >
                 <div className="flex justify-between items-start mb-3">
-                  <span className="text-2xl font-bold text-amber-400">{order.order_number}</span>
+                  <div className="flex items-center gap-2">
+                    {isWarranty && <FaShieldAlt className="text-orange-400 shrink-0" title="Garantía" />}
+                    <span className={`text-2xl font-bold ${isWarranty ? 'text-orange-400' : 'text-amber-400'}`}>
+                      {displayNumber}
+                    </span>
+                  </div>
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-medium ${priorityStyle}`}
                   >

@@ -32,6 +32,7 @@ const ClientTicketsPage: React.FC = () => {
             if (filters.status) params.append('status', filters.status);
             if (filters.startDate) params.append('startDate', filters.startDate);
             if (filters.endDate) params.append('endDate', filters.endDate);
+            params.append('exclude_planilla', '1');
 
             const [ticketsRes, deptsRes] = await Promise.all([
                 api.get(`/api/tickets?${params.toString()}`),

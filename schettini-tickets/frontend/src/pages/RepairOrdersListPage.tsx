@@ -7,12 +7,13 @@ import SectionCard from '../components/Common/SectionCard';
 import { FaPlus, FaEye, FaPrint, FaWhatsapp, FaTimes, FaExclamationTriangle, FaTrash } from 'react-icons/fa';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 import type { RepairOrderReceiptData } from '../components/RepairOrder/RepairOrderReceipt';
-import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
+import { formatRepairOrderClientDisplay, formatOrderNumber } from '../utils/repairOrderLabels';
 import { formatDateTimeArgentina } from '../utils/dateFormatter';
 
 interface RepairOrderRow {
   id: number;
   order_number: string;
+  is_warranty?: number | null;
   client_id?: number | null;
   client_name?: string;
   client_business_name?: string;
@@ -383,7 +384,7 @@ const RepairOrdersListPage: React.FC = () => {
                   const badge = getAlertBadge(o);
                   return (
                     <tr key={o.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 font-medium">{o.order_number}</td>
+                      <td className="px-4 py-2 font-medium">{formatOrderNumber(o.order_number, o.is_warranty)}</td>
                       <td className="px-4 py-2 text-gray-800">{formatRepairOrderClientDisplay(o)}</td>
                       <td className="px-4 py-2">{o.equipment_type || '—'} {o.model && <span className="text-gray-500 text-sm">/ {o.model}</span>}</td>
                       <td className="px-4 py-2">{o.technician_name || '—'}</td>

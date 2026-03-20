@@ -632,26 +632,26 @@ const ActivationFormModal: React.FC<ActivationFormModalProps> = ({ activation, c
               </div>
               <input type="text" name="tipo_instalacion" value={form.tipo_instalacion ?? ''} onChange={(e) => update('tipo_instalacion', e.target.value)} placeholder="Tipo Instalación" className="w-full px-3 py-2 border rounded-lg" />
               <input type="text" name="tipo_rubro" value={form.tipo_rubro ?? ''} onChange={(e) => update('tipo_rubro', e.target.value)} placeholder="Tipo Rubro" className="w-full px-3 py-2 border rounded-lg" />
-              <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" className="w-full px-3 py-2 border rounded-lg" />
+              <input type="text" name="domicilio" value={form.domicilio ?? ''} onChange={(e) => update('domicilio', e.target.value)} placeholder="Domicilio" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">Punto de Venta <HelpTooltip text="Debe ser NUEVO. No repetir un PV usado en otro sistema." /></label>
-                <input type="text" name="punto_venta" value={form.punto_venta ?? ''} onChange={(e) => update('punto_venta', e.target.value)} placeholder="N° Punto Venta" className="w-full px-3 py-2 border rounded-lg" />
+                <input type="text" name="punto_venta" value={form.punto_venta ?? ''} onChange={(e) => update('punto_venta', e.target.value)} placeholder="N° Punto Venta" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">CUIT <HelpTooltip text="CUIT al cual se registrará la licencia." /></label>
-                <input type="text" name="cuit" value={form.cuit ?? ''} onChange={(e) => update('cuit', e.target.value)} placeholder="CUIT" className="w-full px-3 py-2 border rounded-lg" />
+                <input type="text" name="cuit" value={form.cuit ?? ''} onChange={(e) => update('cuit', e.target.value)} placeholder="CUIT" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
               </div>
-              <input type="text" name="razon_social" value={form.razon_social ?? ''} onChange={(e) => update('razon_social', e.target.value)} placeholder="Razón Social" className="w-full px-3 py-2 border rounded-lg" />
+              <input type="text" name="razon_social" value={form.razon_social ?? ''} onChange={(e) => update('razon_social', e.target.value)} placeholder="Razón Social" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
               {!isControladorFiscal && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Clave Fiscal (opcional)</label>
                   <input type="text" name="clave_fiscal" value={form.clave_fiscal ?? ''} onChange={(e) => update('clave_fiscal', e.target.value)} placeholder="Clave Fiscal" className="w-full px-3 py-2 border rounded-lg" />
                 </div>
               )}
-              <input type="text" name="telefono" value={form.telefono ?? ''} onChange={(e) => update('telefono', e.target.value)} placeholder="Teléfono" className="w-full px-3 py-2 border rounded-lg" />
-              <input type="text" name="ingresos_brutos" value={form.ingresos_brutos ?? ''} onChange={(e) => update('ingresos_brutos', e.target.value)} placeholder="Ingresos Brutos" className="w-full px-3 py-2 border rounded-lg" />
-              <input type="text" name="inicio_actividades" value={form.inicio_actividades ?? ''} onChange={(e) => update('inicio_actividades', e.target.value)} placeholder="Inicio Actividades" className="w-full px-3 py-2 border rounded-lg" />
-              <input type="email" name="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} placeholder="Email" className="w-full px-3 py-2 border rounded-lg" />
+              <input type="text" name="telefono" value={form.telefono ?? ''} onChange={(e) => update('telefono', e.target.value)} placeholder="Teléfono" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
+              <input type="text" name="ingresos_brutos" value={form.ingresos_brutos ?? ''} onChange={(e) => update('ingresos_brutos', e.target.value)} placeholder="Ingresos Brutos" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
+              <input type="text" name="inicio_actividades" value={form.inicio_actividades ?? ''} onChange={(e) => update('inicio_actividades', e.target.value)} placeholder="Inicio Actividades" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
+              <input type="email" name="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} placeholder="Email" required={isControladorFiscal} className="w-full px-3 py-2 border rounded-lg" />
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">Logo (JPG) <HelpTooltip text="Tamaño recomendado: 350x250px en BLANCO y NEGRO. Formato: JPG de 1 bit." /></label>
                 <input type="file" accept=".jpg,.jpeg" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border rounded-lg text-sm" />

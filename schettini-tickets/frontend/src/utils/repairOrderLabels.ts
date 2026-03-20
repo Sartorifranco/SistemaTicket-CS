@@ -2,6 +2,20 @@
 export const REPAIR_ORDER_EXTERNAL_CLIENT_LABEL = 'Cliente externo / histórico';
 
 /**
+ * Si la orden es de garantía, reemplaza el prefijo REP- por GAR-.
+ * Ej: "REP-0042" → "GAR-0042".
+ */
+export function formatOrderNumber(
+  orderNumber: string,
+  isWarranty: number | boolean | null | undefined
+): string {
+  if (isWarranty) {
+    return (orderNumber || '').replace(/^REP-/i, 'GAR-');
+  }
+  return orderNumber || '';
+}
+
+/**
  * Texto seguro para listados y comprobantes (evita pantalla en blanco si no hay cliente).
  */
 export function formatRepairOrderClientDisplay(o: {
