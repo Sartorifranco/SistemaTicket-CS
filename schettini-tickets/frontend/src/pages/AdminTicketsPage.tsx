@@ -197,6 +197,7 @@ const AdminTicketsPage: React.FC = () => {
                             <option value="active">Activos (Abierto + En Progreso)</option>
                             <option value="open">Abierto</option>
                             <option value="in-progress">En Progreso</option>
+                            <option value="Alta pendiente">Alta pendiente</option>
                             <option value="resolved">Resuelto</option>
                             <option value="closed">Cerrado</option>
                         </select>
