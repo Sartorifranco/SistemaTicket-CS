@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { getImageUrl } from '../utils/imageUrl';
+import { getImageUrl, getYouTubeId, getYouTubeEmbedUrl } from '../utils/imageUrl';
 import {
     FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
     FaFolderOpen, FaChevronRight, FaFolder, FaTimes, FaPlay, FaExternalLinkAlt, FaDownload
@@ -656,14 +656,27 @@ const AdminResourcesPage: React.FC = () => {
                         <button onClick={() => setPreviewResource(null)} className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 z-10">
                             <FaTimes size={28} />
                         </button>
-                        {previewResource.type === 'video' ? (
-                            <video
-                                src={getImageUrl(previewResource.content) || previewResource.content}
-                                controls
-                                autoPlay
-                                className="w-full rounded-lg shadow-2xl bg-black"
-                            />
-                        ) : (
+                        {previewResource.type === 'video' ? (() => {
+                            const ytId = getYouTubeId(previewResource.content);
+                            return ytId ? (
+                                <div className="relative w-full rounded-lg overflow-hidden shadow-2xl bg-black" style={{ paddingTop: '56.25%' }}>
+                                    <iframe
+                                        src={getYouTubeEmbedUrl(ytId)}
+                                        className="absolute inset-0 w-full h-full"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                        title={previewResource.title}
+                                    />
+                                </div>
+                            ) : (
+                                <video
+                                    src={getImageUrl(previewResource.content) || previewResource.content}
+                                    controls
+                                    autoPlay
+                                    className="w-full rounded-lg shadow-2xl bg-black"
+                                />
+                            );
+                        })() : (
                             <img
                                 src={getImageUrl(previewResource.content) || previewResource.content}
                                 alt={previewResource.title}

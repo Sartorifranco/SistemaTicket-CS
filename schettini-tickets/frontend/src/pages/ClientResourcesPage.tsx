@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
-import { getImageUrl } from '../utils/imageUrl';
+import { getImageUrl, getYouTubeId, getYouTubeEmbedUrl } from '../utils/imageUrl';
 import { FaVideo, FaFileAlt, FaDownload, FaSearch, FaPlay, FaTimes, FaChevronRight, FaBook, FaCog, FaQuestionCircle, FaFolder } from 'react-icons/fa';
 import DriversPage from './DriversPage';
 
@@ -315,16 +315,29 @@ const ClientResourcesPage: React.FC = () => {
                             </button>
                         </div>
 
-                        {modalResource.type === 'video' ? (
-                            <video
-                                src={getResourceUrl(modalResource.content)}
-                                controls
-                                autoPlay
-                                playsInline
-                                className="w-full rounded-xl shadow-2xl bg-black"
-                                style={{ maxHeight: '78dvh', objectFit: 'contain' }}
-                            />
-                        ) : (
+                        {modalResource.type === 'video' ? (() => {
+                            const ytId = getYouTubeId(modalResource.content);
+                            return ytId ? (
+                                <div className="relative w-full rounded-xl overflow-hidden shadow-2xl bg-black" style={{ paddingTop: '56.25%' }}>
+                                    <iframe
+                                        src={getYouTubeEmbedUrl(ytId)}
+                                        className="absolute inset-0 w-full h-full"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                        title={modalResource.title}
+                                    />
+                                </div>
+                            ) : (
+                                <video
+                                    src={getResourceUrl(modalResource.content)}
+                                    controls
+                                    autoPlay
+                                    playsInline
+                                    className="w-full rounded-xl shadow-2xl bg-black"
+                                    style={{ maxHeight: '78dvh', objectFit: 'contain' }}
+                                />
+                            );
+                        })() : (
                             <img
                                 src={getResourceUrl(modalResource.content)}
                                 alt={modalResource.title}
