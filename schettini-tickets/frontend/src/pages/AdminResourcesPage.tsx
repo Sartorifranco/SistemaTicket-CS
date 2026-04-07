@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { getImageUrl } from '../utils/imageUrl';
 import {
     FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
-    FaFolderOpen, FaChevronRight, FaFolder, FaTimes
+    FaFolderOpen, FaChevronRight, FaFolder, FaTimes, FaPlay, FaExternalLinkAlt, FaDownload
 } from 'react-icons/fa';
 import SectionCard from '../components/Common/SectionCard';
 import DriversPage from './DriversPage';
@@ -82,6 +82,7 @@ const AdminResourcesPage: React.FC = () => {
     const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
     const [editingSectionName, setEditingSectionName] = useState('');
     const [editingSectionDescription, setEditingSectionDescription] = useState('');
+    const [previewResource, setPreviewResource] = useState<Resource | null>(null);
 
     const [title, setTitle] = useState('');
     const [type, setType] = useState<'video' | 'image' | 'download' | 'link' | 'article'>('video');
@@ -323,6 +324,15 @@ const AdminResourcesPage: React.FC = () => {
         }
     };
 
+    const handleOpenResource = (res: Resource) => {
+        if (res.type === 'video' || res.type === 'image') {
+            setPreviewResource(res);
+        } else {
+            const url = getImageUrl(res.content) || res.content;
+            window.open(url, '_blank');
+        }
+    };
+
     if (viewMode === 'drivers') {
         return (
             <div className="min-h-screen">
@@ -488,6 +498,15 @@ const AdminResourcesPage: React.FC = () => {
                                     <div className="flex items-center gap-1 mt-2 flex-wrap">
                                         <button
                                             type="button"
+                                            onClick={e => { e.stopPropagation(); handleOpenResource(res); }}
+                                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded transition text-xs font-medium flex items-center gap-1"
+                                            title="Abrir / previsualizar"
+                                        >
+                                            {res.type === 'video' ? <FaPlay size={12} /> : res.type === 'download' ? <FaDownload size={12} /> : <FaExternalLinkAlt size={12} />}
+                                            Abrir
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={e => {
                                                 e.stopPropagation();
                                                 setThumbnailEditResource(res);
@@ -626,6 +645,32 @@ const AdminResourcesPage: React.FC = () => {
                             <button type="button" onClick={() => setMoveTargetResource(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
                             <button type="button" onClick={handleMoveResource} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">Mover</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Preview */}
+            {previewResource && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setPreviewResource(null)}>
+                    <div className="relative max-w-4xl w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setPreviewResource(null)} className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 z-10">
+                            <FaTimes size={28} />
+                        </button>
+                        {previewResource.type === 'video' ? (
+                            <video
+                                src={getImageUrl(previewResource.content) || previewResource.content}
+                                controls
+                                autoPlay
+                                className="w-full rounded-lg shadow-2xl bg-black"
+                            />
+                        ) : (
+                            <img
+                                src={getImageUrl(previewResource.content) || previewResource.content}
+                                alt={previewResource.title}
+                                className="w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                            />
+                        )}
+                        <p className="text-white text-center mt-2 font-medium">{previewResource.title}</p>
                     </div>
                 </div>
             )}
