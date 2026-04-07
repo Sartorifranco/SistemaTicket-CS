@@ -325,8 +325,10 @@ const AdminResourcesPage: React.FC = () => {
     };
 
     const handleOpenResource = (res: Resource) => {
-        if (res.type === 'video' || res.type === 'image') {
-            setPreviewResource(res);
+        const isMedia = res.type === 'video' || res.type === 'image';
+        const isDirectVideo = !isMedia && res.content && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(res.content);
+        if (isMedia || isDirectVideo) {
+            setPreviewResource(isDirectVideo ? { ...res, type: 'video' } : res);
         } else {
             const url = getImageUrl(res.content) || res.content;
             window.open(url, '_blank');
@@ -651,15 +653,22 @@ const AdminResourcesPage: React.FC = () => {
 
             {/* Modal Preview */}
             {previewResource && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setPreviewResource(null)}>
-                    <div className="relative max-w-4xl w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setPreviewResource(null)} className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 z-10">
-                            <FaTimes size={28} />
-                        </button>
+                <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-3 sm:p-6" onClick={() => setPreviewResource(null)}>
+                    <div className="relative w-full max-w-3xl flex flex-col" style={{ maxHeight: '90dvh' }} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-2 px-1">
+                            <p className="text-white font-semibold text-sm sm:text-base truncate pr-2">{previewResource.title}</p>
+                            <button
+                                onClick={() => setPreviewResource(null)}
+                                className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 text-white transition"
+                                aria-label="Cerrar"
+                            >
+                                <FaTimes size={18} />
+                            </button>
+                        </div>
                         {previewResource.type === 'video' ? (() => {
                             const ytId = getYouTubeId(previewResource.content);
                             return ytId ? (
-                                <div className="relative w-full rounded-lg overflow-hidden shadow-2xl bg-black" style={{ paddingTop: '56.25%' }}>
+                                <div className="relative w-full rounded-xl overflow-hidden shadow-2xl bg-black" style={{ paddingTop: '56.25%' }}>
                                     <iframe
                                         src={getYouTubeEmbedUrl(ytId)}
                                         className="absolute inset-0 w-full h-full"
@@ -673,17 +682,20 @@ const AdminResourcesPage: React.FC = () => {
                                     src={getImageUrl(previewResource.content) || previewResource.content}
                                     controls
                                     autoPlay
-                                    className="w-full rounded-lg shadow-2xl bg-black"
+                                    playsInline
+                                    className="w-full rounded-xl shadow-2xl bg-black"
+                                    style={{ maxHeight: '78dvh', objectFit: 'contain' }}
                                 />
                             );
                         })() : (
                             <img
                                 src={getImageUrl(previewResource.content) || previewResource.content}
                                 alt={previewResource.title}
-                                className="w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                                className="w-full rounded-xl shadow-2xl object-contain"
+                                style={{ maxHeight: '78dvh' }}
                             />
                         )}
-                        <p className="text-white text-center mt-2 font-medium">{previewResource.title}</p>
+                        <p className="text-gray-400 text-center text-xs mt-2">Tocá fuera para cerrar</p>
                     </div>
                 </div>
             )}
