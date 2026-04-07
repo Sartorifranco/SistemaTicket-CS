@@ -61,7 +61,7 @@ async function run() {
                         const [ins] = await conn.execute('INSERT INTO kb_folders (name, parent_id, sort_order) VALUES (?, NULL, 0)', [sectionName]);
                         folderId = ins.insertId;
                     }
-                    await conn.execute('UPDATE knowledge_base SET folder_id = ? WHERE section_id = ?', [folderId, secId]);
+                    await conn.execute('UPDATE knowledge_base SET folder_id = ? WHERE section_id = ? AND (folder_id IS NULL OR folder_id = 0)', [folderId, secId]);
                 }
                 console.log('>>> Recursos existentes asignados a carpetas por sección (sin eliminar datos).');
             }
