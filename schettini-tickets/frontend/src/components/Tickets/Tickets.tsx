@@ -90,6 +90,7 @@ const Tickets: React.FC<TicketsProps> = ({ onEditTicket, onCreateTicket, departm
                     <option value="">Todos los Estados</option>
                     <option value="open">Abierto</option>
                     <option value="in-progress">En Progreso</option>
+                    <option value="Alta pendiente">Alta pendiente</option>
                     <option value="resolved">Resuelto</option>
                     <option value="closed">Cerrado</option>
                 </select>

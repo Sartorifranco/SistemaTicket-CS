@@ -75,6 +75,34 @@ if [[ -f "backend/scripts/migrate-repair-orders-advanced.js" ]]; then
     echo ""
 fi
 
+# Módulo de Garantías en repair_orders (is_warranty, warranty_type, purchase_invoice_number, etc.)
+if [[ -f "backend/scripts/run-warranty-migration.js" ]]; then
+    echo ">>> Ejecutando migración garantías (repair_orders + repair_order_status_history)..."
+    (cd backend && node scripts/run-warranty-migration.js) || true
+    echo ""
+fi
+
+# Caja Técnica (tabla tech_cash_movements)
+if [[ -f "backend/scripts/create-tech-cash.js" ]]; then
+    echo ">>> Ejecutando migración tech_cash_movements..."
+    (cd backend && node scripts/create-tech-cash.js) || true
+    echo ""
+fi
+
+# Equipos en fábrica (factory_shipments + equipment_inventory)
+if [[ -f "backend/scripts/run-factory-shipments-migration.js" ]]; then
+    echo ">>> Ejecutando migración factory_shipments..."
+    (cd backend && node scripts/run-factory-shipments-migration.js) || true
+    echo ""
+fi
+
+# Configuración empresa - campos Taller (recycling_days_abandonment, default_warranty_months, legal_terms_ticket)
+if [[ -f "backend/scripts/add-company-settings-taller-fields.js" ]]; then
+    echo ">>> Ejecutando migración company_settings taller fields..."
+    (cd backend && node scripts/add-company-settings-taller-fields.js) || true
+    echo ""
+fi
+
 # Columna can_manage_tech_finances (Finanzas Técnicas para agentes)
 if [[ -f "backend/scripts/add-can-manage-tech-finances.js" ]]; then
     echo ">>> Ejecutando migración can_manage_tech_finances..."

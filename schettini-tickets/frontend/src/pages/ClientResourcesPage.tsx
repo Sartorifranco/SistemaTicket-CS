@@ -108,8 +108,10 @@ const ClientResourcesPage: React.FC = () => {
     };
 
     const handleCardClick = (res: Resource) => {
-        if (res.type === 'video' || res.type === 'image') {
-            setModalResource(res);
+        const isMedia = res.type === 'video' || res.type === 'image';
+        const isDirectVideo = !isMedia && res.content && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(res.content);
+        if (isMedia || isDirectVideo) {
+            setModalResource({ ...res, type: isDirectVideo ? 'video' : res.type });
         } else {
             window.open(getResourceUrl(res.content), '_blank');
         }
@@ -292,26 +294,46 @@ const ClientResourcesPage: React.FC = () => {
 
             {/* Modal Video/Imagen */}
             {modalResource && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setModalResource(null)}>
-                    <div className="relative max-w-4xl w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setModalResource(null)} className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 z-10">
-                            <FaTimes size={28} />
-                        </button>
+                <div
+                    className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-3 sm:p-6"
+                    onClick={() => setModalResource(null)}
+                >
+                    <div
+                        className="relative w-full max-w-3xl flex flex-col"
+                        style={{ maxHeight: '90dvh' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Botón X SIEMPRE dentro del contenedor, visible en móvil */}
+                        <div className="flex items-center justify-between mb-2 px-1">
+                            <p className="text-white font-semibold text-sm sm:text-base truncate pr-2">{modalResource.title}</p>
+                            <button
+                                onClick={() => setModalResource(null)}
+                                className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 text-white transition"
+                                aria-label="Cerrar"
+                            >
+                                <FaTimes size={18} />
+                            </button>
+                        </div>
+
                         {modalResource.type === 'video' ? (
-                            <video 
-                                src={getResourceUrl(modalResource.content)} 
-                                controls 
-                                autoPlay 
-                                className="w-full rounded-lg shadow-2xl bg-black"
+                            <video
+                                src={getResourceUrl(modalResource.content)}
+                                controls
+                                autoPlay
+                                playsInline
+                                className="w-full rounded-xl shadow-2xl bg-black"
+                                style={{ maxHeight: '78dvh', objectFit: 'contain' }}
                             />
                         ) : (
-                            <img 
-                                src={getResourceUrl(modalResource.content)} 
-                                alt={modalResource.title} 
-                                className="w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                            <img
+                                src={getResourceUrl(modalResource.content)}
+                                alt={modalResource.title}
+                                className="w-full rounded-xl shadow-2xl object-contain"
+                                style={{ maxHeight: '78dvh' }}
                             />
                         )}
-                        <p className="text-white text-center mt-2 font-medium">{modalResource.title}</p>
+
+                        <p className="text-gray-400 text-center text-xs mt-2">Tocá fuera del video para cerrar</p>
                     </div>
                 </div>
             )}
