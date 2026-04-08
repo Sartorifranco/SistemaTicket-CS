@@ -126,6 +126,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // --- 5. LOGIN ---
     const login = useCallback(async (credentials: LoginData): Promise<{ success: boolean; message?: string }> => {
+        // Limpiar cualquier sesión anterior antes de iniciar la nueva
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+
         setLoading(true);
         setError(null);
         try {

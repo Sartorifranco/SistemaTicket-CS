@@ -13,19 +13,32 @@ const protect = asyncHandler(async (req, res, next) => {
             let users;
             try {
                 [users] = await pool.query(
-                    'SELECT id, username, email, role, status, can_manage_tech_finances, permissions FROM Users WHERE id = ?',
+                    'SELECT id, username, email, role, status, is_active, can_manage_tech_finances, permissions FROM Users WHERE id = ?',
                     [decoded.id]
                 );
             } catch (colErr) {
+                // Fallback robusto: manejar cualquier columna faltante
                 if (colErr.message?.includes('can_manage_tech_finances') || colErr.message?.includes('permissions')) {
-                    [users] = await pool.query(
-                        'SELECT id, username, email, role, status FROM Users WHERE id = ?',
-                        [decoded.id]
-                    );
+                    try {
+                        [users] = await pool.query(
+                            'SELECT id, username, email, role, status, is_active FROM Users WHERE id = ?',
+                            [decoded.id]
+                        );
+                    } catch (innerErr) {
+                        [users] = await pool.query(
+                            'SELECT id, username, email, role, is_active FROM Users WHERE id = ?',
+                            [decoded.id]
+                        );
+                    }
                     if (users[0]) {
                         users[0].can_manage_tech_finances = false;
                         users[0].permissions = null;
                     }
+                } else if (colErr.message?.includes('status')) {
+                    [users] = await pool.query(
+                        'SELECT id, username, email, role, is_active, can_manage_tech_finances, permissions FROM Users WHERE id = ?',
+                        [decoded.id]
+                    );
                 } else throw colErr;
             }
 
@@ -43,17 +56,23 @@ const protect = asyncHandler(async (req, res, next) => {
                     permissions = Array.isArray(arr) ? arr : [];
                 }
             } catch (_) {}
+
+            // Verificar cuenta activa: soporta columna `status` (texto) y/o `is_active` (boolean)
+            const statusStr = String(u.status || '').toLowerCase().trim();
+            const isActiveFlag = u.is_active !== undefined ? Boolean(u.is_active) : true;
+            const isAccountActive = statusStr === 'active' || (statusStr === '' && isActiveFlag);
+
             req.user = {
                 id: Number(u.id),
                 username: String(u.username || ''),
                 email: String(u.email || ''),
                 role: String(u.role || '').toLowerCase().trim(),
-                status: String(u.status || '').toLowerCase().trim(),
+                status: statusStr || (isActiveFlag ? 'active' : 'inactive'),
                 can_manage_tech_finances: Boolean(u.can_manage_tech_finances),
                 permissions
             };
 
-            if (req.user.status !== 'active') {
+            if (!isAccountActive) {
                 res.status(401);
                 throw new Error('Cuenta desactivada');
             }
