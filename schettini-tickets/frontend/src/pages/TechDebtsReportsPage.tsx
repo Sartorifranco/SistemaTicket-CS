@@ -63,11 +63,18 @@ const TechDebtsReportsPage: React.FC = () => {
       setTallerRows(Array.isArray(tallerRes.data.data) ? tallerRes.data.data : []);
       setRemotoRows(Array.isArray(remotoRes.data.data) ? remotoRes.data.data : []);
       setTotals(totalsRes.data.data || null);
-    } catch {
+    } catch (err: unknown) {
       setTallerRows([]);
       setRemotoRows([]);
       setTotals(null);
-      toast.error('Error al cargar informes de deudas');
+      const status = (err as any)?.response?.status;
+      if (status === 403) {
+        toast.error('Sin permiso para ver Finanzas Técnicas. Contactá al administrador.', { toastId: 'debts-403' });
+      } else if (status === 401) {
+        toast.error('Sesión expirada. Volvé a iniciar sesión.', { toastId: 'debts-401' });
+      } else {
+        toast.error('Error al cargar informes de deudas', { toastId: 'debts-error' });
+      }
     } finally {
       setLoading(false);
     }
