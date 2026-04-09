@@ -17,8 +17,28 @@ const protect = asyncHandler(async (req, res, next) => {
                     [decoded.id]
                 );
             } catch (colErr) {
-                // Fallback robusto: manejar cualquier columna faltante
-                if (colErr.message?.includes('can_manage_tech_finances') || colErr.message?.includes('permissions')) {
+                // Fallback robusto: manejar cada columna faltante por separado
+                // IMPORTANTE: si solo falta 'permissions', preservar can_manage_tech_finances y viceversa
+                const missingPerms = colErr.message?.includes('permissions');
+                const missingCanManage = colErr.message?.includes('can_manage_tech_finances');
+                const missingStatus = colErr.message?.includes('status');
+
+                if (missingPerms && !missingCanManage) {
+                    // Solo falta 'permissions': consultar sin esa columna pero preservar can_manage_tech_finances
+                    [users] = await pool.query(
+                        'SELECT id, username, email, role, status, is_active, can_manage_tech_finances FROM Users WHERE id = ?',
+                        [decoded.id]
+                    );
+                    if (users[0]) users[0].permissions = null;
+                } else if (missingCanManage && !missingPerms) {
+                    // Solo falta 'can_manage_tech_finances': consultar sin esa columna pero preservar permissions
+                    [users] = await pool.query(
+                        'SELECT id, username, email, role, status, is_active, permissions FROM Users WHERE id = ?',
+                        [decoded.id]
+                    );
+                    if (users[0]) users[0].can_manage_tech_finances = false;
+                } else if (missingPerms || missingCanManage) {
+                    // Ambas columnas faltan: fallback mínimo
                     try {
                         [users] = await pool.query(
                             'SELECT id, username, email, role, status, is_active FROM Users WHERE id = ?',
@@ -34,7 +54,7 @@ const protect = asyncHandler(async (req, res, next) => {
                         users[0].can_manage_tech_finances = false;
                         users[0].permissions = null;
                     }
-                } else if (colErr.message?.includes('status')) {
+                } else if (missingStatus) {
                     [users] = await pool.query(
                         'SELECT id, username, email, role, is_active, can_manage_tech_finances, permissions FROM Users WHERE id = ?',
                         [decoded.id]

@@ -103,6 +103,13 @@ if [[ -f "backend/scripts/add-company-settings-taller-fields.js" ]]; then
     echo ""
 fi
 
+# Columna permissions en Users (permisos granulares por agente)
+if [[ -f "backend/scripts/add-users-permissions.js" ]]; then
+    echo ">>> Ejecutando migración columna permissions en Users..."
+    (cd backend && node scripts/add-users-permissions.js) || true
+    echo ""
+fi
+
 # Columna can_manage_tech_finances (Finanzas Técnicas para agentes)
 if [[ -f "backend/scripts/add-can-manage-tech-finances.js" ]]; then
     echo ">>> Ejecutando migración can_manage_tech_finances..."
