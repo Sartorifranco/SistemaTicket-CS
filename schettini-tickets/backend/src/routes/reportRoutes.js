@@ -10,7 +10,14 @@ router.use(protect);
 // GET /api/reports/dashboard - admin o quien tenga reports_view
 router.get('/dashboard', authorizeReports, getDashboard);
 
-// Reportes: admin o quien tenga reports_view (configurable desde Admin > Usuarios > Permisos)
+// GET /api/reports/debts/* - Finanzas Técnicas: admin, supervisor, o agent/viewer con can_manage_tech_finances o tech_finances
+// IMPORTANTE: estas rutas van ANTES del router.use(authorizeByPermission('reports_view'))
+// porque un agente con Finanzas Técnicas NO necesita tener reports_view para acceder.
+router.get('/debts/taller', authorizeTechFinances, getDebtsTaller);
+router.get('/debts/remoto', authorizeTechFinances, getDebtsRemoto);
+router.get('/debts/totals', authorizeTechFinances, getDebtsTotals);
+
+// Reportes generales: admin o quien tenga reports_view (configurable desde Admin > Usuarios > Permisos)
 router.use(authorizeByPermission('reports_view'));
 
 // GET /api/reports (Reporte completo)
@@ -18,10 +25,5 @@ router.get('/', getReports);
 
 // GET /api/reports/metrics/resolution-time (Métrica rápida)
 router.get('/metrics/resolution-time', getResolutionMetrics);
-
-// GET /api/reports/debts/* - Finanzas Técnicas: admin o agent con can_manage_tech_finances
-router.get('/debts/taller', authorizeTechFinances, getDebtsTaller);
-router.get('/debts/remoto', authorizeTechFinances, getDebtsRemoto);
-router.get('/debts/totals', authorizeTechFinances, getDebtsTotals);
 
 module.exports = router;
