@@ -199,9 +199,49 @@ cd ..
 echo ">>> Build listo."
 echo ""
 
-# Reiniciar backend con PM2
-echo ">>> Reiniciando backend (PM2 tickets-api)..."
-pm2 restart tickets-api
+# Reiniciar backend con PM2 (ruta correcta: evita código viejo si PM2 apuntaba a otro directorio)
+BACKEND_DIR="$ROOT_DIR/backend"
+APP_JS="$BACKEND_DIR/src/app.js"
+if [[ ! -f "$APP_JS" ]]; then
+  echo ">>> ERROR: No se encontró $APP_JS (¿estás en la raíz del repo schettini-tickets?)"
+  exit 1
+fi
+
+EXPECTED_NORM=$(readlink -f "$APP_JS")
+PM_NEEDS_FIX=0
+if pm2 describe tickets-api &>/dev/null; then
+  PM_LINE=$(pm2 show tickets-api 2>/dev/null | grep "script path" || true)
+  # Tabla PM2: columnas separadas por │ (U+2502)
+  PM_SCRIPT=$(echo "$PM_LINE" | awk -F '│' 'NF>=3 { gsub(/^[ \t]+|[ \t]+$/,"",$3); print $3; exit }')
+  if [[ -z "$PM_SCRIPT" ]]; then
+    PM_NEEDS_FIX=1
+    echo ">>> PM2: no se pudo leer script path de tickets-api; se reconfigura desde este deploy."
+  elif echo "$PM_SCRIPT" | grep -q "schettini-tickets/schettini-tickets"; then
+    PM_NEEDS_FIX=1
+    echo ">>> PM2: detectada ruta duplicada (.../schettini-tickets/schettini-tickets/...). Se corrige."
+  else
+    ACTUAL_NORM=$(readlink -f "$PM_SCRIPT" 2>/dev/null || echo "$PM_SCRIPT")
+    if [[ "$ACTUAL_NORM" != "$EXPECTED_NORM" ]]; then
+      PM_NEEDS_FIX=1
+      echo ">>> PM2: tickets-api apuntaba a otro archivo que este deploy:"
+      echo "    actual:  $PM_SCRIPT"
+      echo "    esperado: $APP_JS"
+      echo "    Se recrea el proceso con la ruta de este repositorio."
+    fi
+  fi
+else
+  PM_NEEDS_FIX=1
+  echo ">>> PM2: no existe proceso tickets-api; se crea desde $APP_JS"
+fi
+
+echo ">>> Backend PM2 (tickets-api)..."
+if [[ "$PM_NEEDS_FIX" == "1" ]]; then
+  pm2 delete tickets-api 2>/dev/null || true
+  pm2 start "$APP_JS" --name tickets-api --cwd "$BACKEND_DIR"
+  pm2 save
+else
+  pm2 restart tickets-api
+fi
 echo ""
 
 echo ">>> Despliegue terminado."
@@ -212,3 +252,5 @@ echo "1. Verificar qué build sirve el backend: curl -s http://localhost:5050/ap
 echo "2. Si usás Nginx, puede estar sirviendo otra carpeta. Ejecutá: bash scripts/verificar-frontend-nginx.sh"
 echo "3. Recarga forzada en el navegador: Ctrl+F5 o ventana de incógnito."
 echo "   Ver: schettini-tickets/VERIFICAR-FRONTEND-SERVIDO.md"
+echo "4. Si la API parece 'vieja' tras deploy: PM2 puede apuntar a otra carpeta."
+echo "   Ver: schettini-tickets/PM2-RUTA-DUPLICADA-Y-DESPLIEGUE.md"
