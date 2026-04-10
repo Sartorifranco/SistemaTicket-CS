@@ -170,7 +170,7 @@ const authorizeByPermission = (...allowedPerms) => {
         const userPerms = req.user.permissions || [];
         const hasAny = allowedPerms.some(p => userPerms.includes(p));
         if (!hasAny) {
-            console.log(`⛔ [Auth] Sin permiso. Rol: ${req.user.role}, requiere uno de: ${allowedPerms.join(', ')}`);
+            console.log(`⛔ [Auth] Sin permiso. Rol: ${req.user.role} (id:${req.user.id}), requiere uno de: ${allowedPerms.join(', ')}, URL: ${req.originalUrl}`);
             res.status(403);
             throw new Error(`No tenés permiso para esta acción. Requiere: ${allowedPerms.join(' o ')}`);
         }
@@ -186,6 +186,7 @@ const authorizeTechFinances = (req, res, next) => {
     }
     if (req.user.role === 'admin' || req.user.role === 'supervisor') return next();
     const perms = req.user.permissions || [];
+    console.log(`[TechFin] Verificando: id=${req.user.id} rol=${req.user.role} can_manage=${req.user.can_manage_tech_finances} perms=${JSON.stringify(perms)} URL=${req.originalUrl}`);
     if ((req.user.role === 'agent' || req.user.role === 'viewer') && (req.user.can_manage_tech_finances === true || perms.includes('tech_finances'))) return next();
     console.log(`⛔ [Auth] Finanzas Técnicas denegado. Rol: ${req.user.role}, can_manage_tech_finances: ${req.user.can_manage_tech_finances}`);
     res.status(403);
