@@ -202,7 +202,7 @@ const createUser = async (req, res) => {
 // --- Actualizar usuario (BLINDADO) ---
 const updateUser = async (req, res) => {
     try {
-        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, can_manage_tech_finances, iva_condition, address, city, province, zip_code, billing_type, contracted_services } = req.body;
+        const { username, full_name, email, role, status, department_id, company_id, plan, phone, cuit, business_name, fantasy_name, permissions, can_manage_tech_finances, iva_condition, address, city, province, zip_code, billing_type, contracted_services, password } = req.body;
         const userId = req.params.id;
 
         // Si el rol del solicitante es 'agent', solo puede actualizar campos básicos del cliente
@@ -228,9 +228,17 @@ const updateUser = async (req, res) => {
                 (company_id && company_id !== '' && company_id !== '0') ? company_id : null,
                 (department_id && department_id !== '' && department_id !== '0') ? department_id : null,
                 agentBilling,
-                agentServices,
-                userId
+                agentServices
             ];
+            const agentPwd = password != null ? String(password).trim() : '';
+            if (agentPwd.length > 0 && agentPwd.length < 6) {
+                return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+            }
+            if (agentPwd.length >= 6) {
+                agentUpdates.push('password = ?');
+                agentValues.push(await bcrypt.hash(agentPwd, 10));
+            }
+            agentValues.push(userId);
             await pool.query(`UPDATE Users SET ${agentUpdates.join(', ')} WHERE id = ?`, agentValues);
             return res.json({ success: true, message: 'Cliente actualizado correctamente' });
         }
@@ -272,6 +280,14 @@ const updateUser = async (req, res) => {
         if (finalPermissions !== null) {
             updates.push('permissions = ?');
             values.push(finalPermissions);
+        }
+        const newPassword = password != null ? String(password).trim() : '';
+        if (newPassword.length > 0 && newPassword.length < 6) {
+            return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+        }
+        if (newPassword.length >= 6) {
+            updates.push('password = ?');
+            values.push(await bcrypt.hash(newPassword, 10));
         }
         values.push(userId);
 
