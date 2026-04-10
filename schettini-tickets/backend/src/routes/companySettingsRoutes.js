@@ -5,8 +5,7 @@ const path = require('path');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { getCompanySettings, updateCompanySettings } = require('../controllers/companySettingsController');
 
-// Ruta absoluta a uploads (coincide con app.use('/uploads', express.static(uploadsPath)))
-const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+const uploadsDir = require('../utils/uploadsDir');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const uploadsDir = require('../utils/uploadsDir');
 const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const {
   getRepairOrders,
@@ -22,7 +23,7 @@ const {
 
 // Configuración de subida de imágenes
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) =>
     cb(null, `repair-order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${path.extname(file.originalname) || '.jpg'}`)
 });

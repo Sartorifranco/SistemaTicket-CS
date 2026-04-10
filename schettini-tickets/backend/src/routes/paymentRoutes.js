@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const uploadsDir = require('../utils/uploadsDir');
 const { 
     getPaymentInfo, reportPayment, updateBillingDetails, 
     getAdminClientPayments, updatePaymentStatus, updateUserPlan 
@@ -10,7 +11,7 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Configuración Multer para subir comprobantes
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
+    destination: (req, file, cb) => cb(null, uploadsDir),
     filename: (req, file, cb) => cb(null, `payment-${Date.now()}${path.extname(file.originalname)}`)
 });
 const upload = multer({ storage });

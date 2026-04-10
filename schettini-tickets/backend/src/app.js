@@ -66,8 +66,8 @@ app.use(cors(corsOptions));
 // caería en app.use('/api', dataRoutes) → authenticateToken → "No autorizado, sin token".
 // Por eso, tras cada static de uploads, un handler devuelve 404 sin pasar por JWT.
 // express.static usa `send` → soporte Range/Accept-Ranges (streaming en iOS/Android).
-// __dirname = backend/src → ../uploads = backend/uploads
-const uploadsPath = path.join(__dirname, '..', 'uploads');
+// Misma ruta absoluta que Multer (ver utils/uploadsDir.js)
+const uploadsPath = require('./utils/uploadsDir');
 const staticUploadsOpts = {
   etag: true,
   lastModified: true,

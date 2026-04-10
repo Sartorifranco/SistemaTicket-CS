@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const uploadsDir = require('../utils/uploadsDir');
 const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const {
   requestActivation,
@@ -15,7 +16,7 @@ const {
 } = require('../controllers/activationController');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '.bin';
     cb(null, `activation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const multer = require('multer');
+const uploadsDir = require('../utils/uploadsDir');
 const { 
     getUsers, 
     createUser, 
@@ -19,7 +20,7 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Multer para documentos de usuario (PDF, JPG)
 const docStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
+    destination: (req, file, cb) => cb(null, uploadsDir),
     filename: (req, file, cb) => cb(null, `userdoc-${Date.now()}${path.extname(file.originalname) || '.bin'}`)
 });
 const docUpload = multer({

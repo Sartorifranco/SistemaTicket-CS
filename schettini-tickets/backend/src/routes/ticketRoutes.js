@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const uploadsDir = require('../utils/uploadsDir');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const {
     createTicket,
@@ -20,7 +21,7 @@ const {
 
 // Configuración de Subida de Archivos
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
+    destination: (req, file, cb) => cb(null, uploadsDir),
     filename: (req, file, cb) => cb(null, `ticket-${Date.now()}${path.extname(file.originalname)}`)
 });
 const upload = multer({ storage });
