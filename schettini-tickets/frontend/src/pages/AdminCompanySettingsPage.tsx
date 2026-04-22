@@ -51,6 +51,7 @@ interface CompanySettings {
   agents_can_view_movements?: boolean | number | null;
   ticket_notification_emails?: string[] | null;
   ticket_response_time_hours?: number | null;
+  delayed_days_threshold?: number | null;
 }
 
 const defaultSettings: CompanySettings = {
@@ -74,6 +75,7 @@ const defaultSettings: CompanySettings = {
   agents_can_view_movements: false,
   ticket_notification_emails: ['posventa@casaschettini.com'],
   ticket_response_time_hours: 48,
+  delayed_days_threshold: 3,
 };
 
 type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'cloud-contracts' | 'planilla-productos';
@@ -579,6 +581,7 @@ const AdminCompanySettingsPage: React.FC = () => {
                 ? data.ticket_notification_emails.split(/[,\n;]+/).map((e: string) => e.trim()).filter(Boolean)
                 : ['posventa@casaschettini.com']),
           ticket_response_time_hours: data.ticket_response_time_hours != null ? Number(data.ticket_response_time_hours) : 48,
+          delayed_days_threshold: data.delayed_days_threshold != null ? Number(data.delayed_days_threshold) : 3,
         });
         if (data.logo_url) {
           setLogoPreview(getImageUrl(data.logo_url));
@@ -635,6 +638,10 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append(
         'ticket_response_time_hours',
         formData.ticket_response_time_hours != null ? String(formData.ticket_response_time_hours) : '48'
+      );
+      form.append(
+        'delayed_days_threshold',
+        formData.delayed_days_threshold != null ? String(formData.delayed_days_threshold) : '3'
       );
 
       if (logoFile) {
@@ -1029,6 +1036,49 @@ const AdminCompanySettingsPage: React.FC = () => {
               placeholder="Ej: 90"
             />
             <p className="text-xs text-blue-600 mt-1">ℹ️ Cantidad de días tras los cuales un equipo en Área de Reciclaje puede considerarse abandonado.</p>
+          </div>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <label className="block text-sm font-bold text-gray-700 mb-1">
+              Umbral de &quot;Demora&quot; (días desde el ingreso)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={1}
+                max={365}
+                step={1}
+                value={formData.delayed_days_threshold ?? 3}
+                onChange={(e) => {
+                  const v = e.target.value ? parseInt(e.target.value, 10) : 3;
+                  const clamped = Math.min(365, Math.max(1, Number.isNaN(v) ? 3 : v));
+                  setFormData({ ...formData, delayed_days_threshold: clamped });
+                }}
+                className="w-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                placeholder="3"
+              />
+              <div className="flex gap-2">
+                {[3, 5, 7, 10].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, delayed_days_threshold: d })}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                      (formData.delayed_days_threshold ?? 3) === d
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-white text-red-700 border-red-300 hover:bg-red-100'
+                    }`}
+                  >
+                    {d} días
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-red-700 mt-2">
+              ⚠️ Una orden pasa a mostrarse con el cartel <strong>&quot;Demora&quot;</strong> (y se le avisa al técnico asignado) tras este número de días desde el ingreso, siempre que siga en estado <em>Ingresado</em>, <em>Cotizado</em> o <em>Aceptado</em>.
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              También aplica cuando la orden pasa de la <em>fecha prometida</em>, independientemente del umbral.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Garantía por defecto (Meses)</label>

@@ -137,6 +137,13 @@ if [[ -f "backend/scripts/add-company-settings-taller-fields.js" ]]; then
     echo ""
 fi
 
+# Umbral configurable de "Demora" en Monitor de Órdenes (delayed_days_threshold)
+if [[ -f "backend/scripts/add-delayed-days-threshold.js" ]]; then
+    echo ">>> Ejecutando migración delayed_days_threshold..."
+    (cd backend && node scripts/add-delayed-days-threshold.js) || true
+    echo ""
+fi
+
 # Columna permissions en Users (permisos granulares por agente)
 if [[ -f "backend/scripts/add-users-permissions.js" ]]; then
     echo ">>> Ejecutando migración columna permissions en Users..."

@@ -45,7 +45,23 @@ const closeOldResolvedTickets = async () => {
 
 const cronTask = cron.schedule('* * * * *', closeOldResolvedTickets);
 
-const DELAYED_DAYS_THRESHOLD = 3;
+const DEFAULT_DELAYED_DAYS_THRESHOLD = 3;
+
+// Lee el umbral configurado por el admin (company_settings.delayed_days_threshold).
+// Si la columna no existe (BD vieja) o hay error, cae al default conservador de 3 días.
+const getDelayedDaysThreshold = async (connection) => {
+    try {
+        const [rows] = await connection.execute(
+            'SELECT delayed_days_threshold FROM company_settings WHERE id = 1 LIMIT 1'
+        );
+        const raw = rows?.[0]?.delayed_days_threshold;
+        const parsed = raw != null ? parseInt(raw, 10) : NaN;
+        if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 365) return parsed;
+        return DEFAULT_DELAYED_DAYS_THRESHOLD;
+    } catch {
+        return DEFAULT_DELAYED_DAYS_THRESHOLD;
+    }
+};
 
 // Estados que SÍ se consideran "trabajo activo del técnico" y pueden caer en demora.
 // Excluimos: listo/entregado/entregado_sin_reparacion/abandonado (fin de flujo),
@@ -63,6 +79,7 @@ const checkDelayedOrdersAndNotify = async (io) => {
     let connection;
     try {
         connection = await pool.getConnection();
+        const threshold = await getDelayedDaysThreshold(connection);
         const placeholders = ACTIVE_STATUSES_FOR_DELAY.map(() => '?').join(',');
         const [rows] = await connection.execute(
             `SELECT id, order_number, technician_id, promised_date, entry_date, status
@@ -73,7 +90,7 @@ const checkDelayedOrdersAndNotify = async (io) => {
                  (promised_date IS NOT NULL AND promised_date < CURDATE())
                  OR (status IN ('ingresado', 'cotizado') AND entry_date < DATE_SUB(NOW(), INTERVAL ? DAY))
                )`,
-            [...ACTIVE_STATUSES_FOR_DELAY, DELAYED_DAYS_THRESHOLD]
+            [...ACTIVE_STATUSES_FOR_DELAY, threshold]
         );
         const byTech = {};
         for (const row of rows) {

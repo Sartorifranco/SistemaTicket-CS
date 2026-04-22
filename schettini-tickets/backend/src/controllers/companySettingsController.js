@@ -41,6 +41,9 @@ const getCompanySettings = async (req, res) => {
     // Default de horas si nunca se seteo
     if (row.ticket_response_time_hours == null) data.ticket_response_time_hours = 48;
 
+    // Umbral de demora: default 3 días si no está configurado.
+    if (row.delayed_days_threshold == null) data.delayed_days_threshold = 3;
+
     res.json({ success: true, data });
   } catch (error) {
     console.error('getCompanySettings:', error);
@@ -91,6 +94,16 @@ const updateCompanySettings = async (req, res) => {
       ? Math.max(1, parseInt(body.ticket_response_time_hours, 10) || 48)
       : null;
 
+    // Umbral configurable de demora (Monitor de Órdenes + cron de alertas).
+    // Clamp defensivo: mínimo 1, máximo 365 (1 año).
+    let delayedDaysThreshold = null;
+    if (body.delayed_days_threshold !== undefined && body.delayed_days_threshold !== null && body.delayed_days_threshold !== '') {
+      const parsed = parseInt(body.delayed_days_threshold, 10);
+      if (!Number.isNaN(parsed)) {
+        delayedDaysThreshold = Math.min(365, Math.max(1, parsed));
+      }
+    }
+
     let logoUrl = null;
     if (file && file.filename) {
       logoUrl = `/uploads/${file.filename}`;
@@ -122,6 +135,11 @@ const updateCompanySettings = async (req, res) => {
       values.push(ticketResponseTimeHours);
       optionalFieldsOrder.push('ticket_response_time_hours');
     }
+    if (delayedDaysThreshold !== null) {
+      updates.push('delayed_days_threshold = ?');
+      values.push(delayedDaysThreshold);
+      optionalFieldsOrder.push('delayed_days_threshold');
+    }
 
     values.push(ID);
     try {
@@ -132,7 +150,7 @@ const updateCompanySettings = async (req, res) => {
     } catch (colErr) {
       // Fallback: si alguna columna opcional no existe, se retira y se reintenta.
       const msg = colErr.message || '';
-      const removable = ['agents_can_view_movements', 'ticket_notification_emails', 'ticket_response_time_hours'];
+      const removable = ['agents_can_view_movements', 'ticket_notification_emails', 'ticket_response_time_hours', 'delayed_days_threshold'];
       let retried = false;
       for (const col of removable) {
         if (msg.includes(col)) {
