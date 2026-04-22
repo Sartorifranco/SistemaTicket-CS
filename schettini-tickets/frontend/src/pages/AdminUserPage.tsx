@@ -305,7 +305,7 @@ const AdminUsersPage: React.FC = () => {
                                                     </div>
                                                 </div>
                                             ) : user.role === 'agent' || user.role === 'supervisor' || user.role === 'admin' || user.role === 'viewer' ? (
-                                                <span className="text-gray-400 text-sm italic">Interno (Schettini)</span>
+                                                <span className="text-gray-400 text-sm italic">Interno (CASA SCHETTINI)</span>
                                             ) : null}
                                         </td>
 
@@ -431,7 +431,7 @@ const AdminUsersPage: React.FC = () => {
                                     <p className="text-xs text-gray-400 uppercase font-bold">Organización</p>
                                     <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mt-1">
                                         <FaBuilding className="text-gray-400"/>
-                                        {viewUser.role === 'client' ? (viewUser.company_name || 'Sin asignar') : 'Interno Schettini'}
+                                        {viewUser.role === 'client' ? (viewUser.company_name || 'Sin asignar') : 'Interno CASA SCHETTINI'}
                                     </p>
                                 </div>
                                 <div>
@@ -469,16 +469,30 @@ const AdminUsersPage: React.FC = () => {
 
             {/* MODAL CREAR / EDITAR */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative my-8">
-                        <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-                        
-                        <h2 className="text-2xl font-bold mb-2 text-gray-800 border-b pb-3">
-                            {isEditMode ? 'Editar Usuario' : 'Nuevo Usuario'}
-                        </h2>
-                        <p className="text-sm text-gray-500 mb-5">Completá los datos del usuario. Los campos con <span className="text-red-500">*</span> son obligatorios. Pasá el mouse o tocá el ícono de ayuda (?) junto a cada etiqueta para más información.</p>
-                        
-                        <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl relative flex flex-col max-h-[92vh]">
+                        {/* HEADER FIJO — título y cerrar siempre visibles */}
+                        <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-gray-200 flex-shrink-0">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800">
+                                    {isEditMode ? 'Editar Usuario' : 'Nuevo Usuario'}
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Completá los datos del usuario. Los campos con <span className="text-red-500">*</span> son obligatorios. Pasá el mouse o tocá el ícono de ayuda (?) junto a cada etiqueta para más información.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="flex-shrink-0 text-gray-400 hover:text-gray-600 text-3xl leading-none font-bold -mt-1"
+                                aria-label="Cerrar"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+                            {/* BODY SCROLLEABLE — los campos scrollean aquí, no todo el modal */}
+                            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
                                     Usuario <span className="text-red-500">*</span>
@@ -687,15 +701,17 @@ const AdminUsersPage: React.FC = () => {
                                 </div>
                             )}
 
-                            <div className="flex gap-4 mt-8 pt-4 border-t">
-                                <button 
+                            </div>
+                            {/* FOOTER FIJO — botones siempre visibles */}
+                            <div className="flex gap-4 px-6 py-4 border-t border-gray-200 bg-gray-50/60 rounded-b-xl flex-shrink-0">
+                                <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
                                     className="flex-1 bg-white border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition font-bold"
                                 >
                                     Cancelar
                                 </button>
-                                <button 
+                                <button
                                     type="submit"
                                     className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-bold shadow-lg"
                                 >

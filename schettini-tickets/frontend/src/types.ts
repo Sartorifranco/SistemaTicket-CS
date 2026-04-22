@@ -130,7 +130,13 @@ export interface TicketData {
     // Nombres expandidos (Joins)
     client_name: string; 
     agent_name: string | null;
-    
+
+    // Contacto del cliente (admin/agente lo ven en el detalle del ticket)
+    client_full_name?: string | null;
+    client_email?: string | null;
+    client_phone?: string | null;
+    business_name?: string | null;
+
     // 👇 AGREGA ESTO AQUÍ 👇
     user_username?: string; // Alias para compatibilidad con componentes viejos
     creator_name?: string;  // Otro alias común

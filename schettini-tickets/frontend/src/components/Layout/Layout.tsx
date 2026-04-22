@@ -45,9 +45,14 @@ const Layout: React.FC = () => {
     useEffect(() => {
         if (!socket || (user?.role !== 'agent' && user?.role !== 'supervisor')) return;
         const handler = (payload: { message?: string; count?: number }) => {
+            const count = payload.count ?? 0;
+            if (count <= 0) {
+                setDelayedOrdersAlert(null);
+                return;
+            }
             setDelayedOrdersAlert({
                 message: payload.message || '¡Atención! Tenés equipos demorados que revisar.',
-                count: payload.count ?? 1
+                count
             });
         };
         socket.on('delayed_orders_alert', handler);
@@ -116,7 +121,6 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/plans" className={getLinkClassName}><FaList /> Planes</NavLink></li>
                         <li><NavLink to="/admin/modules" className={getLinkClassName}><FaBox /> Módulos</NavLink></li>
                         <li><NavLink to="/admin/config" className={getLinkClassName}><FaCogs /> Config. Global</NavLink></li>
-                        <li><NavLink to="/admin/problemas" className={getLinkClassName}>Tipos de Problema</NavLink></li>
                         <li><NavLink to="/admin/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>
                     </>
                 );
@@ -124,6 +128,8 @@ const Layout: React.FC = () => {
                 const perms = user.permissions || [];
                 const hasTickets = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tickets);
                 const hasTasks = hasAnyPermission(perms, ['tasks_view']) || hasTickets;
+                // Marketing & Ofertas + Enviar Novedades habilitado globalmente para agentes (DOC1.2)
+                const hasMarketing = true;
                 const hasRepairs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.repair_orders);
                 const hasActivations = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activations);
                 const hasReady = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.ready_equipments);
@@ -148,6 +154,13 @@ const Layout: React.FC = () => {
                                 {hasTasks && <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Mis Tareas</NavLink></li>}
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
                                 {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
+                            </>
+                        )}
+                        {hasMarketing && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Comunicación</li>
+                                <li><NavLink to="/agent/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
+                                <li><NavLink to="/agent/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -333,7 +346,7 @@ const Layout: React.FC = () => {
             <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 text-white flex flex-col shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
                 <div className="h-20 flex items-center justify-center border-b border-gray-800 bg-gray-950 px-4">
                     {/* ✅ LOGO NUEVO: Lila.png */}
-                    <img src="/images/Lila.png" alt="Schettini" className="h-12 w-auto object-contain" />
+                    <img src="/images/Lila.png" alt="Casa Schettini" className="h-12 w-auto object-contain" />
                 </div>
                 <nav className="flex-grow p-4 overflow-y-auto"><ul className="space-y-1">{renderNavLinks()}</ul></nav>
                 <div className="p-4 border-t border-gray-800 bg-gray-950">

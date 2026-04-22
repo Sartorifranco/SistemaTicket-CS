@@ -51,7 +51,8 @@ const registerUser = async (req, res) => {
             role, status, company_id, department_id, plan,
             accepted_confidentiality_agreement,
             permissions, can_manage_tech_finances,
-            billing_type, contracted_services
+            billing_type, contracted_services,
+            is_company // DOC1.8: 0 = persona, 1 = empresa
         } = req.body;
 
         // 0. Acuerdo de confidencialidad (solo registro público; admin/supervisor eximidos)
@@ -139,17 +140,21 @@ const registerUser = async (req, res) => {
         const finalBillingType = (billing_type || '').trim() || null;
         const hasBilling = finalBillingType !== null;
         const hasContractedServices = contractedServicesStr !== null && contractedServicesStr !== '';
+        // DOC1.8: is_company se infiere también si vienen datos de empresa, por retro-compat
+        const finalIsCompany = (is_company === 1 || is_company === true || is_company === '1')
+            ? 1
+            : (finalBusiness || finalCuit || finalFantasy) ? 1 : 0;
         const sql = `
             INSERT INTO Users (
                 username, full_name, email, password, role, is_active, 
                 phone, cuit, business_name, fantasy_name, 
-                company_id, department_id, plan, last_login
+                company_id, department_id, plan, is_company, last_login
                 ${hasPermissions ? ', permissions' : ''}
                 ${hasTechFinances ? ', can_manage_tech_finances' : ''}
                 ${hasBilling ? ', billing_type' : ''}
                 ${hasContractedServices ? ', contracted_services' : ''}
             ) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
                 ${hasPermissions ? ', ?' : ''}
                 ${hasTechFinances ? ', ?' : ''}
                 ${hasBilling ? ', ?' : ''}
@@ -158,7 +163,7 @@ const registerUser = async (req, res) => {
         `;
         const insertValues = [
             finalUsername, finalFullName, email, hashedPassword, userRole, isActive,
-            finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan
+            finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan, finalIsCompany
         ];
         if (hasPermissions) insertValues.push(permsVal);
         if (hasTechFinances) insertValues.push(1);
@@ -168,7 +173,12 @@ const registerUser = async (req, res) => {
         try {
             await pool.query(sql, insertValues);
         } catch (colErr) {
-            if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('full_name')) {
+            // Fallback 1: columna is_company todavía no existe (antes de correr la migración)
+            if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('is_company')) {
+                const sqlLegacy = sql.replace(', is_company', '').replace('?, ?, NOW()', '?, NOW()');
+                const legacyValues = insertValues.filter((_, i) => i !== 13);
+                await pool.query(sqlLegacy, legacyValues);
+            } else if (colErr.code === 'ER_BAD_FIELD_ERROR' && colErr.sqlMessage?.includes('full_name')) {
                 await pool.query(
                     `INSERT INTO Users (username, email, password, role, is_active, phone, cuit, business_name, fantasy_name, company_id, department_id, plan, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
                     [finalUsername, email, hashedPassword, userRole, isActive, finalPhone, finalCuit, finalBusiness, finalFantasy, finalCompanyId, userDepartment, userPlan]

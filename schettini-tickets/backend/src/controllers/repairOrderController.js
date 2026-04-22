@@ -176,7 +176,7 @@ const getMonitorOrders = async (req, res) => {
     const itemsMap = {};
     if (ids.length > 0) {
       const [items] = await pool.query(
-        'SELECT repair_order_id, equipment_type, brand, model FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
+        'SELECT repair_order_id, equipment_type, brand, model, is_warranty FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
         [ids]
       );
       items.forEach((it) => {
@@ -187,11 +187,14 @@ const getMonitorOrders = async (req, res) => {
     const data = rows.map((r) => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
+      // DOC2.3: marca "híbrida" — orden que no es globalmente garantía pero tiene al menos un equipo con garantía
+      const hasWarrantyItems = items.some((it) => it.is_warranty === 1 || it.is_warranty === true);
       return normalizeRowDates({
         ...r,
         equipment_type: first.equipment_type,
         brand: first.brand,
-        model: first.model
+        model: first.model,
+        has_warranty_items: hasWarrantyItems ? 1 : 0
       });
     });
     res.json({ success: true, data });
@@ -768,6 +771,15 @@ const updateRepairOrder = async (req, res) => {
     if (publicNotes !== undefined) add('public_notes', publicNotes);
     if (sparePartsDetail !== undefined) {
       add('spare_parts_detail', sparePartsDetail);
+      // Al actualizar la orden se re-crean los movimientos de repuestos.
+      // Antes se insertaban duplicados cada vez que se editaba la orden, así que
+      // primero eliminamos los previos asociados a esta orden y luego re-insertamos
+      // los que correspondan al contenido actual de spare_parts_detail.
+      try {
+        await pool.query('DELETE FROM article_movements WHERE order_id = ?', [id]);
+      } catch (delErr) {
+        console.error('[updateRepairOrder] error limpiando article_movements:', delErr.message);
+      }
       if (sparePartsDetail && String(sparePartsDetail).trim()) {
         await insertArticleMovementsFromSpareParts(id, sparePartsDetail, req.user?.id);
       }

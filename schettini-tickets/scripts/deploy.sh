@@ -14,6 +14,17 @@ cd "$ROOT_DIR"
 echo ">>> Raíz del proyecto: $ROOT_DIR"
 echo ""
 
+# ╭──────────────────────────────────────────────────────────────────────────╮
+# │  SALVAGUARDA Centro de Ayuda: snapshot ANTES de tocar la DB.             │
+# │  Si alguna migración accidentalmente pierde folder_id, kb-restore.js     │
+# │  al final del deploy reasigna las carpetas desde este backup.            │
+# ╰──────────────────────────────────────────────────────────────────────────╯
+if [[ -f "backend/scripts/kb-backup.js" ]]; then
+    echo ">>> [Salvaguarda] Snapshot de estructura del Centro de Ayuda..."
+    (cd backend && node scripts/kb-backup.js) || true
+    echo ""
+fi
+
 # Opcional: actualizar código desde Git
 if [[ "$1" == "--pull" ]]; then
     if [[ -d ".git" ]]; then
@@ -65,6 +76,29 @@ fi
 if [[ -f "backend/scripts/run-alter-status-enum.js" ]]; then
     echo ">>> Actualizando ENUM status (abandonado)..."
     (cd backend && node scripts/run-alter-status-enum.js) || true
+    echo ""
+fi
+
+# Campos de fechas en repair_orders (accepted_date, promised_date, delivered_date, warranty_expiration_date, public_notes, spare_parts_detail)
+if [[ -f "backend/scripts/run-alter-repair-orders.js" ]]; then
+    echo ">>> Agregando campos extra a repair_orders (promised_date, etc.)..."
+    (cd backend && node scripts/run-alter-repair-orders.js) || true
+    echo ""
+fi
+
+# Área de Reciclaje: columnas recycling_notes y recycling_photos en repair_orders + rol viewer en Users
+if [[ -f "backend/scripts/add-recycling-columns.js" ]]; then
+    echo ">>> Agregando columnas de Reciclaje y rol Viewer..."
+    (cd backend && node scripts/add-recycling-columns.js) || true
+    echo ""
+fi
+
+# SALVAGUARDA system_options: proteger accesorios/marcas/modelos que el admin ya
+# configuró. Debe correr ANTES de migrate-repair-orders-advanced.js, para que
+# éste no re-inyecte los defaults eliminados por el cliente.
+if [[ -f "backend/scripts/protect-system-options.js" ]]; then
+    echo ">>> [Salvaguarda] Protegiendo listas dinámicas (accesorios, marcas, etc.)..."
+    (cd backend && node scripts/protect-system-options.js) || true
     echo ""
 fi
 
@@ -177,6 +211,24 @@ fi
 if [[ -f "backend/scripts/fix-ticket-assigned-clients.js" ]]; then
     echo ">>> Reparando tickets con clientes asignados como agentes..."
     (cd backend && node scripts/fix-ticket-assigned-clients.js) || true
+    echo ""
+fi
+
+# Migración Casa Schettini (abril 2026): ticket_notification_emails, ticket_response_time_hours, Users.is_company
+if [[ -f "backend/scripts/add-ticket-notification-and-response-fields.js" ]]; then
+    echo ">>> Ejecutando migración ticket notification + response time + is_company..."
+    (cd backend && node scripts/add-ticket-notification-and-response-fields.js) || true
+    echo ""
+fi
+
+# ╭──────────────────────────────────────────────────────────────────────────╮
+# │  RESTAURACIÓN Centro de Ayuda: si alguna migración desorganizó los       │
+# │  drivers/tutoriales/videos (folder_id = NULL), se reasignan a su carpeta │
+# │  original desde el snapshot guardado en kb-backup.                       │
+# ╰──────────────────────────────────────────────────────────────────────────╯
+if [[ -f "backend/scripts/kb-restore.js" ]]; then
+    echo ">>> [Salvaguarda] Verificando estructura del Centro de Ayuda..."
+    (cd backend && node scripts/kb-restore.js) || true
     echo ""
 fi
 

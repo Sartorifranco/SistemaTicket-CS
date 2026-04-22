@@ -15,49 +15,55 @@ interface ClientMetrics {
 
 // --- Componente del Modal para Crear Ticket ---
 const CreateTicketModal: React.FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => void; }> = ({ isOpen, onClose, onSuccess }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user } = useAuth();
-    const [ticketCategoryId, setTicketCategoryId] = useState('');
-    const [ticketCategories, setTicketCategories] = useState<{ id: number; name: string }[]>([]);
     const [description, setDescription] = useState('');
     const [departmentId, setDepartmentId] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(false);
+    const [responseTimeHours, setResponseTimeHours] = useState<number>(48);
 
     useEffect(() => {
         if (isOpen) {
             const fetchData = async () => {
                 try {
-                    const [deptsRes, catsRes] = await Promise.all([
+                    const [deptsRes, cfgRes] = await Promise.all([
                         api.get('/api/departments'),
-                        api.get('/api/settings/ticket-categories')
+                        api.get('/api/settings/company').catch(() => ({ data: { data: {} } })),
                     ]);
                     setDepartments(deptsRes.data.data || []);
-                    setTicketCategories(catsRes.data.data || []);
+                    const data = cfgRes.data?.data ?? cfgRes.data;
+                    const h = Number(data?.ticket_response_time_hours);
+                    if (Number.isFinite(h) && h > 0) setResponseTimeHours(h);
                 } catch {
                     toast.error('No se pudieron cargar los datos.');
                 }
             };
             fetchData();
         } else {
-            setTicketCategoryId('');
+            setDescription('');
+            setDepartmentId('');
+            setAttachments([]);
         }
     }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!ticketCategoryId || !description.trim() || !departmentId) {
+        if (!description.trim() || !departmentId) {
             toast.error('Por favor, complete todos los campos.');
             return;
         }
-        const categoryName = ticketCategories.find(c => String(c.id) === ticketCategoryId)?.name || 'Otro';
         setLoading(true);
+        // El título del ticket se deriva de las primeras palabras de la descripción
+        const firstLine = description.trim().split(/\n/)[0];
+        const autoTitle = firstLine.length > 60 ? `${firstLine.substring(0, 57)}...` : firstLine;
         const formData = new FormData();
-        formData.append('title', categoryName);
+        formData.append('title', autoTitle || 'Consulta del cliente');
         formData.append('description', description);
         formData.append('department_id', departmentId);
-        formData.append('priority', 'medium'); // Prioridad por defecto
-        
+        formData.append('priority', 'medium');
+
         attachments.forEach(file => {
             formData.append('attachments', file);
         });
@@ -84,17 +90,19 @@ const CreateTicketModal: React.FC<{ isOpen: boolean; onClose: () => void; onSucc
                 <h2 className="text-xl font-bold mb-4">Crear Nuevo Ticket</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Tipo de Problema</label>
-                        <select value={ticketCategoryId} onChange={e => setTicketCategoryId(e.target.value)} className="w-full p-2 border rounded-md mt-1" required>
-                            <option value="">Seleccione categoría</option>
-                            {ticketCategories.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Descripción</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full p-2 border rounded-md mt-1 h-28" required />
+                        <label className="block text-sm font-medium text-gray-700 flex items-center gap-2 flex-wrap">
+                            <span>¿Qué está sucediendo?</span>
+                            <span className="text-xs font-normal text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                                Responderemos su consulta en un plazo máximo de {responseTimeHours}hs hábiles
+                            </span>
+                        </label>
+                        <textarea
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            placeholder="Utilice esta sección para describir su consulta de manera clara y detallada. Cuanta más información nos brinde, más ágil y precisa podrá ser nuestra asistencia."
+                            className="w-full p-2 border rounded-md mt-1 h-32"
+                            required
+                        />
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700">Departamento</label>

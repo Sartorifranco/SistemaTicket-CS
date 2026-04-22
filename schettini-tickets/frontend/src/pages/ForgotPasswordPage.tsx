@@ -33,7 +33,7 @@ const ForgotPasswordPage: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-2xl">
                 <div>
-                    <img className="mx-auto h-24 sm:h-28 w-auto object-contain" src="/images/Lila.png" alt="Schettini" />
+                    <img className="mx-auto h-24 sm:h-28 w-auto object-contain" src="/images/Lila.png" alt="Casa Schettini" />
                     <h2 className="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
                         Recuperar contraseña
                     </h2>

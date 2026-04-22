@@ -47,34 +47,63 @@ const cronTask = cron.schedule('* * * * *', closeOldResolvedTickets);
 
 const DELAYED_DAYS_THRESHOLD = 3;
 
+// Estados que SÍ se consideran "trabajo activo del técnico" y pueden caer en demora.
+// Excluimos: listo/entregado/entregado_sin_reparacion/abandonado (fin de flujo),
+// en_espera (esperando repuesto/cliente, pausa legítima),
+// no_aceptado (cliente rechazó presupuesto → la orden está frenada por él, no por el técnico),
+// sin_reparacion (decidido no reparar, pausa legítima).
+const ACTIVE_STATUSES_FOR_DELAY = ['ingresado', 'cotizado', 'aceptado'];
+
+// Memoria del último "estado alertado" por técnico. Permite emitir count=0 cuando
+// un técnico deja de tener demoradas, así el banner del frontend se limpia solo.
+const lastAlertedByTech = new Map(); // technicianId (string) -> count
+
 const checkDelayedOrdersAndNotify = async (io) => {
     if (!io) return;
     let connection;
     try {
         connection = await pool.getConnection();
+        const placeholders = ACTIVE_STATUSES_FOR_DELAY.map(() => '?').join(',');
         const [rows] = await connection.execute(
             `SELECT id, order_number, technician_id, promised_date, entry_date, status
              FROM repair_orders
-             WHERE status NOT IN ('listo', 'entregado', 'entregado_sin_reparacion', 'abandonado')
+             WHERE status IN (${placeholders})
+               AND technician_id IS NOT NULL
                AND (
                  (promised_date IS NOT NULL AND promised_date < CURDATE())
                  OR (status IN ('ingresado', 'cotizado') AND entry_date < DATE_SUB(NOW(), INTERVAL ? DAY))
-               )
-             AND technician_id IS NOT NULL`,
-            [DELAYED_DAYS_THRESHOLD]
+               )`,
+            [...ACTIVE_STATUSES_FOR_DELAY, DELAYED_DAYS_THRESHOLD]
         );
         const byTech = {};
         for (const row of rows) {
-            const tid = row.technician_id;
+            const tid = String(row.technician_id);
             if (!byTech[tid]) byTech[tid] = [];
             byTech[tid].push(row);
         }
+
+        // 1) Emitir el estado actual (count real) a cada técnico con demoras activas.
+        const currentTechs = new Set();
         for (const [technicianId, orders] of Object.entries(byTech)) {
+            currentTechs.add(technicianId);
             io.to(`user-${technicianId}`).emit('delayed_orders_alert', {
                 message: '¡Atención! Tenés equipos demorados que revisar.',
                 count: orders.length,
                 orderNumbers: orders.map((o) => o.order_number)
             });
+            lastAlertedByTech.set(technicianId, orders.length);
+        }
+
+        // 2) Limpiar banner de quienes ANTES tenían demoras y ahora ya no.
+        for (const technicianId of Array.from(lastAlertedByTech.keys())) {
+            if (!currentTechs.has(technicianId) && (lastAlertedByTech.get(technicianId) || 0) > 0) {
+                io.to(`user-${technicianId}`).emit('delayed_orders_alert', {
+                    message: '',
+                    count: 0,
+                    orderNumbers: []
+                });
+                lastAlertedByTech.set(technicianId, 0);
+            }
         }
     } catch (error) {
         console.error('[Cron Job] Error al revisar órdenes demoradas:', error);
@@ -85,6 +114,21 @@ const checkDelayedOrdersAndNotify = async (io) => {
 
 let delayedOrdersTask = null;
 
+// Backup periódico de la estructura del Centro de Ayuda.
+// Corre cada 10 min para mantener snapshot fresco; así si un deploy accidentalmente
+// borra/resetea folder_id, kb-restore.js puede recuperarlo desde el último backup.
+let kbBackupTask = null;
+const runKbBackup = async () => {
+    try {
+        const kbBackup = require('../../scripts/kb-backup');
+        if (typeof kbBackup === 'function') {
+            await kbBackup();
+        }
+    } catch (error) {
+        console.error('[Cron Job] Error en kb-backup:', error.message);
+    }
+};
+
 const startCronJobs = (io) => {
     console.log('Iniciando tareas programadas...');
     cronTask.start();
@@ -93,6 +137,10 @@ const startCronJobs = (io) => {
         delayedOrdersTask = cron.schedule('*/5 * * * *', () => checkDelayedOrdersAndNotify(io));
         delayedOrdersTask.start();
     }
+    // kb-backup: primer snapshot al arrancar + cada 10 minutos
+    runKbBackup();
+    kbBackupTask = cron.schedule('*/10 * * * *', runKbBackup);
+    kbBackupTask.start();
 };
 
 module.exports = { startCronJobs };

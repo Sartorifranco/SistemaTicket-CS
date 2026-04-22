@@ -60,7 +60,15 @@ const HelpTooltip: React.FC<HelpTooltipProps> = ({ text, useInfoIcon, className 
         )}
       </button>
       {show && (
-        <span className="absolute z-50 top-full left-0 mt-1.5 min-w-[200px] max-w-[300px] px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-xl border border-gray-700 whitespace-normal pointer-events-none">
+        <span
+          className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1.5 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-xl border border-gray-700 pointer-events-none text-left leading-snug"
+          style={{
+            width: 'max-content',
+            maxWidth: 'min(360px, 90vw)',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+          }}
+        >
           {text}
         </span>
       )}

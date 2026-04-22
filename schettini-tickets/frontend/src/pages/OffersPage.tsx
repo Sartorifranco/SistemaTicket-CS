@@ -38,7 +38,7 @@ const OffersPage = () => {
                 <div className="p-3 bg-red-100 text-red-600 rounded-full"><FaPercentage size={24}/></div>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Ofertas y Beneficios</h1>
-                    <p className="text-gray-500">Descuentos exclusivos para clientes Schettini.</p>
+                    <p className="text-gray-500">Descuentos exclusivos para clientes de CASA SCHETTINI.</p>
                 </div>
             </div>
 

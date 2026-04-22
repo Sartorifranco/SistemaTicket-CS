@@ -49,6 +49,8 @@ interface CompanySettings {
   default_warranty_months?: number | null;
   legal_terms_ticket?: string | null;
   agents_can_view_movements?: boolean | number | null;
+  ticket_notification_emails?: string[] | null;
+  ticket_response_time_hours?: number | null;
 }
 
 const defaultSettings: CompanySettings = {
@@ -70,9 +72,11 @@ const defaultSettings: CompanySettings = {
   default_warranty_months: null,
   legal_terms_ticket: null,
   agents_can_view_movements: false,
+  ticket_notification_emails: ['posventa@casaschettini.com'],
+  ticket_response_time_hours: 48,
 };
 
-type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'categorias-tickets' | 'cloud-contracts' | 'planilla-productos';
+type TabId = 'general' | 'finanzas' | 'taller' | 'accesorios' | 'marcas' | 'tipos-equipo' | 'modelos' | 'cloud-contracts' | 'planilla-productos';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <FaBuilding /> },
@@ -82,7 +86,6 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'marcas', label: 'Marcas', icon: <FaTags /> },
   { id: 'tipos-equipo', label: 'Tipos de Equipo', icon: <FaList /> },
   { id: 'modelos', label: 'Modelos', icon: <FaCube /> },
-  { id: 'categorias-tickets', label: 'Categorías de Tickets', icon: <FaTicketAlt /> },
   { id: 'cloud-contracts', label: 'Gestor Contratos Cloud', icon: <FaCloud /> },
   { id: 'planilla-productos', label: 'Productos de Planilla', icon: <FaFileAlt /> },
 ];
@@ -428,9 +431,6 @@ const AdminCompanySettingsPage: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
-  const [ticketCategories, setTicketCategories] = useState<{ id: number; name: string }[]>([]);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [sparePartsUploading, setSparePartsUploading] = useState(false);
   const sparePartsInputRef = useRef<HTMLInputElement>(null);
 
@@ -490,43 +490,11 @@ const AdminCompanySettingsPage: React.FC = () => {
     if (activeTab === 'cloud-contracts') fetchCloudContracts();
   }, [activeTab]);
 
-  const fetchTicketCategories = async () => {
-    setCategoriesLoading(true);
-    try {
-      const res = await api.get('/api/settings/ticket-categories');
-      setTicketCategories(res.data.data || []);
-    } catch {
-      toast.error('No se pudieron cargar las categorías de tickets');
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTicketCategories();
-  }, []);
-
   useEffect(() => {
     if (isAgent && !AGENT_ALLOWED_TABS.includes(activeTab)) {
       setActiveTab(defaultTabForAgent);
     }
   }, [isAgent, activeTab]);
-
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) {
-      toast.warn('Ingresá un nombre para la categoría');
-      return;
-    }
-    try {
-      await api.post('/api/settings/ticket-categories', { name: newCategoryName.trim() });
-      toast.success('Categoría agregada');
-      setNewCategoryName('');
-      fetchTicketCategories();
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al agregar';
-      toast.error(msg);
-    }
-  };
 
   const handleSparePartsExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -581,18 +549,6 @@ const AdminCompanySettingsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteCategory = async (id: number) => {
-    if (!window.confirm('¿Eliminar esta categoría?')) return;
-    try {
-      await api.delete(`/api/settings/ticket-categories/${id}`);
-      toast.success('Categoría eliminada');
-      fetchTicketCategories();
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar';
-      toast.error(msg);
-    }
-  };
-
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -617,6 +573,12 @@ const AdminCompanySettingsPage: React.FC = () => {
           default_warranty_months: data.default_warranty_months != null ? Number(data.default_warranty_months) : null,
           legal_terms_ticket: data.legal_terms_ticket ?? null,
           agents_can_view_movements: data.agents_can_view_movements === 1 || data.agents_can_view_movements === true,
+          ticket_notification_emails: Array.isArray(data.ticket_notification_emails)
+            ? data.ticket_notification_emails
+            : (typeof data.ticket_notification_emails === 'string' && data.ticket_notification_emails.trim()
+                ? data.ticket_notification_emails.split(/[,\n;]+/).map((e: string) => e.trim()).filter(Boolean)
+                : ['posventa@casaschettini.com']),
+          ticket_response_time_hours: data.ticket_response_time_hours != null ? Number(data.ticket_response_time_hours) : 48,
         });
         if (data.logo_url) {
           setLogoPreview(getImageUrl(data.logo_url));
@@ -666,6 +628,14 @@ const AdminCompanySettingsPage: React.FC = () => {
       form.append('default_warranty_months', formData.default_warranty_months != null ? String(formData.default_warranty_months) : '');
       form.append('legal_terms_ticket', formData.legal_terms_ticket ?? '');
       form.append('agents_can_view_movements', formData.agents_can_view_movements ? '1' : '0');
+      const emailsList = Array.isArray(formData.ticket_notification_emails)
+        ? formData.ticket_notification_emails.filter((e) => e && e.trim())
+        : [];
+      form.append('ticket_notification_emails', emailsList.join(','));
+      form.append(
+        'ticket_response_time_hours',
+        formData.ticket_response_time_hours != null ? String(formData.ticket_response_time_hours) : '48'
+      );
 
       if (logoFile) {
         form.append('logo', logoFile);
@@ -1096,6 +1066,55 @@ const AdminCompanySettingsPage: React.FC = () => {
             </label>
           </div>
           <p className="text-xs text-blue-600 -mt-2">ℹ️ Si está activo, los usuarios con rol Agente podrán ver el listado de repuestos utilizados en las órdenes de taller.</p>
+
+          {/* Notificaciones y tiempo de respuesta de tickets (DOC1.1 + DOC1.10) */}
+          <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg space-y-4">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <FaTicketAlt className="text-teal-600" /> Notificación y Respuesta de Tickets
+            </h3>
+
+            <div>
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <FaEnvelope className="text-teal-600" /> Correos que reciben aviso al abrirse un ticket
+              </label>
+              <textarea
+                rows={3}
+                value={(formData.ticket_notification_emails || []).join(', ')}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const list = raw.split(/[,\n;]+/).map((x) => x.trim()).filter(Boolean);
+                  setFormData({ ...formData, ticket_notification_emails: list });
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none resize-y"
+                placeholder="posventa@casaschettini.com, otro@casaschettini.com"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Separá los correos con coma, punto y coma o salto de línea. Si está vacío, se usará <strong>posventa@casaschettini.com</strong> por defecto.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Tiempo máximo de respuesta (horas hábiles)
+              </label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={formData.ticket_response_time_hours ?? 48}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  ticket_response_time_hours: e.target.value ? parseInt(e.target.value, 10) : null,
+                })}
+                className="w-full md:w-40 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                placeholder="48"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Se muestra al cliente cuando abre un ticket. Valor por defecto: 48 horas hábiles.
+              </p>
+            </div>
+          </div>
+
           <div className="pt-4 border-t">
             <button
               type="submit"
@@ -1146,56 +1165,6 @@ const AdminCompanySettingsPage: React.FC = () => {
           description="Modelos de equipos que podés seleccionar o escribir al crear órdenes de reparación."
           placeholder="Ej: LaserJet Pro, ThinkPad X1..."
         />
-      )}
-
-      {/* Tab: Categorías de Tickets */}
-      {activeTab === 'categorias-tickets' && (
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
-            <FaTicketAlt className="text-teal-600" /> Categorías de Tickets
-          </h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Estas categorías se muestran como &quot;Tipo de Problema&quot; cuando el cliente crea un ticket. El título del ticket se genera automáticamente a partir de la categoría seleccionada.
-          </p>
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-              placeholder="Ej: Consulta de Precios"
-              className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleAddCategory}
-              className="px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 flex items-center gap-2"
-            >
-              <FaPlus /> Agregar
-            </button>
-          </div>
-          {categoriesLoading ? (
-            <p className="text-gray-500">Cargando categorías...</p>
-          ) : ticketCategories.length === 0 ? (
-            <p className="text-gray-500 italic">No hay categorías. Agregá al menos una para que los clientes puedan crear tickets.</p>
-          ) : (
-            <ul className="space-y-2">
-              {ticketCategories.map((cat) => (
-                <li key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <span className="font-medium text-gray-800">{cat.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                    title="Eliminar"
-                  >
-                    <FaTrash />
-                  </button>
-                </li>
-              )          )}
-        </ul>
-          )}
-        </div>
       )}
 
       {activeTab === 'planilla-productos' && (

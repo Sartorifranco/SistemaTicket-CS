@@ -46,11 +46,12 @@ const LoginPage: React.FC = () => {
                     <img
                         className="mx-auto h-24 sm:h-28 w-auto object-contain"
                         src="/images/Lila.png"
-                        alt="Schettini"
+                        alt="Casa Schettini"
                     />
-                    <h2 className="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
-                        Bienvenido
+                    <h2 className="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-wide">
+                        CASA SCHETTINI
                     </h2>
+                    <p className="text-center text-sm text-gray-500 mt-1">Bienvenido</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     {error && (
