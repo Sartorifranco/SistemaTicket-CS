@@ -113,14 +113,20 @@ const AdminPromotionsPage = () => {
                     </div>
 
                     <div className="md:col-span-2">
-                        <label className="block text-sm text-gray-500 mb-1">Imagen:</label>
-                        <input
-                            id="fileInput"
-                            type="file"
-                            onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)}
-                            accept="image/png,image/jpeg,image/webp"
-                        />
-                        <small className="block mt-1 text-gray-500 text-sm">
+                        <label className="block text-sm text-gray-500 mb-1" htmlFor="fileInput">
+                            Imagen:
+                        </label>
+                        {/* Input group: control nativo (botón «Elegir archivo» / nombre según navegador) */}
+                        <div className="mt-1">
+                            <input
+                                id="fileInput"
+                                type="file"
+                                onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)}
+                                accept="image/png,image/jpeg,image/webp"
+                                className="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border file:border-gray-300 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-50"
+                            />
+                        </div>
+                        <small className="block mt-2 text-sm text-gray-500 leading-snug">
                             Formatos aceptados: JPG, PNG, WEBP. Tamaño máximo: 200MB.
                         </small>
                     </div>
