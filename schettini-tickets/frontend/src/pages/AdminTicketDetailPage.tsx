@@ -141,13 +141,45 @@ const AdminTicketDetailPage: React.FC = () => {
                     <div className="lg:col-span-2 space-y-6">
                         <SectionCard title="Detalles del Ticket">
                             <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><strong className="block text-gray-500">Cliente:</strong> {ticket.client_name}</div>
+                                <div><strong className="block text-gray-500">Cliente:</strong> {ticket.client_full_name || ticket.client_name}</div>
                                 <div><strong className="block text-gray-500">Departamento:</strong> {ticket.ticket_department_name ? `${ticket.ticket_department_name} (${ticket.department_id})` : ticket.department_id}</div>
-                                <div><strong className="block text-gray-500">Categoría:</strong> {ticket.ticket_category_name || 'Sin categoría'}</div>
                                 <div><strong className="block text-gray-500">Creado:</strong> {formatLocalDate(ticket.created_at)}</div>
                             </div>
                             <h3 className="text-lg font-semibold mt-4 mb-2">Descripción</h3>
                             <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+                        </SectionCard>
+
+                        {/* Contacto del cliente — visible para admin/agente */}
+                        <SectionCard title="Contacto del Cliente">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                {ticket.business_name && (
+                                    <div className="sm:col-span-2">
+                                        <strong className="block text-gray-500">Empresa:</strong>
+                                        <span>{ticket.business_name}</span>
+                                    </div>
+                                )}
+                                <div>
+                                    <strong className="block text-gray-500">Email:</strong>
+                                    {ticket.client_email ? (
+                                        <a href={`mailto:${ticket.client_email}`} className="text-blue-600 hover:underline break-all">
+                                            {ticket.client_email}
+                                        </a>
+                                    ) : <span className="text-gray-400">No registrado</span>}
+                                </div>
+                                <div>
+                                    <strong className="block text-gray-500">Teléfono / WhatsApp:</strong>
+                                    {ticket.client_phone ? (
+                                        <a
+                                            href={`https://wa.me/${String(ticket.client_phone).replace(/[^0-9]/g, '')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-green-600 hover:underline"
+                                        >
+                                            {ticket.client_phone}
+                                        </a>
+                                    ) : <span className="text-gray-400">No registrado</span>}
+                                </div>
+                            </div>
                         </SectionCard>
 
                         {ticket.activation_data && (

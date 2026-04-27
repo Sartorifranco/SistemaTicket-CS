@@ -57,19 +57,38 @@ const createTicket = async (req, res) => {
             }
         }
 
-        // Email a staff (no bloqueante): si falla el envío no debe afectar la respuesta
+        // Email de notificación de nuevo ticket (no bloqueante).
+        // Destinatarios configurables desde Admin → Configuración Central → ticket_notification_emails.
+        // Si no hay configuración, cae por default a posventa@casaschettini.com.
         try {
             const [clientRow] = await pool.query('SELECT COALESCE(full_name, username, email) AS client_name FROM Users WHERE id = ?', [effectiveUserId]);
             const clientName = (clientRow[0] && clientRow[0].client_name) ? String(clientRow[0].client_name) : 'Un cliente';
-            const [staffWithEmail] = await pool.query(
-                "SELECT id, email FROM Users WHERE role IN ('admin', 'agent', 'supervisor') AND (is_active = 1 OR is_active IS NULL) AND email IS NOT NULL AND email != ''"
-            );
+
+            let configuredEmails = null;
+            try {
+                const [cfg] = await pool.query('SELECT ticket_notification_emails FROM company_settings WHERE id = 1 LIMIT 1');
+                configuredEmails = cfg[0]?.ticket_notification_emails || null;
+            } catch (cfgErr) {
+                // columna puede no existir todavía en BD viejas (antes de migrar)
+                configuredEmails = null;
+            }
+
+            let recipients = [];
+            if (configuredEmails && typeof configuredEmails === 'string') {
+                recipients = configuredEmails
+                    .split(/[,\n;]+/)
+                    .map((e) => e.trim())
+                    .filter((e) => e && /\S+@\S+\.\S+/.test(e));
+            }
+            if (recipients.length === 0) {
+                // Fallback al destinatario por defecto
+                recipients = ['posventa@casaschettini.com'];
+            }
+
             const subject = `Nuevo ticket #${ticketId}: ${finalTitle}`;
             const htmlBody = `<p>Se ha creado un nuevo ticket.</p><p><strong>Ticket #${ticketId}</strong>: ${finalTitle}</p><p>Cliente: ${clientName}</p><p>Revisá el panel para asignarlo y responder.</p>`;
-            staffWithEmail.forEach((row) => {
-                if (row.email && row.id !== user.id) {
-                    sendTicketEmail(row.email, subject, htmlBody).catch(() => {});
-                }
+            recipients.forEach((to) => {
+                sendTicketEmail(to, subject, htmlBody).catch(() => {});
             });
         } catch (mailErr) {
             console.error('[createTicket] email notification error:', mailErr.message);
@@ -153,7 +172,13 @@ const getTickets = async (req, res) => {
 const getTicketById = async (req, res) => {
     try {
         const [tickets] = await pool.query(`
-            SELECT t.*, u.username as client_name, u.business_name, a.username as agent_name
+            SELECT t.*,
+                   u.username AS client_name,
+                   u.full_name AS client_full_name,
+                   u.business_name,
+                   u.email AS client_email,
+                   u.phone AS client_phone,
+                   a.username AS agent_name
             FROM Tickets t
             LEFT JOIN Users u ON t.user_id = u.id
             LEFT JOIN Users a ON t.assigned_to_user_id = a.id
@@ -274,6 +299,25 @@ const addCommentToTicket = async (req, res) => {
         await pool.query('INSERT INTO comments (ticket_id, user_id, comment_text, is_internal, created_at) VALUES (?, ?, ?, ?, NOW())',
             [ticketId, req.user.id, comment_text, internal]);
         await createActivityLog(req.user.id, 'ticket', 'comment_added', `Comentario agregado al ticket #${ticketId}`, parseInt(ticketId), null, { preview: (comment_text || '').substring(0, 50) });
+
+        // DOC1.7: guardar archivos multimedia adjuntos al comentario como attachments del ticket.
+        // Reutiliza ticket_attachments para que se rendericen en la sección "Archivos Adjuntos" del detalle.
+        if (Array.isArray(req.files) && req.files.length > 0) {
+            try {
+                const rows = req.files.map((f) => [
+                    ticketId,
+                    f.originalname,
+                    `/uploads/${f.filename}`,
+                    f.mimetype || null,
+                ]);
+                await pool.query(
+                    'INSERT INTO ticket_attachments (ticket_id, file_name, file_url, file_type) VALUES ?',
+                    [rows]
+                );
+            } catch (attErr) {
+                console.error('[addCommentToTicket] error guardando adjuntos:', attErr.message);
+            }
+        }
 
         // Si quien responde es admin, agente o supervisor, notificar al cliente (salvo que sea nota interna)
         const commenterRole = req.user.role;

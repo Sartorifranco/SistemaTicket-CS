@@ -235,7 +235,7 @@ const getMonitorOrders = async (req, res) => {
     const itemsMap = {};
     if (ids.length > 0) {
       const [items] = await pool.query(
-        'SELECT repair_order_id, equipment_type, brand, model FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
+        'SELECT repair_order_id, equipment_type, brand, model, is_warranty FROM repair_order_items WHERE repair_order_id IN (?) ORDER BY sort_order, id',
         [ids]
       );
       items.forEach((it) => {
@@ -246,11 +246,14 @@ const getMonitorOrders = async (req, res) => {
     const data = rows.map((r) => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
+      // DOC2.3: marca "híbrida" — orden que no es globalmente garantía pero tiene al menos un equipo con garantía
+      const hasWarrantyItems = items.some((it) => it.is_warranty === 1 || it.is_warranty === true);
       return normalizeRowDates({
         ...r,
         equipment_type: first.equipment_type,
         brand: first.brand,
-        model: first.model
+        model: first.model,
+        has_warranty_items: hasWarrantyItems ? 1 : 0
       });
     });
     res.json({ success: true, data });

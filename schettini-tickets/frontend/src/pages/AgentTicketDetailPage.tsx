@@ -135,7 +135,7 @@ const AgentTicketDetailPage: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <strong className="block text-sm text-gray-500">Cliente</strong>
-                                <p className="text-lg">{ticket.client_name}</p>
+                                <p className="text-lg">{ticket.client_full_name || ticket.client_name}</p>
                             </div>
                             <div>
                                 <strong className="block text-sm text-gray-500">Departamento</strong>
@@ -148,6 +148,39 @@ const AgentTicketDetailPage: React.FC = () => {
                             <div className="sm:col-span-2">
                                 <strong className="block text-sm text-gray-500">Descripción</strong>
                                 <p className="whitespace-pre-wrap mt-1 p-3 bg-gray-50 rounded-md border">{ticket.description}</p>
+                            </div>
+                        </div>
+                    </SectionCard>
+
+                    {/* Contacto del cliente — visible para agente/supervisor */}
+                    <SectionCard title="Contacto del Cliente">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            {ticket.business_name && (
+                                <div className="sm:col-span-2">
+                                    <strong className="block text-gray-500">Empresa</strong>
+                                    <span>{ticket.business_name}</span>
+                                </div>
+                            )}
+                            <div>
+                                <strong className="block text-gray-500">Email</strong>
+                                {ticket.client_email ? (
+                                    <a href={`mailto:${ticket.client_email}`} className="text-blue-600 hover:underline break-all">
+                                        {ticket.client_email}
+                                    </a>
+                                ) : <span className="text-gray-400">No registrado</span>}
+                            </div>
+                            <div>
+                                <strong className="block text-gray-500">Teléfono / WhatsApp</strong>
+                                {ticket.client_phone ? (
+                                    <a
+                                        href={`https://wa.me/${String(ticket.client_phone).replace(/[^0-9]/g, '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-green-600 hover:underline"
+                                    >
+                                        {ticket.client_phone}
+                                    </a>
+                                ) : <span className="text-gray-400">No registrado</span>}
                             </div>
                         </div>
                     </SectionCard>

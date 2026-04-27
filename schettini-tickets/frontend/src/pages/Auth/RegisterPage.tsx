@@ -41,6 +41,9 @@ const RegisterPage: React.FC = () => {
     const [agreementText, setAgreementText] = useState(DEFAULT_AGREEMENT);
     const [acceptedAgreement, setAcceptedAgreement] = useState(false);
     
+    // DOC1.8: checkbox Persona / Empresa. Por defecto "Persona" (flujo más simple).
+    const [registrationType, setRegistrationType] = useState<'persona' | 'empresa'>('persona');
+
     const [formData, setFormData] = useState({
         full_name: '', // Nombre y apellido (identificación)
         username: '', // Usuario para login (puede usar usuario o email)
@@ -70,9 +73,11 @@ const RegisterPage: React.FC = () => {
         e.preventDefault();
 
         // 1. Validaciones
-        const required = ['full_name', 'username', 'email', 'phone', 'password', 'confirmPassword', 'cuit', 'business_name', 'fantasy_name'];
+        const baseRequired = ['full_name', 'username', 'email', 'phone', 'password', 'confirmPassword'];
+        const companyRequired = ['cuit', 'business_name', 'fantasy_name'];
+        const required = registrationType === 'empresa' ? [...baseRequired, ...companyRequired] : baseRequired;
         if (required.some(key => !formData[key as keyof typeof formData]?.trim())) {
-            toast.warning('Todos los campos son obligatorios.');
+            toast.warning('Todos los campos marcados son obligatorios.');
             return;
         }
         if (formData.password !== formData.confirmPassword) {
@@ -98,9 +103,10 @@ const RegisterPage: React.FC = () => {
                 email: formData.email,
                 phone: formData.phone,
                 password: formData.password,
-                cuit: formData.cuit,
-                business_name: formData.business_name,
-                fantasy_name: formData.fantasy_name,
+                cuit: registrationType === 'empresa' ? formData.cuit : '',
+                business_name: registrationType === 'empresa' ? formData.business_name : '',
+                fantasy_name: registrationType === 'empresa' ? formData.fantasy_name : '',
+                is_company: registrationType === 'empresa' ? 1 : 0,
                 accepted_confidentiality_agreement: true
             });
 
@@ -125,18 +131,21 @@ const RegisterPage: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
             <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
                 
-                {/* Panel Izquierdo (Visual): min-w y texto centrado/envuelto para que "Casa Schettini" no se corte */}
-                <div className="bg-red-700 p-6 sm:p-8 flex flex-col justify-center items-center text-white w-full md:w-[min(100%,18rem)] md:flex-shrink-0 md:max-w-[40%] min-w-0">
-                    {/* ✅ LOGO ACTUALIZADO: Lila.png (Agregado aquí) */}
-                    <img 
-                        src="/images/Lila.png" 
-                        alt="Schettini" 
-                        className="h-20 w-auto max-w-full object-contain mb-4 bg-white rounded-xl p-2" 
-                    />
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold mb-2 text-center px-2 w-full leading-tight break-words">
-                        {COMPANY_CONFIG.name}
-                    </h2>
-                    <p className="text-red-100 text-center text-sm px-2">Sistema de Gestión de Clientes</p>
+                {/* Panel Izquierdo: ancho controlado + título desde branding con salto de línea (evita texto cortado) */}
+                <div className="bg-red-700 p-6 sm:p-8 flex flex-col justify-center items-center text-white w-full md:w-[min(100%,20rem)] md:flex-shrink-0 md:max-w-[40%] min-w-0">
+                    <div className="flex flex-col items-center gap-4 w-full">
+                        <img
+                            src="/images/Lila.png"
+                            alt={COMPANY_CONFIG.name}
+                            className="h-20 sm:h-24 w-auto max-w-full object-contain bg-white rounded-xl p-3 shadow-lg"
+                        />
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-wide text-center px-2 w-full leading-tight break-words">
+                            {COMPANY_CONFIG.name}
+                        </h2>
+                        <p className="text-red-100 text-center text-xs sm:text-sm -mt-1 px-2">
+                            Sistema de Gestión de Clientes
+                        </p>
+                    </div>
                     <div className="mt-8 text-center text-xs opacity-80">
                         <p>¿Ya tienes cuenta?</p>
                         <Link to="/login" className="mt-2 inline-block bg-white text-red-700 px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition">
@@ -150,7 +159,41 @@ const RegisterPage: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Registro de Nuevo Cliente</h2>
                     
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        
+
+                        {/* DOC1.8: Selector Persona / Empresa */}
+                        <div>
+                            <label className={labelStyle}>Voy a registrar</label>
+                            <div className="grid grid-cols-2 gap-3 mt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setRegistrationType('persona')}
+                                    className={`px-4 py-3 rounded-lg border text-sm font-bold transition flex items-center justify-center gap-2 ${
+                                        registrationType === 'persona'
+                                            ? 'bg-red-600 text-white border-red-600 shadow'
+                                            : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
+                                    }`}
+                                >
+                                    <FaUser /> Persona
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRegistrationType('empresa')}
+                                    className={`px-4 py-3 rounded-lg border text-sm font-bold transition flex items-center justify-center gap-2 ${
+                                        registrationType === 'empresa'
+                                            ? 'bg-red-600 text-white border-red-600 shadow'
+                                            : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
+                                    }`}
+                                >
+                                    <FaBuilding /> Empresa
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                                {registrationType === 'persona'
+                                    ? 'Te pediremos solo los datos básicos de contacto.'
+                                    : 'Además de los datos de contacto, te pediremos los datos de la empresa que representás.'}
+                            </p>
+                        </div>
+
                         {/* SECCIÓN DATOS PERSONALES */}
                         <div>
                             <h3 className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2"><FaUser/> Datos de Contacto</h3>
@@ -189,33 +232,35 @@ const RegisterPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* SECCIÓN DATOS EMPRESA */}
-                        <div>
-                            <h3 className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2"><FaBuilding/> En Representación de</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelStyle}>Razón Social</label>
-                                    <div className="relative">
-                                        <FaBuilding className="absolute left-3 top-3 text-gray-400 text-xs"/>
-                                        <input name="business_name" type="text" placeholder="Empresa S.A." value={formData.business_name} onChange={handleChange} className={inputStyle} required />
+                        {/* SECCIÓN DATOS EMPRESA (sólo visible si registrationType === 'empresa') */}
+                        {registrationType === 'empresa' && (
+                            <div>
+                                <h3 className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2"><FaBuilding/> En Representación de</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={labelStyle}>Razón Social</label>
+                                        <div className="relative">
+                                            <FaBuilding className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                            <input name="business_name" type="text" placeholder="Empresa S.A." value={formData.business_name} onChange={handleChange} className={inputStyle} required />
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <label className={labelStyle}>CUIT</label>
-                                    <div className="relative">
-                                        <FaIdCard className="absolute left-3 top-3 text-gray-400 text-xs"/>
-                                        <input name="cuit" type="text" placeholder="20-12345678-9" value={formData.cuit} onChange={handleChange} className={inputStyle} required />
+                                    <div>
+                                        <label className={labelStyle}>CUIT</label>
+                                        <div className="relative">
+                                            <FaIdCard className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                            <input name="cuit" type="text" placeholder="20-12345678-9" value={formData.cuit} onChange={handleChange} className={inputStyle} required />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className={labelStyle}>Nombre de Fantasía</label>
-                                    <div className="relative">
-                                        <FaStore className="absolute left-3 top-3 text-gray-400 text-xs"/>
-                                        <input name="fantasy_name" type="text" placeholder="Mi Negocio" value={formData.fantasy_name} onChange={handleChange} className={inputStyle} required />
+                                    <div className="md:col-span-2">
+                                        <label className={labelStyle}>Nombre de Fantasía</label>
+                                        <div className="relative">
+                                            <FaStore className="absolute left-3 top-3 text-gray-400 text-xs"/>
+                                            <input name="fantasy_name" type="text" placeholder="Mi Negocio" value={formData.fantasy_name} onChange={handleChange} className={inputStyle} required />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* ACUERDO DE CONFIDENCIALIDAD */}
                         <div className="border-t pt-4">

@@ -2,6 +2,18 @@ const pool = require('../config/db');
 
 const ID = 1;
 
+// Normaliza el campo de emails aceptando array o CSV, devolviendo siempre CSV trimeado.
+const normalizeEmailList = (value) => {
+  if (value == null) return null;
+  const arr = Array.isArray(value)
+    ? value
+    : String(value).split(/[,\n;]+/);
+  const cleaned = arr
+    .map((e) => String(e).trim().toLowerCase())
+    .filter((e) => e && /\S+@\S+\.\S+/.test(e));
+  return cleaned.length > 0 ? cleaned.join(',') : null;
+};
+
 const getCompanySettings = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -15,6 +27,23 @@ const getCompanySettings = async (req, res) => {
     const data = { ...row };
     if (row.default_abandonment_days != null) data.recycling_days_abandonment = row.default_abandonment_days;
     if (row.legal_terms != null) data.legal_terms_ticket = row.legal_terms;
+
+    // Normalizar ticket_notification_emails para el frontend: array de strings
+    if (typeof row.ticket_notification_emails === 'string') {
+      data.ticket_notification_emails = row.ticket_notification_emails
+        .split(/[,\n;]+/)
+        .map((e) => e.trim())
+        .filter(Boolean);
+    } else if (!row.ticket_notification_emails) {
+      data.ticket_notification_emails = [];
+    }
+
+    // Default de horas si nunca se seteo
+    if (row.ticket_response_time_hours == null) data.ticket_response_time_hours = 48;
+
+    // Umbral de demora: default 3 días si no está configurado.
+    if (row.delayed_days_threshold == null) data.delayed_days_threshold = 3;
+
     res.json({ success: true, data });
   } catch (error) {
     console.error('getCompanySettings:', error);
@@ -59,6 +88,22 @@ const updateCompanySettings = async (req, res) => {
     const legalTermsTicket = (body.legal_terms_ticket ?? '').trim() || null;
     const agentsCanViewMovements = body.agents_can_view_movements === true || body.agents_can_view_movements === 'true' || body.agents_can_view_movements === 1 || body.agents_can_view_movements === '1';
 
+    // Nuevos campos (abril 2026)
+    const ticketNotificationEmails = normalizeEmailList(body.ticket_notification_emails);
+    const ticketResponseTimeHours = body.ticket_response_time_hours != null && body.ticket_response_time_hours !== ''
+      ? Math.max(1, parseInt(body.ticket_response_time_hours, 10) || 48)
+      : null;
+
+    // Umbral configurable de demora (Monitor de Órdenes + cron de alertas).
+    // Clamp defensivo: mínimo 1, máximo 365 (1 año).
+    let delayedDaysThreshold = null;
+    if (body.delayed_days_threshold !== undefined && body.delayed_days_threshold !== null && body.delayed_days_threshold !== '') {
+      const parsed = parseInt(body.delayed_days_threshold, 10);
+      if (!Number.isNaN(parsed)) {
+        delayedDaysThreshold = Math.min(365, Math.max(1, parsed));
+      }
+    }
+
     let logoUrl = null;
     if (file && file.filename) {
       logoUrl = `/uploads/${file.filename}`;
@@ -78,6 +123,24 @@ const updateCompanySettings = async (req, res) => {
       values.splice(5, 0, logoUrl);
     }
 
+    // Nuevos campos se agregan con fallback: si la columna no existe (BD vieja), los ignoramos.
+    const optionalFieldsOrder = [];
+    if (body.ticket_notification_emails !== undefined) {
+      updates.push('ticket_notification_emails = ?');
+      values.push(ticketNotificationEmails);
+      optionalFieldsOrder.push('ticket_notification_emails');
+    }
+    if (ticketResponseTimeHours !== null) {
+      updates.push('ticket_response_time_hours = ?');
+      values.push(ticketResponseTimeHours);
+      optionalFieldsOrder.push('ticket_response_time_hours');
+    }
+    if (delayedDaysThreshold !== null) {
+      updates.push('delayed_days_threshold = ?');
+      values.push(delayedDaysThreshold);
+      optionalFieldsOrder.push('delayed_days_threshold');
+    }
+
     values.push(ID);
     try {
       await pool.query(
@@ -85,14 +148,30 @@ const updateCompanySettings = async (req, res) => {
         values
       );
     } catch (colErr) {
-      if (colErr.message?.includes('agents_can_view_movements')) {
-        updates.pop();
-        values.pop();
+      // Fallback: si alguna columna opcional no existe, se retira y se reintenta.
+      const msg = colErr.message || '';
+      const removable = ['agents_can_view_movements', 'ticket_notification_emails', 'ticket_response_time_hours', 'delayed_days_threshold'];
+      let retried = false;
+      for (const col of removable) {
+        if (msg.includes(col)) {
+          const idx = updates.findIndex((u) => u.startsWith(`${col} =`));
+          if (idx >= 0) {
+            updates.splice(idx, 1);
+            // values sigue el mismo orden que updates más el ID al final
+            // buscamos la posición en values considerando que id está al final
+            values.splice(idx, 1);
+            retried = true;
+          }
+        }
+      }
+      if (retried) {
         await pool.query(
           `UPDATE company_settings SET ${updates.join(', ')} WHERE id = ?`,
           values
         );
-      } else throw colErr;
+      } else {
+        throw colErr;
+      }
     }
 
     const [rows] = await pool.query('SELECT * FROM company_settings WHERE id = ? LIMIT 1', [ID]);

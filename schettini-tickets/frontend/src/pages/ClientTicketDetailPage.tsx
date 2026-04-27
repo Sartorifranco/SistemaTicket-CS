@@ -30,6 +30,21 @@ const ClientTicketDetailPage: React.FC = () => {
     const [ticket, setTicket] = useState<TicketData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [responseTimeHours, setResponseTimeHours] = useState<number>(48);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await api.get('/api/settings/company');
+                const data = res.data?.data || res.data;
+                if (data?.ticket_response_time_hours != null) {
+                    setResponseTimeHours(Number(data.ticket_response_time_hours));
+                }
+            } catch {
+                // Mantiene default 48h si no se puede cargar la configuración
+            }
+        })();
+    }, []);
 
     const fetchTicketDetails = useCallback(async () => {
         if (!id) return;
@@ -48,28 +63,39 @@ const ClientTicketDetailPage: React.FC = () => {
         fetchTicketDetails();
     }, [fetchTicketDetails]);
 
-    const handleAddComment = async (commentText: string) => {
-        if (!commentText.trim() || !ticket) return;
-        
+    const handleAddComment = async (commentText: string, _isInternal: boolean, files?: File[]) => {
+        if ((!commentText.trim() && (!files || files.length === 0)) || !ticket) return;
+
         const newStatus = ticket.status === 'resolved' ? 'open' : ticket.status;
         try {
             if (newStatus === 'open' && ticket.status === 'resolved') {
                 await api.put(`/api/tickets/${ticket.id}/status`, { status: 'open' });
             }
-            
-            await api.post(`/api/tickets/${ticket.id}/comments`, {
-                comment_text: commentText,
-                is_internal: false
-            });
-            
-            toast.success("Comentario añadido.");
-            if (newStatus === 'open' && ticket.status === 'resolved') {
-                toast.info("El ticket ha sido reabierto.");
+
+            const hasFiles = Array.isArray(files) && files.length > 0;
+            if (hasFiles) {
+                const form = new FormData();
+                form.append('comment_text', commentText);
+                form.append('is_internal', '0');
+                files!.forEach((f) => form.append('attachments', f));
+                await api.post(`/api/tickets/${ticket.id}/comments`, form, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+            } else {
+                await api.post(`/api/tickets/${ticket.id}/comments`, {
+                    comment_text: commentText,
+                    is_internal: false,
+                });
             }
-            
+
+            toast.success(hasFiles ? 'Mensaje y adjuntos enviados.' : 'Comentario añadido.');
+            if (newStatus === 'open' && ticket.status === 'resolved') {
+                toast.info('El ticket ha sido reabierto.');
+            }
+
             fetchTicketDetails();
         } catch (err) {
-            toast.error("Error al añadir comentario.");
+            toast.error('Error al añadir comentario.');
         }
     };
 
@@ -107,7 +133,23 @@ const ClientTicketDetailPage: React.FC = () => {
                 <button onClick={() => navigate(-1)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg self-start sm:self-center">Volver</button>
             </div>
 
-            {/* ✅ CORRECCIÓN: Se añade el nuevo cartel para tickets cerrados automáticamente */}
+            {/* DOC1.6: Banner con tiempo máximo de respuesta (configurable, default 48hs hábiles).
+                Se muestra sólo cuando el ticket está abierto o en progreso. */}
+            {(ticket.status === 'open' || ticket.status === 'in-progress') && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 mb-4 rounded-md shadow-sm flex items-start gap-3" role="status">
+                    <svg className="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p className="font-bold">Tiempo máximo de respuesta</p>
+                        <p className="text-sm">
+                            Responderemos su consulta en un plazo máximo de <strong>{responseTimeHours}hs hábiles</strong>.
+                            Si necesita agregar información, puede hacerlo desde el chat de abajo.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {ticket.status === 'closed' && ticket.closure_reason === 'AUTO_INACTIVITY' && (
                 <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4 rounded-md shadow-md" role="alert">
                     <p className="font-bold">Ticket Cerrado por Inactividad</p>
@@ -207,7 +249,9 @@ const ClientTicketDetailPage: React.FC = () => {
                                 ))}
                     </div>
                     
-                    {ticket.status !== 'closed' && user && <CommentForm onAddComment={handleAddComment} userRole={user.role} />}
+                    {ticket.status !== 'closed' && user && (
+                        <CommentForm onAddComment={handleAddComment} userRole={user.role} allowAttachments />
+                    )}
                     {ticket.status === 'closed' && !ticket.closure_reason && (
                         <div className="text-center p-4 bg-gray-100 rounded-md">
                             <p className="text-gray-600 font-semibold">Este ticket está cerrado.</p>

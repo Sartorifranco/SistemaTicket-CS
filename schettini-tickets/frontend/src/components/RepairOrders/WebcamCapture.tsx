@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import Webcam from 'react-webcam';
-import { FaCamera, FaTimes } from 'react-icons/fa';
+import { FaCamera, FaTimes, FaUpload } from 'react-icons/fa';
 
 const PERSPECTIVE_OPTIONS = ['Frente', 'Abajo', 'Izquierdo', 'Derecho', 'Arriba', 'Atrás'] as const;
 const MAX_PHOTOS = 6;
@@ -18,6 +18,7 @@ interface WebcamCaptureProps {
 
 const WebcamCapture: React.FC<WebcamCaptureProps> = ({ photos, onPhotosChange }) => {
   const webcamRef = useRef<Webcam>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const capture = useCallback(() => {
     if (!webcamRef.current || photos.length >= MAX_PHOTOS) return;
@@ -44,6 +45,42 @@ const WebcamCapture: React.FC<WebcamCaptureProps> = ({ photos, onPhotosChange })
     onPhotosChange(photos.filter((_, i) => i !== index));
   };
 
+  // DOC2.5: permitir subir fotos desde el dispositivo (archivo/galería)
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'));
+      if (e.target) e.target.value = '';
+      if (files.length === 0) return;
+
+      const available = MAX_PHOTOS - photos.length;
+      if (available <= 0) return;
+      const toAdd = files.slice(0, available);
+
+      const readAsDataUrl = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+      try {
+        const newPhotos: CapturedPhoto[] = [];
+        for (let i = 0; i < toAdd.length; i++) {
+          const file = toAdd[i];
+          const dataUrl = await readAsDataUrl(file);
+          const idx = photos.length + newPhotos.length;
+          const label = PERSPECTIVE_OPTIONS[idx] ?? `Foto ${idx + 1}`;
+          newPhotos.push({ file, label, dataUrl });
+        }
+        onPhotosChange([...photos, ...newPhotos]);
+      } catch (err) {
+        console.error('Error leyendo archivo de imagen:', err);
+      }
+    },
+    [photos, onPhotosChange]
+  );
+
   const canCapture = photos.length < MAX_PHOTOS;
 
   return (
@@ -59,14 +96,36 @@ const WebcamCapture: React.FC<WebcamCaptureProps> = ({ photos, onPhotosChange })
               className="w-full h-full object-cover"
             />
           </div>
-          <button
-            type="button"
-            onClick={capture}
-            disabled={!canCapture}
-            className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FaCamera /> Tomar foto {photos.length > 0 && `(${photos.length}/${MAX_PHOTOS})`}
-          </button>
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={capture}
+              disabled={!canCapture}
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FaCamera /> Tomar foto
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!canCapture}
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Subir imagen desde el dispositivo"
+            >
+              <FaUpload /> Subir desde archivo
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1 text-center">
+            {photos.length}/{MAX_PHOTOS} fotos cargadas
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+          />
         </div>
 
         <div className="flex-1 min-w-[200px]">

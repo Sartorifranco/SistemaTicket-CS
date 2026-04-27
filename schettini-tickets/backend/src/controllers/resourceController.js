@@ -190,10 +190,13 @@ const updateResource = async (req, res) => {
         const updates = [];
         const values = [];
 
+        // Solo tocar section_id / system_id si vienen explícitamente en el payload.
+        // Antes los seteábamos SIEMPRE (con NULL si faltaban), y un PUT con solo título
+        // desorganizaba el recurso. Esto también protege al Centro de Ayuda.
         const secId = parseId(section_id);
         const sysId = parseId(system_id);
-        updates.push('section_id = ?', 'system_id = ?');
-        values.push(secId, sysId);
+        if ('section_id' in req.body) { updates.push('section_id = ?'); values.push(secId); }
+        if ('system_id' in req.body) { updates.push('system_id = ?'); values.push(sysId); }
 
         if (title !== undefined) { updates.push('title = ?'); values.push(title); }
         if (type !== undefined) { updates.push('type = ?'); values.push(type); }
@@ -219,6 +222,9 @@ const updateResource = async (req, res) => {
             values.push(`/uploads/${imageFile.filename}`);
         }
 
+        if (updates.length === 0) {
+            return res.json({ success: true, message: 'Sin cambios' });
+        }
         values.push(id);
         try {
             await pool.query(
@@ -227,10 +233,16 @@ const updateResource = async (req, res) => {
             );
         } catch (e) {
             if (e.message && (e.message.includes('section_id') || e.message.includes('folder_name') || e.message.includes('image_url') || e.message.includes('folder_id') || e.message.includes('Unknown column'))) {
-                await pool.query(
-                    'UPDATE knowledge_base SET section_id = ?, system_id = ? WHERE id = ?',
-                    [secId, sysId, id]
-                );
+                // Fallback muy conservador: solo tocar lo que haya venido en el payload
+                const fbUpdates = [];
+                const fbValues = [];
+                if (title !== undefined) { fbUpdates.push('title = ?'); fbValues.push(title); }
+                if (type !== undefined) { fbUpdates.push('type = ?'); fbValues.push(type); }
+                if (category !== undefined) { fbUpdates.push('category = ?'); fbValues.push(category || 'General'); }
+                if (fbUpdates.length > 0) {
+                    fbValues.push(id);
+                    await pool.query(`UPDATE knowledge_base SET ${fbUpdates.join(', ')} WHERE id = ?`, fbValues);
+                }
             } else throw e;
         }
         res.json({ success: true, message: 'Recurso actualizado' });

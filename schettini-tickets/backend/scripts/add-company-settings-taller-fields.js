@@ -2,6 +2,7 @@
  * Añade a company_settings: recycling_days_abandonment, default_warranty_months, legal_terms_ticket.
  * Ejecutar una vez: node scripts/add-company-settings-taller-fields.js (desde backend/)
  */
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
 
 async function run() {

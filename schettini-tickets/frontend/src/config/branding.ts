@@ -1,6 +1,6 @@
 export const COMPANY_CONFIG = {
-    name: "Casa Schettini",
-    shortName: "Schettini",
+    name: "CASA SCHETTINI",
+    shortName: "CASA SCHETTINI",
     logoPath: "/images/logo-schettini.png", 
     colors: {
         primary: "#D32F2F",

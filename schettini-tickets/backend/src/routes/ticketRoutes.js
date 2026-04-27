@@ -47,7 +47,8 @@ router.put('/:id/assign', authorize('admin', 'agent', 'supervisor'), assignTicke
 // 2. Reasignar Ticket (Delegar) -> Modal de "Reasignar" del Admin/Agente/Supervisor
 router.put('/:id/reassign', authorize('admin', 'agent', 'supervisor'), reassignTicket);
 
-router.post('/:id/comments', addCommentToTicket);
+// Permite subir archivos multimedia junto al comentario (hasta 5)
+router.post('/:id/comments', upload.array('attachments', 5), addCommentToTicket);
 router.get('/:id/comments', getTicketComments);
 
 module.exports = router;

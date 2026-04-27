@@ -48,49 +48,72 @@ async function main() {
     `);
     console.log('✓ Tabla system_options creada');
 
-    const [optCount] = await conn.query('SELECT COUNT(*) as n FROM system_options');
-    if (optCount[0].n === 0) {
-      const defaults = [
-        ['equipment_type', 'Impresora', 1],
-        ['equipment_type', 'PC / Notebook', 2],
-        ['equipment_type', 'Monitor', 3],
-        ['equipment_type', 'Otro', 99],
-        ['brand', 'HP', 1],
-        ['brand', 'Epson', 2],
-        ['brand', 'Canon', 3],
-        ['brand', 'Otro', 99],
-        ['model', 'Genérico', 1], ['model', 'ThinkPad', 2], ['model', 'Pavilion', 3], ['model', 'Inspiron', 4], ['model', 'Otro', 99],
-        ['labor_price', '5000', 1],
-        ['labor_price', '10000', 2],
-        ['labor_price', '15000', 3],
-        ['payment_method', 'Efectivo', 1],
-        ['payment_method', 'Transferencia', 2],
-        ['payment_method', 'Tarjeta', 3],
-        ['payment_method', 'Mercado Pago', 4],
-        ['accessories', 'Cargador', 1],
-        ['accessories', 'Mouse', 2],
-        ['accessories', 'Bolso', 3],
-        ['accessories', 'Cable', 4],
-        ['accessories', 'Ninguno', 99],
-        ['remote_platform', 'TeamViewer', 1],
-        ['remote_platform', 'AnyDesk', 2],
-        ['remote_platform', 'Google Meet', 3]
-      ];
-      for (const [cat, val, ord] of defaults) {
-        await conn.query('INSERT INTO system_options (category, value, sort_order) VALUES (?, ?, ?)', [cat, val, ord]);
+    // Tabla-marcador de categorías ya inicializadas (blindaje: el admin manda).
+    // protect-system-options.js la crea y la pre-popula en el deploy; acá aseguramos
+    // que exista por si alguien ejecuta este script de forma aislada.
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS system_options_seeded (
+        category VARCHAR(50) NOT NULL,
+        seeded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (category)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    const [seededRows] = await conn.query('SELECT category FROM system_options_seeded');
+    const seeded = new Set(seededRows.map((r) => r.category));
+
+    const DEFAULTS_BY_CATEGORY = {
+      equipment_type: [
+        ['Impresora', 1], ['PC / Notebook', 2], ['Monitor', 3], ['Otro', 99]
+      ],
+      brand: [
+        ['HP', 1], ['Epson', 2], ['Canon', 3], ['Otro', 99]
+      ],
+      model: [
+        ['Genérico', 1], ['ThinkPad', 2], ['Pavilion', 3], ['Inspiron', 4], ['Otro', 99]
+      ],
+      labor_price: [
+        ['5000', 1], ['10000', 2], ['15000', 3]
+      ],
+      payment_method: [
+        ['Efectivo', 1], ['Transferencia', 2], ['Tarjeta', 3], ['Mercado Pago', 4]
+      ],
+      accessories: [
+        ['Cargador', 1], ['Mouse', 2], ['Bolso', 3], ['Cable', 4], ['Ninguno', 99]
+      ],
+      remote_platform: [
+        ['TeamViewer', 1], ['AnyDesk', 2], ['Google Meet', 3]
+      ]
+    };
+
+    // Por cada categoría: sólo se seedea si (a) NO está marcada como protegida y
+    // (b) la categoría no tiene ni una sola fila todavía. Una vez seedeada se
+    // marca como protegida y nunca más se inyectan defaults (aunque el admin los borre).
+    for (const [category, items] of Object.entries(DEFAULTS_BY_CATEGORY)) {
+      if (seeded.has(category)) {
+        console.log(`  · ${category}: protegida, se respeta la configuración del admin.`);
+        continue;
       }
-      console.log('✓ Datos por defecto en system_options');
-    } else {
-      const extra = [
-        ['accessories', 'Cargador', 1], ['accessories', 'Mouse', 2], ['accessories', 'Bolso', 3], ['accessories', 'Cable', 4], ['accessories', 'Ninguno', 99],
-        ['remote_platform', 'TeamViewer', 1], ['remote_platform', 'AnyDesk', 2], ['remote_platform', 'Google Meet', 3]
-      ];
-      for (const [cat, val, ord] of extra) {
-        const [exists] = await conn.query('SELECT 1 FROM system_options WHERE category = ? AND value = ?', [cat, val]);
-        if (exists.length === 0) {
-          await conn.query('INSERT INTO system_options (category, value, sort_order) VALUES (?, ?, ?)', [cat, val, ord]);
-        }
+      const [existing] = await conn.query(
+        'SELECT COUNT(*) AS n FROM system_options WHERE category = ?',
+        [category]
+      );
+      if (existing[0].n > 0) {
+        // Ya había datos: el cliente probablemente ya configuró esta categoría en
+        // un deploy anterior; la marcamos protegida y no tocamos nada.
+        await conn.query('INSERT IGNORE INTO system_options_seeded (category) VALUES (?)', [category]);
+        console.log(`  · ${category}: tenía ${existing[0].n} items preexistentes → se marca como protegida.`);
+        seeded.add(category);
+        continue;
       }
+      for (const [val, ord] of items) {
+        await conn.query(
+          'INSERT INTO system_options (category, value, sort_order) VALUES (?, ?, ?)',
+          [category, val, ord]
+        );
+      }
+      await conn.query('INSERT IGNORE INTO system_options_seeded (category) VALUES (?)', [category]);
+      seeded.add(category);
+      console.log(`  ✓ ${category}: defaults insertados (${items.length}) y protegida para futuros deploys.`);
     }
 
     console.log('\n=== 2. Users: nuevos campos cliente ===\n');

@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS Users (
   plan_expiry DATE NULL,
   price DECIMAL(10,2) NULL,
   last_login DATETIME NULL,
+  is_company TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0 = persona, 1 = empresa (registro)',
   permissions VARCHAR(500) DEFAULT '["tickets_view","tickets_reply"]',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -391,6 +392,8 @@ CREATE TABLE IF NOT EXISTS company_settings (
   recycling_days_abandonment INT UNSIGNED NULL COMMENT 'Días para abandono en Área Reciclaje',
   default_warranty_months INT UNSIGNED NULL COMMENT 'Garantía por defecto en meses',
   legal_terms_ticket TEXT NULL COMMENT 'Términos legales para tickets',
+  ticket_notification_emails VARCHAR(1000) NULL COMMENT 'Correos separados por coma que reciben la notificación al crear un ticket',
+  ticket_response_time_hours INT UNSIGNED NOT NULL DEFAULT 48 COMMENT 'Horas hábiles máximo de respuesta al ticket (configurable)',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
