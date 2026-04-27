@@ -144,11 +144,11 @@ const App: React.FC = () => {
                             <Route path="/admin/tickets" element={<PrivateRoute roles={['admin']}><AdminTicketsPage /></PrivateRoute>} />
                             <Route path="/admin/tickets/:id" element={<PrivateRoute roles={['admin']}><AdminTicketDetailPage /></PrivateRoute>} />
                             <Route path="/admin/reports" element={<PrivateRoute roles={['admin']}><AdminReportsPage /></PrivateRoute>} />
-                            <Route path="/admin/announcements" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><AdminAnnouncementsPage /></PrivateRoute>} />
-                            <Route path="/admin/promotions" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><AdminPromotionsPage /></PrivateRoute>} />
+                            <Route path="/admin/announcements" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_announcements"><AdminAnnouncementsPage /></PrivateRoute>} />
+                            <Route path="/admin/promotions" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_promotions"><AdminPromotionsPage /></PrivateRoute>} />
                             {/* Aliases para rol agente (mismo componente) */}
-                            <Route path="/agent/announcements" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><AdminAnnouncementsPage /></PrivateRoute>} />
-                            <Route path="/agent/promotions" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><AdminPromotionsPage /></PrivateRoute>} />
+                            <Route path="/agent/announcements" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_announcements"><AdminAnnouncementsPage /></PrivateRoute>} />
+                            <Route path="/agent/promotions" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_promotions"><AdminPromotionsPage /></PrivateRoute>} />
                             <Route path="/admin/plans" element={<PrivateRoute roles={['admin']}><AdminPlansPage /></PrivateRoute>} />
                             <Route path="/admin/modules" element={<PrivateRoute roles={['admin']}><AdminModulesPage /></PrivateRoute>} />
                             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfigPage /></PrivateRoute>} />

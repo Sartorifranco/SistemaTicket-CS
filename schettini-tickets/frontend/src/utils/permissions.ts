@@ -128,6 +128,15 @@ export const PERMISSION_GROUPS = [
       { key: 'clients_view', label: 'Ver clientes y empresas' },
     ],
   },
+  {
+    id: 'marketing',
+    title: 'Marketing y comunicación',
+    icon: '📣',
+    perms: [
+      { key: 'marketing_promotions', label: 'Marketing y Ofertas (cargar y gestionar banners/ofertas)' },
+      { key: 'marketing_announcements', label: 'Enviar Novedades (anuncios masivos)' },
+    ],
+  },
 ] as const;
 
 /** Todos los permisos posibles (flat) */
@@ -148,6 +157,8 @@ export const SIDEBAR_PERMISSION_MAP = {
   tech_finances: ['tech_finances'],
   resources: ['resources_view'],
   clients: ['clients_view'],
+  marketing_promotions: ['marketing_promotions'],
+  marketing_announcements: ['marketing_announcements'],
 } as const;
 
 /** Verifica si el usuario tiene al menos uno de los permisos indicados */
@@ -183,4 +194,12 @@ export function migrateOldPermissions(perms: string[]): string[] {
 }
 
 /** Permisos por defecto para nuevos agentes/supervisores */
-export const DEFAULT_AGENT_PERMISSIONS = ['tickets_view', 'tickets_reply', 'repairs_view', 'repairs_edit', 'activity_logs_view'];
+export const DEFAULT_AGENT_PERMISSIONS = [
+  'tickets_view',
+  'tickets_reply',
+  'repairs_view',
+  'repairs_edit',
+  'activity_logs_view',
+  'marketing_promotions',
+  'marketing_announcements',
+];

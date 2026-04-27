@@ -129,7 +129,6 @@ const Layout: React.FC = () => {
                 const hasTickets = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tickets);
                 const hasTasks = hasAnyPermission(perms, ['tasks_view']) || hasTickets;
                 // Marketing & Ofertas + Enviar Novedades habilitado globalmente para agentes (DOC1.2)
-                const hasMarketing = true;
                 const hasRepairs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.repair_orders);
                 const hasActivations = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activations);
                 const hasReady = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.ready_equipments);
@@ -142,6 +141,9 @@ const Layout: React.FC = () => {
                 const hasTechFinances = user.can_manage_tech_finances || hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tech_finances);
                 const hasResources = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.resources);
                 const hasClients = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.clients);
+                const hasMarketingPromotions = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_promotions);
+                const hasMarketingAnnouncements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_announcements);
+                const hasMarketingSection = hasMarketingPromotions || hasMarketingAnnouncements;
                 const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
@@ -156,11 +158,15 @@ const Layout: React.FC = () => {
                                 {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
                             </>
                         )}
-                        {hasMarketing && (
+                        {hasMarketingSection && (
                             <>
                                 <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Comunicación</li>
-                                <li><NavLink to="/agent/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
-                                <li><NavLink to="/agent/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
+                                {hasMarketingPromotions && (
+                                    <li><NavLink to="/agent/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
+                                )}
+                                {hasMarketingAnnouncements && (
+                                    <li><NavLink to="/agent/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
+                                )}
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -271,6 +277,9 @@ const Layout: React.FC = () => {
                 const hasTechFinances = user.role === 'supervisor' || user.can_manage_tech_finances || hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tech_finances);
                 const hasResources = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.resources) || !perms.length;
                 const hasClients = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.clients) || !perms.length;
+                const hasMarketingPromotions = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_promotions);
+                const hasMarketingAnnouncements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_announcements);
+                const hasMarketingSection = hasMarketingPromotions || hasMarketingAnnouncements;
                 const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
@@ -283,6 +292,17 @@ const Layout: React.FC = () => {
                                 {hasTasks && <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>}
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Mis Reportes</NavLink></li>}
                                 {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
+                            </>
+                        )}
+                        {hasMarketingSection && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Comunicación</li>
+                                {hasMarketingPromotions && (
+                                    <li><NavLink to="/agent/promotions" className={getLinkClassName}><FaBullhorn /> Marketing y Ofertas</NavLink></li>
+                                )}
+                                {hasMarketingAnnouncements && (
+                                    <li><NavLink to="/agent/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
+                                )}
                             </>
                         )}
                         {hasAreaTecnica && (

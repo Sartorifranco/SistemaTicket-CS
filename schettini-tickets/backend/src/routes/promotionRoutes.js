@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const uploadsDir = require('../utils/uploadsDir');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const { getPromotions, createPromotion, deletePromotion, registerInterest } = require('../controllers/promotionController');
 
 // Config de subida
@@ -30,25 +30,35 @@ router.use(protect);
 
 router.get('/', getPromotions);
 
-router.post('/', authorize('admin'), (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
-        if (err) {
-            if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'La imagen supera el límite de 200MB. Por favor, comprímela antes de subirla.'
-                });
+router.post(
+    '/',
+    authorize('admin', 'agent', 'supervisor'),
+    authorizeByPermission('marketing_promotions'),
+    (req, res, next) => {
+        upload.single('image')(req, res, (err) => {
+            if (err) {
+                if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'La imagen supera el límite de 200MB. Por favor, comprímela antes de subirla.'
+                    });
+                }
+                const msg =
+                    typeof err.message === 'string' && err.message.trim()
+                        ? err.message
+                        : 'No se pudo procesar el archivo.';
+                return res.status(400).json({ success: false, message: msg });
             }
-            const msg =
-                typeof err.message === 'string' && err.message.trim()
-                    ? err.message
-                    : 'No se pudo procesar el archivo.';
-            return res.status(400).json({ success: false, message: msg });
-        }
-        createPromotion(req, res).catch(next);
-    });
-});
-router.delete('/:id', authorize('admin'), deletePromotion);
+            createPromotion(req, res).catch(next);
+        });
+    }
+);
+router.delete(
+    '/:id',
+    authorize('admin', 'agent', 'supervisor'),
+    authorizeByPermission('marketing_promotions'),
+    deletePromotion
+);
 // Nueva ruta para el botón "Me interesa"
 router.post('/:id/interest', registerInterest);
 

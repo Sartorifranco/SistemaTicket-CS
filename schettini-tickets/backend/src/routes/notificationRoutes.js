@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorize } = require('../middleware/authMiddleware');
+const { authenticateToken, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
 const {
     getNotifications,
     getUnreadNotificationCount,
@@ -20,8 +20,13 @@ router.route('/')
 
 router.get('/unread-count', getUnreadNotificationCount);
 
-// Ruta para enviar Anuncios Masivos (Solo Admin)
-router.post('/announce', authorize('admin'), createAnnouncement);
+// Anuncios masivos: admin siempre; agente/supervisor requieren permiso marketing_announcements
+router.post(
+    '/announce',
+    authorize('admin', 'agent', 'supervisor'),
+    authorizeByPermission('marketing_announcements'),
+    createAnnouncement
+);
 
 // Acciones sobre notificaciones específicas
 router.put('/:id/read', markNotificationAsRead);
