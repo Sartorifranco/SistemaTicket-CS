@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../config/axiosConfig';
 import { formatDateTimeArgentina } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
-import { FaBoxOpen, FaSearch } from 'react-icons/fa';
+import { FaBoxOpen, FaSearch, FaTrashAlt } from 'react-icons/fa';
 
 interface Movement {
   id: number;
@@ -20,7 +20,9 @@ interface Movement {
 
 const ArticleMovementsPage: React.FC = () => {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [list, setList] = useState<Movement[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const ordersBasePath = user?.role === 'agent' ? '/agent/repair-orders' : '/admin/repair-orders';
@@ -49,6 +51,23 @@ const ArticleMovementsPage: React.FC = () => {
   }, [searchTerm]);
 
   const formatDate = (s: string) => (s ? formatDateTimeArgentina(s) : '—');
+
+  const handleDelete = async (row: Movement) => {
+    if (!isAdmin) return;
+    if (!window.confirm(`¿Eliminar este movimiento de artículo?\n\n${row.article_name}\nOrden: ${row.order_number || '#' + row.order_id}\nCantidad: ${row.quantity}`)) {
+      return;
+    }
+    setDeletingId(row.id);
+    try {
+      await api.delete(`/api/movements/${row.id}`);
+      toast.success('Movimiento eliminado.');
+      fetchMovements();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'No se pudo eliminar.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading && list.length === 0) {
     return <div className="p-8 text-center text-gray-500">Cargando movimientos...</div>;
@@ -82,6 +101,7 @@ const ArticleMovementsPage: React.FC = () => {
                 <th className="p-3 font-bold">Cantidad</th>
                 <th className="p-3 font-bold">N° Orden</th>
                 <th className="p-3 font-bold">Usuario / Técnico</th>
+                {isAdmin && <th className="p-3 font-bold w-28 text-right">Acciones</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -101,11 +121,25 @@ const ArticleMovementsPage: React.FC = () => {
                       )}
                     </td>
                     <td className="p-3 text-gray-700">{row.user_display_name || row.user_username || '—'}</td>
+                    {isAdmin && (
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row)}
+                          disabled={deletingId === row.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50"
+                          title="Eliminar movimiento (solo administrador)"
+                        >
+                          <FaTrashAlt className="text-xs" />
+                          Eliminar
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                  <td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-gray-500">
                     {searchTerm ? 'Sin resultados para esa búsqueda.' : 'Aún no hay movimientos de artículos registrados.'}
                   </td>
                 </tr>

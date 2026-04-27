@@ -47,4 +47,25 @@ const getMovements = async (req, res) => {
   }
 };
 
-module.exports = { getMovements };
+/**
+ * DELETE /api/movements/:id
+ * Solo administradores. Elimina un registro puntual de movimiento de artículo.
+ */
+const deleteMovement = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id < 1) {
+      return res.status(400).json({ success: false, message: 'ID inválido' });
+    }
+    const [result] = await pool.query('DELETE FROM article_movements WHERE id = ?', [id]);
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, message: 'Movimiento no encontrado' });
+    }
+    res.json({ success: true, message: 'Movimiento eliminado' });
+  } catch (err) {
+    console.error('deleteMovement:', err);
+    res.status(500).json({ success: false, message: 'Error al eliminar el movimiento' });
+  }
+};
+
+module.exports = { getMovements, deleteMovement };
