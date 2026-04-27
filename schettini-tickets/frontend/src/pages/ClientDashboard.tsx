@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { TicketData } from '../types';
 import { ticketStatusTranslations } from '../utils/traslations';
+import WarrantyTermsModal from '../components/Client/WarrantyTermsModal';
+import { FaShieldAlt } from 'react-icons/fa';
 // 🗑️ InfoWidget ELIMINADO
 
 interface ClientMetrics {
@@ -63,6 +65,8 @@ const ClientDashboard: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<{ title: string; items: TicketData[] }>({ title: '', items: [] });
     const [modalLoading, setModalLoading] = useState(false);
+
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
     const fetchMetrics = useCallback(async () => {
         setLoading(true);
@@ -132,6 +136,23 @@ const ClientDashboard: React.FC = () => {
                     </button>
                 </div>
 
+                <div className="mb-12">
+                    <h2 className="text-lg font-semibold text-gray-700 mb-4">Información</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <button
+                            type="button"
+                            onClick={() => setIsTermsModalOpen(true)}
+                            className="bg-white p-6 rounded-xl shadow-sm border border-indigo-100 hover:border-indigo-300 hover:shadow-lg transition-all text-left flex flex-col gap-3 group"
+                        >
+                            <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                                <FaShieldAlt className="text-2xl" aria-hidden />
+                            </span>
+                            <span className="font-bold text-gray-800 text-lg">Términos y Condiciones de Garantía</span>
+                            <span className="text-sm text-gray-500">Consultá la política completa de garantía, plazos y procedimiento.</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div className="text-center mb-16">
                     <Link to="/client/tickets" className="bg-gray-900 hover:bg-black text-white font-bold py-4 px-10 rounded-full shadow-xl transition hover:scale-105 inline-flex items-center gap-2">Ver Todos Mis Tickets</Link>
                 </div>
@@ -165,6 +186,7 @@ const ClientDashboard: React.FC = () => {
                 )}
             </div>
             {isModalOpen && <DetailsModal title={modalContent.title} items={modalContent.items} onClose={() => setIsModalOpen(false)} loading={modalLoading} />}
+            <WarrantyTermsModal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />
         </>
     );
 };
