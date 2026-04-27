@@ -4,6 +4,9 @@ import { getImageUrl, getImageUrlFallback } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
 import { FaTrash, FaPlus } from 'react-icons/fa';
 
+/** 200MB — debe coincidir con Multer en promotionRoutes.js */
+const PROMO_IMAGE_MAX_BYTES = 200 * 1024 * 1024;
+
 const AdminPromotionsPage = () => {
     const [promos, setPromos] = useState([]);
     // Agregamos is_popup al estado
@@ -20,6 +23,11 @@ const AdminPromotionsPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!image) return toast.warn('Debes subir una imagen');
+
+        if (image.size > PROMO_IMAGE_MAX_BYTES) {
+            toast.error('La imagen supera el límite de 200MB. Por favor, comprímela antes de subirla.');
+            return;
+        }
 
         const data = new FormData();
         data.append('title', formData.title);
@@ -41,9 +49,22 @@ const AdminPromotionsPage = () => {
             if(fileInput) fileInput.value = '';
 
             fetchPromos();
-        } catch (error) { 
+        } catch (error: unknown) {
             console.error(error);
-            toast.error('Error al subir'); 
+            const msg =
+                error &&
+                typeof error === 'object' &&
+                'response' in error &&
+                error.response &&
+                typeof error.response === 'object' &&
+                'data' in error.response &&
+                error.response.data &&
+                typeof error.response.data === 'object' &&
+                'message' in error.response.data &&
+                typeof (error.response.data as { message?: string }).message === 'string'
+                    ? (error.response.data as { message: string }).message
+                    : 'Error al subir';
+            toast.error(msg);
         }
     };
 
@@ -93,7 +114,15 @@ const AdminPromotionsPage = () => {
 
                     <div className="md:col-span-2">
                         <label className="block text-sm text-gray-500 mb-1">Imagen:</label>
-                        <input id="fileInput" type="file" onChange={e => setImage(e.target.files ? e.target.files[0] : null)} accept="image/*" />
+                        <input
+                            id="fileInput"
+                            type="file"
+                            onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)}
+                            accept="image/png,image/jpeg,image/webp"
+                        />
+                        <small className="block mt-1 text-gray-500 text-sm">
+                            Formatos aceptados: JPG, PNG, WEBP. Tamaño máximo: 200MB.
+                        </small>
                     </div>
                     <button type="submit" className="bg-blue-600 text-white py-2 rounded md:col-span-2 hover:bg-blue-700 font-bold shadow-md">Publicar</button>
                 </form>
