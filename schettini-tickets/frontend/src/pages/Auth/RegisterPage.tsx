@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../config/axiosConfig';
+import { COMPANY_CONFIG } from '../../config/branding';
 import { ApiResponseError } from '../../types';
 import { isAxiosErrorTypeGuard } from '../../utils/typeGuards';
 import { FaUser, FaEnvelope, FaLock, FaPhone, FaBuilding, FaIdCard, FaStore, FaFileSignature } from 'react-icons/fa';
@@ -124,16 +125,18 @@ const RegisterPage: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
             <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
                 
-                {/* Panel Izquierdo (Visual) */}
-                <div className="bg-red-700 p-8 flex flex-col justify-center items-center text-white md:w-1/3">
+                {/* Panel Izquierdo (Visual): min-w y texto centrado/envuelto para que "Casa Schettini" no se corte */}
+                <div className="bg-red-700 p-6 sm:p-8 flex flex-col justify-center items-center text-white w-full md:w-[min(100%,18rem)] md:flex-shrink-0 md:max-w-[40%] min-w-0">
                     {/* ✅ LOGO ACTUALIZADO: Lila.png (Agregado aquí) */}
                     <img 
                         src="/images/Lila.png" 
                         alt="Schettini" 
-                        className="h-20 w-auto object-contain mb-4 bg-white rounded-xl p-2" 
+                        className="h-20 w-auto max-w-full object-contain mb-4 bg-white rounded-xl p-2" 
                     />
-                    <h2 className="text-3xl font-extrabold mb-2">Schettini</h2>
-                    <p className="text-red-100 text-center text-sm">Sistema de Gestión de Clientes</p>
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold mb-2 text-center px-2 w-full leading-tight break-words">
+                        {COMPANY_CONFIG.name}
+                    </h2>
+                    <p className="text-red-100 text-center text-sm px-2">Sistema de Gestión de Clientes</p>
                     <div className="mt-8 text-center text-xs opacity-80">
                         <p>¿Ya tienes cuenta?</p>
                         <Link to="/login" className="mt-2 inline-block bg-white text-red-700 px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition">

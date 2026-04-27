@@ -105,6 +105,65 @@ const logStatusHistory = async (repairOrderId, fieldChanged, oldValue, newValue,
   );
 };
 
+/**
+ * Parsea spare_parts_detail a un Map key -> { nombre, qty }.
+ * Key = codigo en minúsculas si existe; si no, nombre en minúsculas (evita duplicados por mismo repuesto en varias líneas).
+ */
+const aggregateSparePartsDetailQuantities = (sparePartsDetail) => {
+  const map = new Map();
+  if (!sparePartsDetail || !String(sparePartsDetail).trim()) return map;
+  let items = [];
+  const raw = String(sparePartsDetail).trim();
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      items = Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      items = [{ nombre: raw, cantidad: 1 }];
+    }
+  } else {
+    items = [{ nombre: raw, cantidad: 1 }];
+  }
+  for (const it of items) {
+    const name = it.nombre || it.name || (typeof it === 'string' ? it : null);
+    if (!name || !String(name).trim()) continue;
+    const qty = Math.max(1, parseInt(it.cantidad || it.quantity || 1, 10) || 1);
+    const code = String(it.codigo || '').trim().toLowerCase();
+    const key = code ? `c:${code}` : `n:${String(name).trim().toLowerCase()}`;
+    const nombre = String(name).trim();
+    const prev = map.get(key);
+    map.set(key, { nombre, qty: (prev ? prev.qty : 0) + qty });
+  }
+  return map;
+};
+
+/** Solo incrementos respecto al detalle anterior (evita duplicar movimientos al re-guardar la misma orden). */
+const computeSparePartsMovementIncrements = (oldDetail, newDetail) => {
+  const oldMap = aggregateSparePartsDetailQuantities(oldDetail);
+  const newMap = aggregateSparePartsDetailQuantities(newDetail);
+  const out = [];
+  for (const [key, nv] of newMap) {
+    const oldQty = oldMap.get(key)?.qty || 0;
+    const diff = nv.qty - oldQty;
+    if (diff > 0) out.push({ nombre: nv.nombre, quantity: diff });
+  }
+  return out;
+};
+
+const insertArticleMovementRows = async (repairOrderId, rows, userId) => {
+  for (const row of rows) {
+    if (!row.nombre || !row.quantity) continue;
+    try {
+      await pool.query(
+        'INSERT INTO article_movements (article_name, order_id, quantity, user_id) VALUES (?, ?, ?, ?)',
+        [String(row.nombre).trim(), repairOrderId, row.quantity, userId || null]
+      );
+    } catch (e) {
+      console.error('insertArticleMovementRows:', e.message);
+    }
+  }
+};
+
 /** Inserta movimientos de artículos (repuestos) en article_movements a partir de spare_parts_detail (JSON array o texto). */
 const insertArticleMovementsFromSpareParts = async (repairOrderId, sparePartsDetail, userId) => {
   if (!repairOrderId || !sparePartsDetail) return;
@@ -669,7 +728,7 @@ const updateRepairOrder = async (req, res) => {
     } = req.body;
 
     const [existingRows] = await pool.query(
-      'SELECT id, status, deposit_paid, total_cost, order_number, client_id, payment_method, requires_factory_shipping, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier FROM repair_orders WHERE id = ?',
+      'SELECT id, status, deposit_paid, total_cost, order_number, client_id, payment_method, requires_factory_shipping, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier, spare_parts_detail FROM repair_orders WHERE id = ?',
       [id]
     );
     if (existingRows.length === 0) {
@@ -768,8 +827,12 @@ const updateRepairOrder = async (req, res) => {
     if (publicNotes !== undefined) add('public_notes', publicNotes);
     if (sparePartsDetail !== undefined) {
       add('spare_parts_detail', sparePartsDetail);
+      // Solo registrar incrementos nuevos vs. detalle anterior (evita duplicados al guardar varias veces).
       if (sparePartsDetail && String(sparePartsDetail).trim()) {
-        await insertArticleMovementsFromSpareParts(id, sparePartsDetail, req.user?.id);
+        const increments = computeSparePartsMovementIncrements(existing.spare_parts_detail, sparePartsDetail);
+        if (increments.length > 0) {
+          await insertArticleMovementRows(id, increments, req.user?.id);
+        }
       }
     }
     if (orderType !== undefined) add('order_type', orderType);
