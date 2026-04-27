@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
+import api from '../../config/axiosConfig';
 
-/** Contenido legal: política de garantía SCH / Casa Schettini */
+/** Contenido legal de referencia (fallback si falla la API o sin conexión). No eliminar: respaldo operativo. */
 export const WarrantyTermsContent: React.FC = () => (
     <div className="text-sm text-gray-700 space-y-4">
         <h3 className="font-bold text-lg">POLÍTICA DE GARANTÍA</h3>
@@ -90,8 +91,36 @@ interface WarrantyTermsModalProps {
 
 /**
  * Modal con scroll para términos extensos de garantía (panel cliente).
+ * El texto principal se obtiene de GET /api/settings/terms al abrir el modal.
  */
 const WarrantyTermsModal: React.FC<WarrantyTermsModalProps> = ({ isOpen, onClose }) => {
+    const [termsText, setTermsText] = useState<string | null>(null);
+    const [loadingTerms, setLoadingTerms] = useState(false);
+    const [useStaticFallback, setUseStaticFallback] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        setLoadingTerms(true);
+        setUseStaticFallback(false);
+        setTermsText(null);
+        (async () => {
+            try {
+                const res = await api.get<{ success: boolean; data: { text: string } }>('/api/settings/terms');
+                if (!cancelled && res.data?.data?.text != null) {
+                    setTermsText(res.data.data.text);
+                }
+            } catch {
+                if (!cancelled) setUseStaticFallback(true);
+            } finally {
+                if (!cancelled) setLoadingTerms(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     return (
@@ -120,7 +149,18 @@ const WarrantyTermsModal: React.FC<WarrantyTermsModalProps> = ({ isOpen, onClose
                     </button>
                 </div>
                 <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 max-h-[calc(90vh-5rem)]">
-                    <WarrantyTermsContent />
+                    {loadingTerms ? (
+                        <div className="text-center text-gray-600 py-8">Cargando términos...</div>
+                    ) : useStaticFallback ? (
+                        <WarrantyTermsContent />
+                    ) : (
+                        <div
+                            className="text-sm text-gray-700 whitespace-pre-wrap break-words"
+                            role="article"
+                        >
+                            {termsText ?? ''}
+                        </div>
+                    )}
                 </div>
                 <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 shrink-0">
                     <button

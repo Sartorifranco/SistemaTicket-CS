@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature } from 'react-icons/fa';
+import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature, FaBalanceScale } from 'react-icons/fa';
 
 const DEFAULT_AGREEMENT = `Acuerdo de Confidencialidad
 
@@ -38,19 +38,21 @@ const AdminConfigPage: React.FC = () => {
         billing_email: '',
         confidentiality_agreement: ''
     });
+    const [termsAndConditions, setTermsAndConditions] = useState('');
+    /** Si hubo GET /terms correcto, al guardar también persistimos términos (evita borrar BD si ese GET falló). */
+    const [termsReadyToSave, setTermsReadyToSave] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // Cargar configuración actual al entrar
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await api.get('/api/config/public');
-                // Si la API devuelve datos, los usamos. Si no, quedan vacíos.
+                const resConfig = await api.get('/api/config/public');
                 setSettings({
-                    tech_hour_cost: res.data.data.tech_hour_cost || '',
-                    payment_alias: res.data.data.payment_alias || '',
-                    billing_email: res.data.data.billing_email || '',
-                    confidentiality_agreement: res.data.data.confidentiality_agreement || DEFAULT_AGREEMENT
+                    tech_hour_cost: resConfig.data.data.tech_hour_cost || '',
+                    payment_alias: resConfig.data.data.payment_alias || '',
+                    billing_email: resConfig.data.data.billing_email || '',
+                    confidentiality_agreement: resConfig.data.data.confidentiality_agreement || DEFAULT_AGREEMENT,
                 });
             } catch (error) {
                 console.error(error);
@@ -59,14 +61,31 @@ const AdminConfigPage: React.FC = () => {
                 setLoading(false);
             }
         };
+        const fetchTerms = async () => {
+            try {
+                const resTerms = await api.get('/api/settings/terms');
+                if (resTerms.data?.data?.text != null) {
+                    setTermsAndConditions(resTerms.data.data.text);
+                    setTermsReadyToSave(true);
+                }
+            } catch {
+                toast.warn('No se pudieron cargar los Términos de Garantía. Podés editar el resto de la configuración; reintentá recargando la página para editar términos.');
+                setTermsReadyToSave(false);
+            }
+        };
         fetchSettings();
+        fetchTerms();
     }, []);
 
     // Guardar cambios
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.put('/api/config', settings); // ✅ Usar PUT que es lo estándar para updates
+            const ops: Promise<unknown>[] = [api.put('/api/config', settings)];
+            if (termsReadyToSave) {
+                ops.push(api.put('/api/settings/terms', { text: termsAndConditions }));
+            }
+            await Promise.all(ops);
             toast.success('Configuración global actualizada correctamente');
         } catch (error) {
             console.error(error);
@@ -149,6 +168,24 @@ const AdminConfigPage: React.FC = () => {
                             rows={14}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition font-mono text-sm"
                             placeholder="Acuerdo de Confidencialidad..."
+                        />
+                    </div>
+
+                    {/* TÉRMINOS Y CONDICIONES DE GARANTÍA (panel cliente — modal dinámico) */}
+                    <div className="border-t pt-6 mt-6">
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                            <FaBalanceScale className="text-indigo-600"/> Términos y Condiciones de Garantía
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                            Texto que verán los clientes al abrir &quot;Términos y Condiciones de Garantía&quot; en su panel.
+                            Los saltos de línea se respetan al visualizar.
+                        </p>
+                        <textarea
+                            value={termsAndConditions}
+                            onChange={(e) => setTermsAndConditions(e.target.value)}
+                            rows={18}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition font-mono text-sm"
+                            placeholder="Edite aquí los términos legales de garantía..."
                         />
                     </div>
 
