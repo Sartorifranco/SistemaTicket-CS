@@ -155,11 +155,13 @@ const TicketFormModal: React.FC<TicketFormModalProps> = ({ isOpen, onClose, onSa
                                     Responderemos su consulta en un plazo máximo de {responseTimeHours}hs hábiles
                                 </span>
                             </label>
+                            <p className="text-sm text-gray-500 mb-2 leading-snug">
+                                Utilice esta sección para describir su consulta de manera clara y detallada. Cuanta más información nos brinde, más ágil y precisa podrá ser nuestra asistencia.
+                            </p>
                             <textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
-                                placeholder="Utilice esta sección para describir su consulta de manera clara y detallada. Cuanta más información nos brinde, más ágil y precisa podrá ser nuestra asistencia."
                                 rows={6}
                                 className="w-full p-3 border rounded-lg outline-none resize-none text-sm"
                                 style={hardStyle}

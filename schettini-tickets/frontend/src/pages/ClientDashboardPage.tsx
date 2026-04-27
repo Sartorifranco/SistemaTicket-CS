@@ -96,11 +96,13 @@ const CreateTicketModal: React.FC<{ isOpen: boolean; onClose: () => void; onSucc
                                 Responderemos su consulta en un plazo máximo de {responseTimeHours}hs hábiles
                             </span>
                         </label>
+                        <p className="text-sm text-gray-500 mt-1 mb-2 leading-snug">
+                            Utilice esta sección para describir su consulta de manera clara y detallada. Cuanta más información nos brinde, más ágil y precisa podrá ser nuestra asistencia.
+                        </p>
                         <textarea
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            placeholder="Utilice esta sección para describir su consulta de manera clara y detallada. Cuanta más información nos brinde, más ágil y precisa podrá ser nuestra asistencia."
-                            className="w-full p-2 border rounded-md mt-1 h-32"
+                            className="w-full p-2 border rounded-md h-32"
                             required
                         />
                     </div>
