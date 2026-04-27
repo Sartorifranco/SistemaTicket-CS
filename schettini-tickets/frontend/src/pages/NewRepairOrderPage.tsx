@@ -458,12 +458,12 @@ const NewRepairOrderPage: React.FC = () => {
         </SectionCard>
 
         {/* ¿Es Garantía? + Datos de Garantía */}
-        <SectionCard title="Garantía">
+        <SectionCard title="Garantía" overflowVisible>
           <div className="space-y-4">
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={isWarranty} onChange={(e) => setIsWarranty(e.target.checked)} className="w-5 h-5 text-indigo-600 rounded border-gray-300" />
               <span className="font-medium text-gray-800">¿Es un ingreso por Garantía?</span>
-              <HelpTooltip text="Si se tilda, no se podrá facturar la orden y se requerirá número de serie obligatorio." />
+              <HelpTooltip text="Para ingresos por garantía formal (fabricante/distribuidor): se solicitan datos de compra/proveedor y hay reglas distintas de facturación; al menos una serie obligatoria. Para marcar garantía ante el cliente en taller, usá también «Es Garantía» en cada equipo más abajo." />
             </label>
             {isWarranty && (
               <div className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50/80 space-y-4">
@@ -516,7 +516,7 @@ const NewRepairOrderPage: React.FC = () => {
         </SectionCard>
 
         {/* Equipos (múltiples) */}
-        <SectionCard title="Equipos">
+        <SectionCard title="Equipos" overflowVisible>
           <div className="space-y-6">
             {items.map((item, idx) => (
               <div key={idx} className="p-4 border border-gray-200 rounded-lg bg-gray-50/50">
@@ -639,7 +639,10 @@ const NewRepairOrderPage: React.FC = () => {
                 <div className="mt-4 flex flex-wrap gap-4 items-center">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={item.is_warranty} onChange={(e) => updateItem(idx, 'is_warranty', e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
-                    <span>Es Garantía</span>
+                    <span className="flex items-center gap-2">
+                      Es Garantía
+                      <HelpTooltip text="Marcá cuando el equipo ingresa cubierto por garantía ante el cliente; el monitor y los listados destacan estas órdenes (prioridad de respuesta)." />
+                    </span>
                   </label>
                   {item.is_warranty && (
                     <div className="flex-1 min-w-[200px]">

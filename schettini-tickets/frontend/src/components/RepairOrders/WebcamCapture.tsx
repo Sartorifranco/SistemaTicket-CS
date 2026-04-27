@@ -118,6 +118,9 @@ const WebcamCapture: React.FC<WebcamCaptureProps> = ({ photos, onPhotosChange })
           <p className="text-xs text-gray-500 mt-1 text-center">
             {photos.length}/{MAX_PHOTOS} fotos cargadas
           </p>
+          <p className="text-xs text-gray-600 mt-1 text-center max-w-[min(100%,28rem)] mx-auto leading-snug">
+            Podés usar la cámara o <strong className="font-semibold text-gray-700">Subir desde archivo</strong> para elegir imágenes de la PC (Descargas, carpeta compartida o fotos recibidas por WhatsApp).
+          </p>
           <input
             ref={fileInputRef}
             type="file"

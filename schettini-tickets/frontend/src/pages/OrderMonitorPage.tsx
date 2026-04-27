@@ -570,7 +570,7 @@ const OrderMonitorPage: React.FC = () => {
             const isFullWarranty = !!order.is_warranty;
             const isHybridWarranty = !isFullWarranty && !!order.has_warranty_items;
             const isWarranty = isFullWarranty || isHybridWarranty;
-            const displayNumber = formatOrderNumber(order.order_number, isFullWarranty);
+            const displayNumber = formatOrderNumber(order.order_number, isWarranty);
 
             return (
               <div

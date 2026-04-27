@@ -53,6 +53,14 @@ const isValidStatus = (s) => s && VALID_STATUSES.includes(String(s).toLowerCase(
 const isValidWarrantyType = (t) => t && WARRANTY_TYPES.includes(String(t));
 const isValidWarrantyStatus = (s) => !s || WARRANTY_STATUSES.includes(String(s));
 
+/** Ítem (payload o fila DB): ¿equipo marcado como garantía? Tolera 1/'1'/boolean desde MySQL */
+const itemHasWarrantyFlag = (v) =>
+  v === true ||
+  v === 1 ||
+  v === '1' ||
+  v === 'true' ||
+  String(v || '').toLowerCase() === 'true';
+
 /**
  * Deriva un warranty_status sugerido a partir del status general de la orden.
  * Solo aplica para órdenes en garantía y sirve como sincronización automática básica.
@@ -247,7 +255,7 @@ const getMonitorOrders = async (req, res) => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
       // DOC2.3: marca "híbrida" — orden que no es globalmente garantía pero tiene al menos un equipo con garantía
-      const hasWarrantyItems = items.some((it) => it.is_warranty === 1 || it.is_warranty === true);
+      const hasWarrantyItems = items.some((it) => itemHasWarrantyFlag(it.is_warranty));
       return normalizeRowDates({
         ...r,
         equipment_type: first.equipment_type,
@@ -347,7 +355,16 @@ const getRepairOrders = async (req, res) => {
     const data = rows.map(r => {
       const items = itemsMap[r.id] || [];
       const first = items[0] || {};
-      return normalizeRowDates({ ...r, items, equipment_type: first.equipment_type, brand: first.brand, model: first.model, serial_number: first.serial_number });
+      const hasWarrantyItems = items.some((it) => itemHasWarrantyFlag(it.is_warranty));
+      return normalizeRowDates({
+        ...r,
+        items,
+        equipment_type: first.equipment_type,
+        brand: first.brand,
+        model: first.model,
+        serial_number: first.serial_number,
+        has_warranty_items: hasWarrantyItems ? 1 : 0
+      });
     });
     res.json({ success: true, data });
   } catch (error) {
@@ -519,8 +536,12 @@ const createRepairOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Se requiere al menos un equipo (items)' });
     }
 
-    const isWarrantyOrder = isWarranty === true || isWarranty === 'true' || isWarranty === 1;
-    if (isWarrantyOrder) {
+    const explicitOrderWarranty =
+      isWarranty === true || isWarranty === 'true' || isWarranty === 1;
+    const anyItemWarranty = items.some((it) => itemHasWarrantyFlag(it.is_warranty));
+    const isWarrantyOrder = explicitOrderWarranty || anyItemWarranty;
+
+    if (explicitOrderWarranty) {
       if (!warrantyType || !isValidWarrantyType(warrantyType)) {
         return res.status(400).json({ success: false, message: 'En garantía se requiere warranty_type válido: oficial_fabricante, garantia_propia, garantia_proveedor' });
       }
@@ -544,7 +565,7 @@ const createRepairOrder = async (req, res) => {
 
     let finalLaborCost = laborCost ? parseFloat(laborCost) : null;
     let finalSparePartsCost = sparePartsCost ? parseFloat(sparePartsCost) : null;
-    if (isWarrantyOrder && warrantyType === 'oficial_fabricante') {
+    if (explicitOrderWarranty && warrantyType === 'oficial_fabricante') {
       finalLaborCost = 0;
       finalSparePartsCost = 0;
     }
@@ -589,12 +610,19 @@ const createRepairOrder = async (req, res) => {
         paymentOperationNumber || null,
         priority || 'Normal',
         isWarrantyOrder ? 1 : 0,
-        isWarrantyOrder ? warrantyType : null,
-        isWarrantyOrder ? String(purchaseInvoiceNumber).trim() : null,
-        isWarrantyOrder && purchaseDate ? purchaseDate : null,
-        isWarrantyOrder ? String(originalSupplier).trim() : null,
-        requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1 ? 1 : 0,
-        isWarrantyOrder && warrantyStatus ? warrantyStatus : null
+        explicitOrderWarranty
+          ? warrantyType
+          : anyItemWarranty
+          ? 'garantia_propia'
+          : null,
+        explicitOrderWarranty && purchaseInvoiceNumber ? String(purchaseInvoiceNumber).trim() : null,
+        explicitOrderWarranty && purchaseDate ? purchaseDate : null,
+        explicitOrderWarranty && originalSupplier ? String(originalSupplier).trim() : null,
+        explicitOrderWarranty &&
+        (requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1)
+          ? 1
+          : 0,
+        explicitOrderWarranty && warrantyStatus ? warrantyStatus : null
       ]
     );
 
@@ -626,7 +654,7 @@ const createRepairOrder = async (req, res) => {
       await ensureSystemOption('equipment_type', it.equipment_type);
       await ensureSystemOption('brand', it.brand);
       await ensureSystemOption('model', it.model);
-      const isWarranty = it.is_warranty === 'true' || it.is_warranty === true ? 1 : 0;
+      const isItemWarranty = itemHasWarrantyFlag(it.is_warranty) ? 1 : 0;
       await pool.query(
         `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -638,7 +666,7 @@ const createRepairOrder = async (req, res) => {
           it.serial_number || null,
           it.reported_fault || null,
           it.included_accessories || null,
-          isWarranty,
+          isItemWarranty,
           it.warranty_invoice || null,
           i
         ]
@@ -950,11 +978,23 @@ const updateRepairOrder = async (req, res) => {
         await ensureSystemOption('equipment_type', it.equipment_type);
         await ensureSystemOption('brand', it.brand);
         await ensureSystemOption('model', it.model);
-        const isWarranty = it.is_warranty === 'true' || it.is_warranty === true ? 1 : 0;
+        const isItemWarranty = itemHasWarrantyFlag(it.is_warranty) ? 1 : 0;
         await pool.query(
           `INSERT INTO repair_order_items (repair_order_id, equipment_type, brand, model, serial_number, reported_fault, included_accessories, is_warranty, warranty_invoice, sort_order)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [id, it.equipment_type || null, it.brand || null, it.model || null, it.serial_number || null, it.reported_fault || null, it.included_accessories || null, isWarranty, it.warranty_invoice || null, i]
+          [id, it.equipment_type || null, it.brand || null, it.model || null, it.serial_number || null, it.reported_fault || null, it.included_accessories || null, isItemWarranty, it.warranty_invoice || null, i]
+        );
+      }
+      const [iwSync] = await pool.query(
+        `SELECT COUNT(*) AS c FROM repair_order_items WHERE repair_order_id = ? AND is_warranty = 1`,
+        [id]
+      );
+      if ((iwSync[0]?.c || 0) > 0) {
+        await pool.query(
+          `UPDATE repair_orders SET is_warranty = 1,
+            warranty_type = COALESCE(NULLIF(warranty_type, ''), 'garantia_propia')
+           WHERE id = ?`,
+          [id]
         );
       }
     }
