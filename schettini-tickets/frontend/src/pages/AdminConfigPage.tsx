@@ -173,7 +173,7 @@ const AdminConfigPage: React.FC = () => {
                             placeholder="Ej: cobranzas@tuempresa.com"
                         />
                         <p className="text-xs text-gray-400 mt-1">
-                            Recibe un correo cuando un cliente cargue un comprobante en &quot;Mis Pagos&quot;. Si queda vacío, se puede usar la variable de entorno BILLING_NOTIFICATION_EMAIL o el email de soporte facturación.
+                            Aquí llegarán los avisos cuando un cliente suba un comprobante de pago. Si lo dejas vacío, las alertas se enviarán al correo de soporte principal.
                         </p>
                     </div>
 
@@ -190,7 +190,7 @@ const AdminConfigPage: React.FC = () => {
                             placeholder="Ej: ventas@tuempresa.com"
                         />
                         <p className="text-xs text-gray-400 mt-1">
-                            Recibe los avisos cuando un cliente pulsa &quot;Me interesa&quot; en una oferta. Si queda vacío, el servidor puede usar variables de entorno (p. ej. SALES_NOTIFICATION_EMAIL o EMAIL_USER).
+                            Aquí llegarán las notificaciones cuando un cliente presione &apos;Me interesa&apos; en una promoción. Si lo dejas vacío, se utilizará el correo principal del sistema.
                         </p>
                     </div>
 
