@@ -199,10 +199,59 @@ const sendOfferLeadEmail = async (to, clientLabel, offerTitle, extra = {}) => {
     }
 };
 
+/**
+ * Notifica que un cliente subió comprobante de pago (transferencia).
+ * @param {string} to
+ * @param {string} clientDisplayName
+ * @param {{ receiptUrl?: string, adminPaymentsUrl?: string, amount?: string|number, paymentId?: number }} [opts]
+ */
+const sendBillingReceiptUploadedEmail = async (to, clientDisplayName, opts = {}) => {
+    if (!to || !String(to).trim()) {
+        console.warn('[EmailService] sendBillingReceiptUploadedEmail: sin destinatario.');
+        return false;
+    }
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('[EmailService] sendBillingReceiptUploadedEmail: falta configuración SMTP.');
+        return false;
+    }
+    const subject = `Nuevo Comprobante de Pago subido por ${clientDisplayName}`;
+    const safeName = escHtml(clientDisplayName);
+    const payId = opts.paymentId != null ? escHtml(String(opts.paymentId)) : '';
+    const amt = opts.amount != null ? escHtml(String(opts.amount)) : '';
+    const rec = opts.receiptUrl ? escHtml(opts.receiptUrl) : '';
+    const adm = opts.adminPaymentsUrl ? escHtml(opts.adminPaymentsUrl) : '';
+
+    const mailOptions = {
+        from: `"Sistema de Tickets" <${process.env.EMAIL_USER}>`,
+        to: String(to).trim(),
+        subject: subject.length > 255 ? subject.slice(0, 252) + '...' : subject,
+        html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <h2 style="color:#0f766e;">Nuevo comprobante de pago</h2>
+                <p>El cliente <strong>${safeName}</strong> informó un pago y adjuntó un comprobante.</p>
+                ${payId ? `<p><strong>ID de pago:</strong> #${payId}</p>` : ''}
+                ${amt !== '' ? `<p><strong>Monto informado:</strong> $${amt}</p>` : ''}
+                ${rec ? `<p><a href="${rec}" style="color:#2563eb;font-weight:bold;">Ver comprobante (archivo)</a></p>` : ''}
+                ${adm ? `<p><a href="${adm}" style="color:#4f46e5;font-weight:bold;">Abrir gestión de pagos del cliente en el panel</a></p>` : ''}
+                <p style="margin-top:16px;font-size:12px;color:#666;">Mensaje automático del sistema.</p>
+            </div>
+        `,
+    };
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`[EmailService] Notificación de comprobante enviada a ${to}`);
+        return true;
+    } catch (error) {
+        console.error('[EmailService] Error al enviar notificación de comprobante:', error);
+        return false;
+    }
+};
+
 module.exports = {
     sendActivationEmail,
     sendWelcomeEmail,
     sendPasswordResetEmail,
     sendEquipmentReadyEmail,
     sendOfferLeadEmail,
+    sendBillingReceiptUploadedEmail,
 };

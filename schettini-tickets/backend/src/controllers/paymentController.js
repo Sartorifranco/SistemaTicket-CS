@@ -1,4 +1,31 @@
 const pool = require('../config/db');
+const { sendBillingReceiptUploadedEmail } = require('../services/emailService');
+
+async function getBillingNotificationRecipient() {
+    try {
+        const [rows] = await pool.query(
+            "SELECT setting_value FROM system_settings WHERE setting_key = 'billing_notification_email' LIMIT 1"
+        );
+        const v = rows[0]?.setting_value?.trim();
+        if (v) return v;
+    } catch (e) {
+        console.warn('[paymentController] getBillingNotificationRecipient:', e.message);
+    }
+    if (process.env.BILLING_NOTIFICATION_EMAIL?.trim()) return process.env.BILLING_NOTIFICATION_EMAIL.trim();
+    try {
+        const [fb] = await pool.query(
+            "SELECT setting_value FROM system_settings WHERE setting_key = 'billing_email' LIMIT 1"
+        );
+        const be = fb[0]?.setting_value?.trim();
+        if (be) return be;
+    } catch (e) { /* ignore */ }
+    return (process.env.EMAIL_USER || '').trim() || null;
+}
+
+function mapPaymentRow(p) {
+    if (!p) return p;
+    return { ...p, method: p.payment_method != null ? p.payment_method : p.method };
+}
 
 // ==========================================
 // LÓGICA DEL CLIENTE
@@ -10,10 +37,11 @@ const getPaymentInfo = async (req, res) => {
         const userId = req.user.id;
 
         // 1. Obtener Historial
-        const [payments] = await pool.query(
+        const [rawPayments] = await pool.query(
             'SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC',
             [userId]
         );
+        const payments = rawPayments.map(mapPaymentRow);
 
         // 2. Obtener Datos Facturación
         const [billing] = await pool.query(
@@ -70,6 +98,46 @@ const reportPayment = async (req, res) => {
             [userId, amount, method, receiptUrl, description]
         );
 
+        const paymentId = paymentResult.insertId;
+
+        // Nombre para emails / UI (prioriza full_name en BD)
+        let clientDisplayName = username;
+        try {
+            const [urows] = await pool.query(
+                'SELECT username, full_name FROM Users WHERE id = ? LIMIT 1',
+                [userId]
+            );
+            const fn = urows[0]?.full_name?.trim();
+            clientDisplayName = fn || urows[0]?.username || username;
+        } catch (e) {
+            /* usar username del token */
+        }
+
+        // 📧 Email a cobranzas (configurable en system_settings / env)
+        const billingTo = await getBillingNotificationRecipient();
+        const frontBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+        const adminPaymentsUrl = frontBase ? `${frontBase}/admin/users/${userId}/payments` : '';
+        let receiptAbsoluteUrl = '';
+        try {
+            const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+            const host = req.get('host');
+            if (host && receiptUrl) {
+                receiptAbsoluteUrl = `${proto}://${host}/api${receiptUrl.startsWith('/') ? receiptUrl : `/${receiptUrl}`}`;
+            }
+        } catch (e) {
+            /* sin URL absoluta */
+        }
+        if (billingTo) {
+            await sendBillingReceiptUploadedEmail(billingTo, clientDisplayName, {
+                receiptUrl: receiptAbsoluteUrl,
+                adminPaymentsUrl,
+                amount,
+                paymentId,
+            });
+        } else {
+            console.warn('[paymentController] reportPayment: sin destinatario para email de cobranzas.');
+        }
+
         // 2. Notificar a Admins
         const [admins] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent')");
 
@@ -80,14 +148,14 @@ const reportPayment = async (req, res) => {
                 const [notifResult] = await pool.query(
                     `INSERT INTO notifications (user_id, type, message, related_id, related_type, is_read) 
                      VALUES (?, 'info', ?, ?, 'payment', 0)`,
-                    [admin.id, msg, paymentResult.insertId]
+                    [admin.id, msg, paymentId]
                 );
 
                 req.io.to(`user-${admin.id}`).emit('notification', {
                     id: notifResult.insertId,
                     type: 'info',
                     message: msg,
-                    related_id: paymentResult.insertId,
+                    related_id: paymentId,
                     related_type: 'payment',
                     is_read: false,
                     created_at: new Date()
@@ -138,7 +206,8 @@ const getAdminClientPayments = async (req, res) => {
         const { userId } = req.params;
 
         // 1. Historial
-        const [payments] = await pool.query('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+        const [rawPayAdmin] = await pool.query('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+        const payments = rawPayAdmin.map(mapPaymentRow);
         
         // 2. Datos Facturación
         const [billing] = await pool.query('SELECT * FROM billing_details WHERE user_id = ?', [userId]);

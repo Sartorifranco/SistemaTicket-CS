@@ -45,6 +45,7 @@ const ClientPaymentsPage: React.FC = () => {
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('transferencia');
     const [file, setFile] = useState<File | null>(null);
+    const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
     // Billing Form
     const [billingForm, setBillingForm] = useState<BillingInfo>({
@@ -79,6 +80,7 @@ const ClientPaymentsPage: React.FC = () => {
     const handleReportPayment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!file || !amount) return toast.warning('Completa el monto y sube el comprobante');
+        if (uploadingReceipt) return;
 
         const formData = new FormData();
         formData.append('amount', amount);
@@ -86,13 +88,18 @@ const ClientPaymentsPage: React.FC = () => {
         formData.append('receipt', file);
         formData.append('description', `Pago mensual - ${method}`);
 
+        setUploadingReceipt(true);
         try {
             await api.post('/api/payments/report', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            toast.success('Pago informado. Pendiente de aprobación.');
+            toast.success('Comprobante enviado. El área de cobranzas lo verificará a la brevedad.');
             setShowPayModal(false);
             setAmount(''); setFile(null);
             fetchData();
-        } catch (error) { toast.error('Error al subir pago'); }
+        } catch (error) {
+            toast.error('Error al subir pago');
+        } finally {
+            setUploadingReceipt(false);
+        }
     };
 
     const handleSaveBilling = async (e: React.FormEvent) => {
@@ -219,7 +226,7 @@ const ClientPaymentsPage: React.FC = () => {
                                         <td className="p-4">{getStatusBadge(pay.status)}</td>
                                         <td className="p-4">
                                             {pay.receipt_url && (
-                                                <a href={getImageUrl(pay.receipt_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs font-bold">Ver Recibo</a>
+                                                <a href={getImageUrl(pay.receipt_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs font-bold">Ver comprobante</a>
                                             )}
                                         </td>
                                     </tr>
@@ -243,12 +250,12 @@ const ClientPaymentsPage: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Monto Pagado</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-3 text-gray-500">$</span>
-                                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full pl-8 p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" required />
+                                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full pl-8 p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" required disabled={uploadingReceipt} />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
-                                <select value={method} onChange={e => setMethod(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-lg outline-none">
+                                <select value={method} onChange={e => setMethod(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-lg outline-none" disabled={uploadingReceipt}>
                                     <option value="transferencia">Transferencia Bancaria</option>
                                     <option value="efectivo">Efectivo</option>
                                     <option value="otro">Otro</option>
@@ -257,12 +264,22 @@ const ClientPaymentsPage: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Comprobante (Foto/PDF)</label>
                                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 cursor-pointer transition relative">
-                                    <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*,.pdf" required />
+                                    <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*,.pdf" required disabled={uploadingReceipt} />
                                     <FaCloudUploadAlt className="mx-auto text-gray-400 text-3xl mb-2"/>
                                     <p className="text-sm text-gray-600">{file ? file.name : "Click para subir archivo"}</p>
                                 </div>
                             </div>
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition mt-2">Enviar Informe</button>
+                            <button
+                                type="submit"
+                                disabled={uploadingReceipt}
+                                className={`w-full py-3 rounded-lg font-bold transition mt-2 ${
+                                    uploadingReceipt
+                                        ? 'bg-indigo-300 text-white cursor-not-allowed'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                }`}
+                            >
+                                {uploadingReceipt ? 'Enviando…' : 'Enviar Informe'}
+                            </button>
                         </form>
                     </div>
                 </div>

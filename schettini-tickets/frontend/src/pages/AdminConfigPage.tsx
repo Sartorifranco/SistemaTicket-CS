@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature, FaBalanceScale, FaBullhorn } from 'react-icons/fa';
+import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature, FaBalanceScale, FaBullhorn, FaClipboardCheck } from 'react-icons/fa';
 
 const DEFAULT_AGREEMENT = `Acuerdo de Confidencialidad
 
@@ -36,6 +36,7 @@ const AdminConfigPage: React.FC = () => {
         tech_hour_cost: '',
         payment_alias: '',
         billing_email: '',
+        billing_notification_email: '',
         sales_notification_email: '',
         confidentiality_agreement: ''
     });
@@ -53,6 +54,7 @@ const AdminConfigPage: React.FC = () => {
                     tech_hour_cost: resConfig.data.data.tech_hour_cost || '',
                     payment_alias: resConfig.data.data.payment_alias || '',
                     billing_email: resConfig.data.data.billing_email || '',
+                    billing_notification_email: resConfig.data.data.billing_notification_email || '',
                     sales_notification_email: resConfig.data.data.sales_notification_email || '',
                     confidentiality_agreement: resConfig.data.data.confidentiality_agreement || DEFAULT_AGREEMENT,
                 });
@@ -156,6 +158,23 @@ const AdminConfigPage: React.FC = () => {
                             placeholder="Ej: admin@tuempresa.com"
                         />
                         <p className="text-xs text-gray-400 mt-1">Este correo aparecerá en la sección "Mis Pagos" para consultas.</p>
+                    </div>
+
+                    {/* EMAIL COBRANZAS — recibe avisos al subir comprobante de transferencia */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                            <FaClipboardCheck className="text-teal-600"/> Email de Cobranzas / Pagos
+                        </label>
+                        <input
+                            type="email"
+                            value={settings.billing_notification_email}
+                            onChange={e => setSettings({ ...settings, billing_notification_email: e.target.value })}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            placeholder="Ej: cobranzas@tuempresa.com"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Recibe un correo cuando un cliente cargue un comprobante en &quot;Mis Pagos&quot;. Si queda vacío, se puede usar la variable de entorno BILLING_NOTIFICATION_EMAIL o el email de soporte facturación.
+                        </p>
                     </div>
 
                     {/* EMAIL NOTIFICACIONES LEADS / OFERTAS (system_settings.sales_notification_email) */}

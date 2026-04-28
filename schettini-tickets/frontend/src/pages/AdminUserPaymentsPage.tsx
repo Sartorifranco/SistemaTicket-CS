@@ -4,7 +4,7 @@ import api from '../config/axiosConfig';
 import { formatDateArgentina } from '../utils/dateFormatter';
 import { getImageUrl } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
-import { FaArrowLeft, FaCheck, FaTimes, FaSave, FaCalendarAlt, FaCreditCard, FaFileInvoice, FaFileDownload } from 'react-icons/fa';
+import { FaArrowLeft, FaCheck, FaTimes, FaSave, FaCalendarAlt, FaCreditCard, FaFileInvoice, FaFileDownload, FaPaperclip } from 'react-icons/fa';
 
 interface Payment {
     id: number;
@@ -166,7 +166,7 @@ const AdminUserPaymentsPage: React.FC = () => {
                                 <th className="p-4">Fecha</th>
                                 <th className="p-4">Monto</th>
                                 <th className="p-4">Método</th>
-                                <th className="p-4">Comprobante</th>
+                                <th className="p-4">Comprobante / Adjunto</th>
                                 <th className="p-4">Estado</th>
                                 <th className="p-4 text-center">Acciones</th>
                             </tr>
@@ -182,10 +182,15 @@ const AdminUserPaymentsPage: React.FC = () => {
                                         <td className="p-4 text-sm text-gray-600 capitalize">{pay.method}</td>
                                         <td className="p-4">
                                             {pay.receipt_url ? (
-                                                <a href={getImageUrl(pay.receipt_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-xs font-bold bg-indigo-50 px-2 py-1 rounded w-fit">
-                                                    <FaFileDownload/> Ver Archivo
-                                                </a>
-                                            ) : <span className="text-gray-400 text-xs">-</span>}
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+                                                        <FaPaperclip /> Con comprobante
+                                                    </span>
+                                                    <a href={getImageUrl(pay.receipt_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-xs font-bold bg-indigo-50 px-2 py-1 rounded w-fit">
+                                                        <FaFileDownload/> Ver Comprobante
+                                                    </a>
+                                                </div>
+                                            ) : <span className="text-gray-400 text-xs">Sin archivo</span>}
                                         </td>
                                         <td className="p-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${

@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 /** Claves de system_settings que no deben exponerse en GET público (uso interno / ventas). */
-const HIDDEN_FROM_PUBLIC = new Set(['sales_notification_email']);
+const HIDDEN_FROM_PUBLIC = new Set(['sales_notification_email', 'billing_notification_email']);
 
 // --- Obtener Configuraciones Públicas (Para clientes y login) ---
 const getPublicConfig = async (req, res) => {
