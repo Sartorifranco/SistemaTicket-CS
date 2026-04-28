@@ -9,7 +9,8 @@ const NEW_PERMISSIONS = [
     'ready_view', 'ready_edit',
     'refurbished_view', 'refurbished_create', 'refurbished_edit',
     'movements_view', 'warranties_view', 'activity_logs_view',
-    'quoter_access', 'reports_view', 'tech_finances', 'resources_view', 'clients_view'
+    'quoter_access', 'reports_view', 'tech_finances', 'resources_view', 'clients_view',
+    'marketing_promotions', 'marketing_announcements'
 ];
 
 const migrateOldPermissions = (arr) => {

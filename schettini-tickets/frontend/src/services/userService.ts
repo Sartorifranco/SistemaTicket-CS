@@ -17,6 +17,8 @@ export interface UpdateUser {
     password?: string;
     role?: 'admin' | 'supervisor' | 'agent' | 'client' | 'viewer';
     department_id?: number | null;
+    /** Permisos granulares (agente/supervisor/viewer); debe alinearse con backend NEW_PERMISSIONS */
+    permissions?: string[];
 }
 
 const userService = {
