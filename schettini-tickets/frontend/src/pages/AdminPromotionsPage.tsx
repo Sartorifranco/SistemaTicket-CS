@@ -2,13 +2,28 @@ import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { getImageUrl, getImageUrlFallback } from '../utils/imageUrl';
 import { toast } from 'react-toastify';
-import { FaTrash, FaPlus } from 'react-icons/fa';
+import { FaTrash, FaPlus, FaTable, FaBullhorn } from 'react-icons/fa';
 
 /** 200MB — debe coincidir con Multer en promotionRoutes.js */
 const PROMO_IMAGE_MAX_BYTES = 200 * 1024 * 1024;
 
+type OfferLeadRow = {
+    id: number;
+    offer_id: number;
+    client_id: number;
+    interest_date: string | null;
+    username: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    offer_title: string;
+};
+
 const AdminPromotionsPage = () => {
+    const [panelTab, setPanelTab] = useState<'promotions' | 'leads'>('promotions');
     const [promos, setPromos] = useState([]);
+    const [leads, setLeads] = useState<OfferLeadRow[]>([]);
+    const [leadsLoading, setLeadsLoading] = useState(false);
     // Agregamos is_popup al estado
     const [formData, setFormData] = useState({ title: '', description: '', type: 'offer', is_popup: false });
     const [image, setImage] = useState<File | null>(null);
@@ -18,7 +33,24 @@ const AdminPromotionsPage = () => {
         setPromos(res.data.data);
     };
 
+    const fetchLeads = async () => {
+        setLeadsLoading(true);
+        try {
+            const res = await api.get('/api/promotions/leads');
+            setLeads(Array.isArray(res.data.data) ? res.data.data : []);
+        } catch {
+            toast.error('No se pudieron cargar los interesados');
+            setLeads([]);
+        } finally {
+            setLeadsLoading(false);
+        }
+    };
+
     useEffect(() => { fetchPromos(); }, []);
+
+    useEffect(() => {
+        if (panelTab === 'leads') fetchLeads();
+    }, [panelTab]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -75,8 +107,78 @@ const AdminPromotionsPage = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6">Gestión de Marketing</h1>
+            <h1 className="text-2xl font-bold mb-4">Gestión de Marketing</h1>
 
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+                <button
+                    type="button"
+                    onClick={() => setPanelTab('promotions')}
+                    className={`px-4 py-2 font-medium rounded-t-lg flex items-center gap-2 border-b-2 -mb-px ${
+                        panelTab === 'promotions'
+                            ? 'border-blue-600 text-blue-700 bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    <FaBullhorn /> Publicaciones
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setPanelTab('leads')}
+                    className={`px-4 py-2 font-medium rounded-t-lg flex items-center gap-2 border-b-2 -mb-px ${
+                        panelTab === 'leads'
+                            ? 'border-blue-600 text-blue-700 bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    <FaTable /> Leads / Interesados
+                </button>
+            </div>
+
+            {panelTab === 'leads' && (
+                <div className="bg-white p-6 rounded shadow mb-8 overflow-x-auto">
+                    <h3 className="font-bold mb-4 text-gray-800">Interesados en ofertas (Me interesa)</h3>
+                    {leadsLoading ? (
+                        <p className="text-gray-500">Cargando...</p>
+                    ) : leads.length === 0 ? (
+                        <p className="text-gray-500">Todavía no hay registros de interés.</p>
+                    ) : (
+                        <table className="min-w-full text-sm border-collapse">
+                            <thead>
+                                <tr className="bg-gray-100 text-left">
+                                    <th className="p-2 border border-gray-200">Fecha</th>
+                                    <th className="p-2 border border-gray-200">Oferta</th>
+                                    <th className="p-2 border border-gray-200">Cliente</th>
+                                    <th className="p-2 border border-gray-200">Contacto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {leads.map((row) => (
+                                    <tr key={row.id} className="hover:bg-gray-50">
+                                        <td className="p-2 border border-gray-200 whitespace-nowrap">
+                                            {row.interest_date
+                                                ? new Date(row.interest_date).toLocaleString('es-AR')
+                                                : '—'}
+                                        </td>
+                                        <td className="p-2 border border-gray-200">{row.offer_title}</td>
+                                        <td className="p-2 border border-gray-200">
+                                            {(row.full_name && row.full_name.trim()) || row.username}
+                                            <span className="text-gray-400 text-xs block">ID {row.client_id}</span>
+                                        </td>
+                                        <td className="p-2 border border-gray-200">
+                                            {row.email && <div>{row.email}</div>}
+                                            {row.phone && <div className="text-gray-600">{row.phone}</div>}
+                                            {!row.email && !row.phone && <span className="text-gray-400">—</span>}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+
+            {panelTab === 'promotions' && (
+            <>
             <div className="bg-white p-6 rounded shadow mb-8">
                 <h3 className="font-bold mb-4 flex items-center gap-2"><FaPlus/> Nueva Publicación</h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -168,6 +270,8 @@ const AdminPromotionsPage = () => {
                     </div>
                 ))}
             </div>
+            </>
+            )}
         </div>
     );
 };

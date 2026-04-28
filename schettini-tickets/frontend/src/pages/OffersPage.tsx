@@ -7,6 +7,8 @@ import { FaPercentage } from 'react-icons/fa';
 const OffersPage = () => {
     const [offers, setOffers] = useState([]);
     const [loading, setLoading] = useState(true);
+    /** Evita doble envío y deja el botón deshabilitado tras éxito */
+    const [interestSent, setInterestSent] = useState<Record<number, boolean>>({});
 
     useEffect(() => {
         const fetchOffers = async () => {
@@ -22,11 +24,17 @@ const OffersPage = () => {
 
     // Función "Me Interesa"
     const handleInterest = async (promoId: number) => {
+        if (interestSent[promoId]) return;
         try {
             await api.post(`/api/promotions/${promoId}/interest`);
-            toast.success('¡Genial! Hemos notificado a un asesor. Te contactaremos pronto.');
+            setInterestSent((prev) => ({ ...prev, [promoId]: true }));
+            toast.success('¡Enviado! Hemos notificado a un asesor. Te contactaremos pronto.');
         } catch (error: any) {
-            toast.info(error.response?.data?.message || 'Ya registraste interés en esto.');
+            const msg = error.response?.data?.message || '';
+            if (msg.includes('Ya registraste')) {
+                setInterestSent((prev) => ({ ...prev, [promoId]: true }));
+            }
+            toast.info(msg || 'Ya registraste interés en esto.');
         }
     };
 
@@ -81,10 +89,16 @@ const OffersPage = () => {
                                 
                                 {/* Botón conectado */}
                                 <button 
+                                    type="button"
+                                    disabled={!!interestSent[offer.id]}
                                     onClick={() => handleInterest(offer.id)}
-                                    className="mt-4 w-full bg-gray-900 text-white py-2 rounded-lg hover:bg-gray-800 transition text-sm font-medium"
+                                    className={`mt-4 w-full py-2 rounded-lg transition text-sm font-medium ${
+                                        interestSent[offer.id]
+                                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                            : 'bg-gray-900 text-white hover:bg-gray-800'
+                                    }`}
                                 >
-                                    Me interesa
+                                    {interestSent[offer.id] ? 'Interés enviado' : 'Me interesa'}
                                 </button>
                             </div>
                         </div>

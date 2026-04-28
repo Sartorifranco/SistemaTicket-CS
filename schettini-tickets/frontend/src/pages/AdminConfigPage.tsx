@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/axiosConfig';
 import { toast } from 'react-toastify';
-import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature, FaBalanceScale } from 'react-icons/fa';
+import { FaSave, FaCogs, FaMoneyBillWave, FaCreditCard, FaEnvelope, FaFileSignature, FaBalanceScale, FaBullhorn } from 'react-icons/fa';
 
 const DEFAULT_AGREEMENT = `Acuerdo de Confidencialidad
 
@@ -36,6 +36,7 @@ const AdminConfigPage: React.FC = () => {
         tech_hour_cost: '',
         payment_alias: '',
         billing_email: '',
+        sales_notification_email: '',
         confidentiality_agreement: ''
     });
     const [termsAndConditions, setTermsAndConditions] = useState('');
@@ -47,11 +48,12 @@ const AdminConfigPage: React.FC = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const resConfig = await api.get('/api/config/public');
+                const resConfig = await api.get('/api/config/admin');
                 setSettings({
                     tech_hour_cost: resConfig.data.data.tech_hour_cost || '',
                     payment_alias: resConfig.data.data.payment_alias || '',
                     billing_email: resConfig.data.data.billing_email || '',
+                    sales_notification_email: resConfig.data.data.sales_notification_email || '',
                     confidentiality_agreement: resConfig.data.data.confidentiality_agreement || DEFAULT_AGREEMENT,
                 });
             } catch (error) {
@@ -154,6 +156,23 @@ const AdminConfigPage: React.FC = () => {
                             placeholder="Ej: admin@tuempresa.com"
                         />
                         <p className="text-xs text-gray-400 mt-1">Este correo aparecerá en la sección "Mis Pagos" para consultas.</p>
+                    </div>
+
+                    {/* EMAIL NOTIFICACIONES LEADS / OFERTAS (system_settings.sales_notification_email) */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                            <FaBullhorn className="text-red-500"/> Email para Notificaciones de Ventas/Ofertas
+                        </label>
+                        <input
+                            type="email"
+                            value={settings.sales_notification_email}
+                            onChange={e => setSettings({ ...settings, sales_notification_email: e.target.value })}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            placeholder="Ej: ventas@tuempresa.com"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Recibe los avisos cuando un cliente pulsa &quot;Me interesa&quot; en una oferta. Si queda vacío, el servidor puede usar variables de entorno (p. ej. SALES_NOTIFICATION_EMAIL o EMAIL_USER).
+                        </p>
                     </div>
 
                     {/* ACUERDO DE CONFIDENCIALIDAD */}

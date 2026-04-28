@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const uploadsDir = require('../utils/uploadsDir');
 const { protect, authorize, authorizeByPermission } = require('../middleware/authMiddleware');
-const { getPromotions, createPromotion, deletePromotion, registerInterest } = require('../controllers/promotionController');
+const { getPromotions, createPromotion, deletePromotion, registerInterest, getOfferLeads } = require('../controllers/promotionController');
 
 // Config de subida
 const storage = multer.diskStorage({
@@ -27,6 +27,13 @@ const upload = multer({
 });
 
 router.use(protect);
+
+router.get(
+    '/leads',
+    authorize('admin', 'agent', 'supervisor'),
+    authorizeByPermission('marketing_promotions'),
+    getOfferLeads
+);
 
 router.get('/', getPromotions);
 

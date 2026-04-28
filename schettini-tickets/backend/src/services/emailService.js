@@ -147,9 +147,62 @@ const sendEquipmentReadyEmail = async (to, clientName = '', invoiceNumber = '') 
     }
 };
 
+const escHtml = (s) => {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+};
+
+/**
+ * Notifica por email un lead de oferta (Me interesa). No lanza si falla el envío.
+ * @param {string} to - destinatario
+ * @param {string} clientLabel - nombre visible del cliente
+ * @param {string} offerTitle - título de la oferta
+ * @param {{ email?: string, phone?: string, leadAt?: string }} [extra]
+ */
+const sendOfferLeadEmail = async (to, clientLabel, offerTitle, extra = {}) => {
+    if (!to || !String(to).trim()) {
+        console.warn('[EmailService] sendOfferLeadEmail: sin destinatario, se omite envío.');
+        return false;
+    }
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('[EmailService] sendOfferLeadEmail: falta configuración SMTP (EMAIL_*).');
+        return false;
+    }
+    const subj = `Nuevo Lead: ${clientLabel} interesado en ${offerTitle}`;
+    const mailOptions = {
+        from: `"Sistema de Tickets" <${process.env.EMAIL_USER}>`,
+        to: String(to).trim(),
+        subject: subj.length > 255 ? subj.slice(0, 252) + '...' : subj,
+        html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <h2 style="color:#1e40af;">Nuevo interés en una oferta</h2>
+                <p><strong>Cliente:</strong> ${escHtml(clientLabel)}</p>
+                ${extra.email ? `<p><strong>Email:</strong> ${escHtml(extra.email)}</p>` : ''}
+                ${extra.phone ? `<p><strong>Teléfono:</strong> ${escHtml(extra.phone)}</p>` : ''}
+                <p><strong>Oferta:</strong> ${escHtml(offerTitle)}</p>
+                ${extra.leadAt ? `<p><strong>Fecha:</strong> ${escHtml(extra.leadAt)}</p>` : ''}
+                <p style="margin-top:16px;font-size:12px;color:#666;">Mensaje generado automáticamente desde el panel de ofertas.</p>
+            </div>
+        `,
+    };
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`[EmailService] Lead de oferta notificado a ${to}`);
+        return true;
+    } catch (error) {
+        console.error('[EmailService] Error al enviar notificación de lead de oferta:', error);
+        return false;
+    }
+};
+
 module.exports = {
     sendActivationEmail,
     sendWelcomeEmail,
     sendPasswordResetEmail,
     sendEquipmentReadyEmail,
+    sendOfferLeadEmail,
 };

@@ -273,13 +273,15 @@ CREATE TABLE IF NOT EXISTS promotions (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Intereses en promociones
+-- Intereses en promociones ("Me interesa" / leads de ofertas; modelo OfferLeads: user_id = cliente, promotion_id = oferta, created_at = fecha)
 CREATE TABLE IF NOT EXISTS promotion_interests (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   promotion_id INT UNSIGNED NOT NULL,
   user_id INT UNSIGNED NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_promo_user (promotion_id, user_id)
+  UNIQUE KEY uk_promo_user (promotion_id, user_id),
+  KEY idx_promotion_interests_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Configuración de tickets (sistemas, equipos, categorías, problemas)
