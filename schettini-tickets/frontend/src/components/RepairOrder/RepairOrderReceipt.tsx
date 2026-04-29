@@ -9,7 +9,7 @@ import './RepairOrderReceipt.css';
 const DEFAULT_LEGAL_TEXT = `1- Para el requerimiento de cualquier servicio respecto del equipo y/o el retiro del mismo, se solicitará, sin excepción, la exhibición del presente comprobante o el DNI.
 2- SCH COMERCIAL SAS no se responsabiliza por la pérdida total o parcial de la información.
 3- El plazo para el retiro del equipo en reparación es de 60 días a partir de la fecha de ingreso. Durante ese tiempo el equipo estará a disposición del cliente. Cumplido ese término, se cobrará un monto diario de usd$0.80+iva, en concepto de gastos por depósito. Si no es retirada en 90 días, se considerará abandonada por su dueño y SCH COMERCIAL SAS quedará facultado para ejercer cualquier acto de disposición.
-4- El diagnóstico de los equipos tiene un costo actual de $6.900 (pesos) que serán abonados al INGRESO del equipo. Este monto será reconocido cómo parte de pago en caso de aceptar la reparación.
+4- El diagnóstico de los equipos tiene un costo actual de $10.000 (pesos) que serán abonados al INGRESO del equipo. Este monto será reconocido cómo parte de pago en caso de aceptar la reparación.
 5- GARANTIA: se conviene un plazo de garantía por el servicio técnico y materiales de 30 días.
 7- El cliente firma en conformidad, declarando haber leído y aceptado todas las condiciones.
 8- Es responsabilidad del cliente revisar las condiciones: https://casaschettini-shop.com/terminos-y-condiciones-politicas-garantia/
@@ -84,6 +84,12 @@ function ReceiptHalf({
       }];
 
   const logoSrc = getImageUrl(cs?.logo_url);
+
+  /** Texto legal del pie: Configuración Central (company_settings.legal_footer_text); si está vacío, respaldo embebido. */
+  const legalText =
+    cs?.legal_footer_text != null && String(cs.legal_footer_text).trim() !== ''
+      ? String(cs.legal_footer_text)
+      : DEFAULT_LEGAL_TEXT;
 
   return (
     <div className="h-[48vh] overflow-hidden flex flex-col p-2 break-inside-avoid">
@@ -170,11 +176,11 @@ function ReceiptHalf({
         )}
       </div>
 
-      {/* TÉRMINOS Y CONDICIONES - texto fijo incrustado */}
+      {/* TÉRMINOS Y CONDICIONES — desde configuración central o texto por defecto */}
       <div className="text-[7px] leading-tight text-justify mt-2 break-inside-avoid">
         <p className="font-semibold mb-0.5">Términos y condiciones - SCH COMERCIAL SAS</p>
         <p className="whitespace-pre-line">
-          {DEFAULT_LEGAL_TEXT}
+          {legalText}
         </p>
         {/* Espacio para firma - alineado a la derecha */}
         <div className="flex justify-end mt-2">
