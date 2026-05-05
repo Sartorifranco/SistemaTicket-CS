@@ -592,7 +592,10 @@ const ManageRepairOrderPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      const sparePartsDetailJson = sparePartsList.length > 0 ? JSON.stringify(sparePartsList) : null;
+      /** Si sparePartsList queda vacío tras borrar ítems, hay que enviar explícitamente vacío/null.
+       *  No usar form.sparePartsDetail como respaldo: conserva el texto cargado al abrir la orden y el backend volvería a guardar los repuestos “fantasma”. */
+      const sparePartsDetailPayload =
+        sparePartsList.length > 0 ? JSON.stringify(sparePartsList) : '';
       const keptPhotoIds = existingPhotos.map((p) => p.id);
 
       // Si no hay fotos nuevas, mantenemos el flujo JSON existente (sin multipart)
@@ -615,7 +618,7 @@ const ManageRepairOrderPage: React.FC = () => {
           deliveredDate: toDateOnly(form.deliveredDate) ?? null,
           warrantyExpirationDate: toDateOnly(form.warrantyExpirationDate) ?? null,
           publicNotes: form.publicNotes || null,
-          sparePartsDetail: sparePartsDetailJson || form.sparePartsDetail || null,
+          sparePartsDetail: sparePartsDetailPayload,
           technicianId: form.technicianId ? parseInt(form.technicianId, 10) : null,
           internalNotes: finalInternalNotes || null,
           isWarranty: form.isWarranty,
@@ -649,7 +652,7 @@ const ManageRepairOrderPage: React.FC = () => {
         formData.append('deliveredDate', toDateOnly(form.deliveredDate) ?? '');
         formData.append('warrantyExpirationDate', toDateOnly(form.warrantyExpirationDate) ?? '');
         formData.append('publicNotes', form.publicNotes || '');
-        formData.append('sparePartsDetail', sparePartsDetailJson || form.sparePartsDetail || '');
+        formData.append('sparePartsDetail', sparePartsDetailPayload);
         if (form.technicianId) {
           formData.append('technicianId', form.technicianId);
         }
