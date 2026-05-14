@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../config/axiosConfig';
 import { getImageUrl } from '../utils/imageUrl';
-import { formatDateArgentina, formatDateForInput, formatNowArgentina, toDateOnly } from '../utils/dateFormatter';
+import { formatDateForInput, formatNowArgentina, toDateOnly } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
 import { hasAnyPermission } from '../utils/permissions';
 import SectionCard from '../components/Common/SectionCard';
@@ -11,6 +11,8 @@ import HelpTooltip from '../components/Common/HelpTooltip';
 import CreatableAutocomplete from '../components/Common/CreatableAutocomplete';
 import { FaWhatsapp, FaSave, FaTimes, FaTrash, FaPlus, FaPrint } from 'react-icons/fa';
 import WebcamCapture, { CapturedPhoto } from '../components/RepairOrders/WebcamCapture';
+import RegisterRepairOrderPaymentModal from '../components/RepairOrders/RegisterRepairOrderPaymentModal';
+import RepairOrderPaymentsSection, { computeRepairOrderPaymentSummary } from '../components/RepairOrders/RepairOrderPaymentsSection';
 import RepairOrderReceipt, { useReceiptPrintPortal } from '../components/RepairOrder/RepairOrderReceipt';
 import { formatRepairOrderClientDisplay } from '../utils/repairOrderLabels';
 
@@ -139,6 +141,14 @@ interface RepairOrder {
   original_supplier?: string | null;
   requires_factory_shipping?: number;
   warranty_status?: string | null;
+  payments?: {
+    id: number;
+    amount: number | string;
+    payment_method: string;
+    notes?: string | null;
+    is_legacy_import?: number | boolean;
+    created_at?: string;
+  }[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -227,6 +237,9 @@ const ManageRepairOrderPage: React.FC = () => {
   const basePath = isAdmin ? '/admin/repair-orders' : '/agent/repair-orders';
 
   const canEdit = user?.role === 'admin' || user?.role === 'agent' || user?.role === 'supervisor';
+  /** Registrar cobros vía POST /payments (misma regla que el backend: repairs_edit o admin). */
+  const canRegisterPayment =
+    user?.role === 'admin' || hasAnyPermission(user?.permissions || [], ['repairs_edit']);
   /** Ver botón eliminar foto: quien puede editar O quien tiene permiso repairs_edit (ej. viewer con ese permiso) */
   const canDeletePhoto = canEdit || hasAnyPermission(user?.permissions || [], ['repairs_edit']);
   const canEditEquipment = user?.role === 'admin';
@@ -259,6 +272,7 @@ const ManageRepairOrderPage: React.FC = () => {
   const sparePartsDropdownRef = useRef<HTMLDivElement>(null);
   useReceiptPrintPortal();
 
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRecyclingModal, setShowRecyclingModal] = useState(false);
   const [recyclingNotes, setRecyclingNotes] = useState('');
   const [recyclingPhotos, setRecyclingPhotos] = useState<File[]>([]);
@@ -443,6 +457,11 @@ const ManageRepairOrderPage: React.FC = () => {
   const surchargePct = Number(companySettings?.list_price_surcharge_percent ?? 0);
   const totalLista = surchargePct > 0 ? totalEfectivo * (1 + surchargePct / 100) : totalEfectivo;
 
+  const paymentSummaryForModal = useMemo(
+    () => (order ? computeRepairOrderPaymentSummary(order) : null),
+    [order]
+  );
+
   const usdRate = Number(companySettings?.usd_exchange_rate ?? 0);
   const profitMarginPct = Number(companySettings?.profit_margin_percent ?? 30);
   const manualCostNum = Number(parseFloat(String(manualCostInput)) || 0);
@@ -622,7 +641,6 @@ const ManageRepairOrderPage: React.FC = () => {
           laborCost: isOficialFabricante ? 0 : (effectiveLaborNum || null),
           sparePartsCost: isOficialFabricante ? 0 : (effectiveSparePartsTotal || null),
           totalCost: isOficialFabricante ? 0 : (effectiveTotalEfectivo || null),
-          depositPaid: form.depositPaid ? parseFloat(form.depositPaid) : null,
           acceptedDate: toDateOnly(form.acceptedDate) ?? null,
           promisedDate: toDateOnly(form.promisedDate) ?? null,
           deliveredDate: toDateOnly(form.deliveredDate) ?? null,
@@ -654,9 +672,6 @@ const ManageRepairOrderPage: React.FC = () => {
         formData.append('laborCost', String(isOficialFabricante ? 0 : (effectiveLaborNum || '')));
         formData.append('sparePartsCost', String(isOficialFabricante ? 0 : (effectiveSparePartsTotal || '')));
         formData.append('totalCost', String(isOficialFabricante ? 0 : (effectiveTotalEfectivo || '')));
-        if (form.depositPaid) {
-          formData.append('depositPaid', form.depositPaid);
-        }
         formData.append('acceptedDate', toDateOnly(form.acceptedDate) ?? '');
         formData.append('promisedDate', toDateOnly(form.promisedDate) ?? '');
         formData.append('deliveredDate', toDateOnly(form.deliveredDate) ?? '');
@@ -802,6 +817,13 @@ const ManageRepairOrderPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <RepairOrderPaymentsSection
+        order={order}
+        variant="staff"
+        canRegisterPayment={canRegisterPayment}
+        onRegisterPaymentClick={() => setShowPaymentModal(true)}
+      />
 
       {canEdit ? (
         <form onSubmit={handleSave}>
@@ -1182,19 +1204,23 @@ const ManageRepairOrderPage: React.FC = () => {
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  Seña / Pagos ($)
-                  <HelpTooltip text="Monto adelantado por el cliente. Se restará del total." />
+                  Total señado / abonado (solo lectura)
+                  <HelpTooltip text="Los cobros se registran con el botón «Registrar pago» arriba. El total se actualiza automáticamente." />
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  name="depositPaid"
-                  value={form.depositPaid ?? ''}
-                  onChange={handleChange}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border rounded-lg"
+                  type="text"
+                  readOnly
+                  disabled
+                  value={
+                    form.depositPaid !== '' && form.depositPaid != null
+                      ? `$${Number(form.depositPaid).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : '$0,00'
+                  }
+                  className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-800 cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-600 mt-1.5">
+                  Para registrar nuevos pagos o señas, utilice el botón &quot;Registrar pago&quot; en la vista de la orden.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Aceptado el</label>
@@ -1437,6 +1463,22 @@ const ManageRepairOrderPage: React.FC = () => {
         <RepairOrderReceipt
           order={order}
           companySettings={companySettings ?? { company_name: 'SCH COMERCIAL SAS', address: '—', phone: '—', email: '—', logo_url: null, legal_footer_text: '' }}
+        />
+      )}
+
+      {order && (
+        <RegisterRepairOrderPaymentModal
+          isOpen={showPaymentModal}
+          orderId={order.id}
+          defaultAmount={
+            paymentSummaryForModal?.saldoPendiente != null && !Number.isNaN(paymentSummaryForModal.saldoPendiente)
+              ? paymentSummaryForModal.saldoPendiente
+              : 0
+          }
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={() => {
+            fetchOrder();
+          }}
         />
       )}
     </div>

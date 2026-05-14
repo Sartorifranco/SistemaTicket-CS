@@ -265,7 +265,7 @@ const NewRepairOrderPage: React.FC = () => {
     }
     if (depositPaid) {
       formData.append('depositPaid', depositPaid);
-      if (paymentMethod) formData.append('paymentMethod', paymentMethod);
+      formData.append('paymentMethod', (paymentMethod && paymentMethod.trim()) ? paymentMethod.trim() : 'Efectivo');
       if (paymentOperationNumber) formData.append('paymentOperationNumber', paymentOperationNumber);
     }
     if (isWarranty) {

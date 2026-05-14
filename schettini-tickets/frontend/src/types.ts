@@ -345,6 +345,18 @@ export interface Module {
 // ====================================================================
 // REPAIR ORDER TYPES (Órdenes de Taller + Módulo Garantías)
 // ====================================================================
+/** Cobro registrado en historial (GET orden incluye `payments`). */
+export interface RepairOrderPayment {
+    id: number;
+    amount: number | string;
+    payment_method: string;
+    notes?: string | null;
+    registered_by_user_id?: number | null;
+    tech_cash_movement_id?: number | null;
+    is_legacy_import?: number | boolean;
+    created_at?: string;
+}
+
 export interface RepairOrderItemType {
     equipment_type?: string | null;
     brand?: string | null;
@@ -377,6 +389,8 @@ export interface RepairOrder {
     spare_parts_cost?: number | null;
     total_cost?: number | null;
     deposit_paid?: number | null;
+    /** Historial de cobros (API GET detalle). */
+    payments?: RepairOrderPayment[];
     technical_report?: string | null;
     internal_notes?: string;
     entry_date?: string;

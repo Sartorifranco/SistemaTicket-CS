@@ -60,6 +60,7 @@ import ClientTicketsPage from './pages/ClientMyTicketsPage';
 import ClientTicketDetailPage from './pages/ClientTicketDetailPage';
 import ClientResourcesPage from './pages/ClientResourcesPage';
 import ClientRepairsPage from './pages/ClientRepairsPage';
+import RepairOrderDetailPage from './pages/RepairOrderDetailPage';
 import ClientActivationsPage from './pages/ClientActivationsPage';
 import OffersPage from './pages/OffersPage';
 import AdminActivationsPage from './pages/AdminActivationsPage';
@@ -203,6 +204,7 @@ const App: React.FC = () => {
                             <Route path="/client/tickets" element={<PrivateRoute roles={['client']}><ClientTicketsPage /></PrivateRoute>} />
                             <Route path="/client/tickets/:id" element={<PrivateRoute roles={['client']}><ClientTicketDetailPage /></PrivateRoute>} />
                             <Route path="/client/repairs" element={<PrivateRoute roles={['client']}><ClientRepairsPage /></PrivateRoute>} />
+                            <Route path="/client/repairs/:id" element={<PrivateRoute roles={['client']}><RepairOrderDetailPage /></PrivateRoute>} />
                             <Route path="/client/activations" element={<PrivateRoute roles={['client']}><ClientActivationsPage /></PrivateRoute>} />
                             <Route path="/client/help" element={<PrivateRoute roles={['client']}><ClientResourcesPage /></PrivateRoute>} />
                             <Route path="/client/offers" element={<PrivateRoute roles={['client']}><OffersPage /></PrivateRoute>} />
