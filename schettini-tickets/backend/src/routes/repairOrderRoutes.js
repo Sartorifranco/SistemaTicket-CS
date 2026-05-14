@@ -13,6 +13,7 @@ const {
   createExternalRecycledOrder,
   updateRepairOrder,
   updateRepairOrderStatus,
+  addRepairOrderPayment,
   deleteRepairOrder,
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,
@@ -59,6 +60,11 @@ router.get('/my-orders', getMyRepairOrders);
 router.get('/monitor', authorizeByPermission('repairs_view'), getMonitorOrders);
 router.post('/external-recycled', authorizeByPermission('repairs_create', 'repairs_edit'), upload.array('photos', 10), createExternalRecycledOrder);
 router.get('/', authorizeByPermission('repairs_view'), getRepairOrders);
+router.post(
+  '/:id/payments',
+  authorizeByPermission('repairs_edit'),
+  addRepairOrderPayment
+);
 router.get('/:id', getRepairOrderById);
 router.post(
   '/',

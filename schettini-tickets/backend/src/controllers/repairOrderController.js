@@ -3,6 +3,7 @@ const path = require('path');
 const pool = require('../config/db');
 const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 const { registerDepositMovementFromRepairOrder } = require('./techCashController');
+const { appendRepairOrderPaymentInConnection, recordRepairOrderPaymentPost } = require('../services/repairOrderPaymentService');
 const { createNotification } = require('../utils/notificationManager');
 
 /** Convierte un string de fecha/hora MySQL (sin Z) o un Date a ISO con Z para que el frontend la interprete como UTC. */
@@ -460,8 +461,32 @@ const getRepairOrderById = async (req, res) => {
       'SELECT * FROM repair_order_items WHERE repair_order_id = ? ORDER BY sort_order, id',
       [id]
     );
+    let payments = [];
+    try {
+      const [payRows] = await pool.query(
+        `SELECT id, amount, payment_method, notes, registered_by_user_id, tech_cash_movement_id, is_legacy_import, created_at
+         FROM repair_order_payments WHERE repair_order_id = ? ORDER BY id ASC`,
+        [id]
+      );
+      payments = payRows.map((p) => ({ ...p, created_at: toUTCISO(p.created_at) }));
+    } catch (e) {
+      if (e.code === 'ER_NO_SUCH_TABLE') {
+        payments = [];
+      } else {
+        throw e;
+      }
+    }
     const first = items[0] || {};
-    let data = normalizeRowDates({ ...order, photos, items, equipment_type: first.equipment_type, model: first.model, serial_number: first.serial_number, reported_fault: first.reported_fault });
+    let data = normalizeRowDates({
+      ...order,
+      photos,
+      items,
+      payments,
+      equipment_type: first.equipment_type,
+      model: first.model,
+      serial_number: first.serial_number,
+      reported_fault: first.reported_fault
+    });
     if (userRole === 'client') {
       delete data.internal_notes;
       delete data.recycling_notes;
@@ -637,16 +662,28 @@ const createRepairOrder = async (req, res) => {
     const repairOrderId = result.insertId;
 
     if (depositPaid && parseFloat(depositPaid) > 0) {
-      await registerDepositMovementFromRepairOrder(
-        repairOrderId,
-        orderNumber,
-        parseFloat(depositPaid),
-        'ingreso',
-        paymentMethod || 'Efectivo',
-        clientId,
-        req.user?.id,
-        `Seña Orden #${orderNumber}`
-      );
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        await appendRepairOrderPaymentInConnection(conn, {
+          repairOrderId,
+          orderNumber,
+          clientId,
+          amount: parseFloat(depositPaid),
+          paymentMethod: paymentMethod || 'Efectivo',
+          userId: req.user?.id,
+          notes: `Seña Orden #${orderNumber}`,
+          isLegacyImport: 0,
+          depositUpdateMode: 'none'
+        });
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        await pool.query('DELETE FROM repair_orders WHERE id = ?', [repairOrderId]);
+        throw e;
+      } finally {
+        conn.release();
+      }
     }
 
     if (sparePartsDetail && String(sparePartsDetail).trim()) {
@@ -921,16 +958,28 @@ const updateRepairOrder = async (req, res) => {
     const paymentMethodOrder = req.body.payment_method !== undefined ? req.body.payment_method : existing.payment_method;
     if (depositPaid !== undefined && newDeposit > oldDeposit) {
       const delta = newDeposit - oldDeposit;
-      await registerDepositMovementFromRepairOrder(
-        id,
-        existing.order_number,
-        delta,
-        'ingreso',
-        paymentMethodOrder || 'Efectivo',
-        existing.client_id,
-        req.user?.id,
-        `Agregado a Seña Orden #${existing.order_number}`
-      );
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        await appendRepairOrderPaymentInConnection(conn, {
+          repairOrderId: id,
+          orderNumber: existing.order_number,
+          clientId: existing.client_id,
+          amount: delta,
+          paymentMethod: paymentMethodOrder || 'Efectivo',
+          userId: req.user?.id,
+          notes: `Agregado a Seña Orden #${existing.order_number}`,
+          isLegacyImport: 0,
+          depositUpdateMode: 'none'
+        });
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        await pool.query('UPDATE repair_orders SET deposit_paid = ? WHERE id = ?', [oldDeposit, id]);
+        throw e;
+      } finally {
+        conn.release();
+      }
     }
     if (depositPaid !== undefined && newDeposit < oldDeposit) {
       const delta = oldDeposit - newDeposit;
@@ -1154,6 +1203,40 @@ const updateRepairOrderStatus = async (req, res) => {
   }
 };
 
+/** POST /api/repair-orders/:id/payments — cobro con transacción (caja + fila de pago + incremento de deposit_paid). */
+const addRepairOrderPayment = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'ID de orden inválido' });
+    }
+    const { amount, payment_method: paymentMethodSnake, paymentMethod, notes } = req.body || {};
+    const paymentMethodResolved = paymentMethodSnake || paymentMethod || 'Efectivo';
+    await recordRepairOrderPaymentPost({
+      repairOrderId: id,
+      amount,
+      paymentMethod: paymentMethodResolved,
+      notes: notes != null ? String(notes) : null,
+      userId: req.user?.id || null
+    });
+    const [rows] = await pool.query('SELECT deposit_paid FROM repair_orders WHERE id = ?', [id]);
+    if (req.io) {
+      req.io.to('admin').to('agent').to('supervisor').emit('repair_orders_update', {});
+    }
+    res.status(201).json({
+      success: true,
+      message: 'Pago registrado',
+      data: { deposit_paid: rows[0] ? parseFloat(rows[0].deposit_paid) || 0 : 0 }
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Error addRepairOrderPayment:', error);
+    res.status(500).json({ success: false, message: 'Error al registrar el pago' });
+  }
+};
+
 // DELETE - Eliminar orden (solo admin). Borrado en cascada: fotos físicas, status_history, article_movements, tech_cash, items, photos.
 const deleteRepairOrder = async (req, res) => {
   try {
@@ -1182,6 +1265,7 @@ const deleteRepairOrder = async (req, res) => {
     await pool.query('DELETE FROM repair_order_photos WHERE repair_order_id = ?', [id]);
     await pool.query('DELETE FROM repair_order_status_history WHERE repair_order_id = ?', [id]);
     await pool.query('DELETE FROM article_movements WHERE order_id = ?', [id]);
+    await pool.query('DELETE FROM repair_order_payments WHERE repair_order_id = ?', [id]);
     await pool.query(
       "DELETE FROM tech_cash_movements WHERE linked_reference = ? OR linked_reference = CONCAT('REP-', ?)",
       [orderNumber, orderNumber]
@@ -1449,6 +1533,7 @@ module.exports = {
   createExternalRecycledOrder,
   updateRepairOrder,
   updateRepairOrderStatus,
+  addRepairOrderPayment,
   deleteRepairOrder,
   addPhotosToRepairOrder,
   deleteRepairOrderPhoto,

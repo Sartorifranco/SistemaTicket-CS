@@ -237,18 +237,37 @@ const registerPaymentFromRepairOrder = async (orderId, orderNumber, amount, paym
  * @param {number|null} userId - req.user.id
  * @param {string} notesConcept - Texto para notes (ej. "Seña Orden #2025-001", "Devolución parcial...")
  */
+/**
+ * Inserta un movimiento de caja vinculado a una orden REP-*.
+ * @param {import('mysql2/promise').Pool|import('mysql2/promise').Connection} executor - pool o conexión en transacción
+ * @returns {Promise<number>} id insertado en tech_cash_movements
+ */
+const insertRepairOrderLinkedCashMovement = async (executor, { type, orderNumber, orderId, amount, paymentMethod, clientId, userId, notesConcept }) => {
+  if (!amount || amount <= 0) return null;
+  if (!type || !['ingreso', 'egreso'].includes(type)) return null;
+  const linkedRef = `REP-${orderNumber || orderId}`;
+  const payment = paymentMethod && String(paymentMethod).trim() ? String(paymentMethod).trim() : 'Efectivo';
+  const [result] = await executor.query(
+    `INSERT INTO tech_cash_movements (movement_date, type, concept, linked_reference, client_id, payment_method, amount, user_id, notes)
+     VALUES (NOW(), ?, 'taller', ?, ?, ?, ?, ?, ?)`,
+    [type, linkedRef, clientId || null, payment, amount, userId || null, notesConcept || linkedRef]
+  );
+  console.log(`[TechCash] ${type} $${amount} - ${notesConcept || linkedRef}`);
+  return result.insertId;
+};
+
 const registerDepositMovementFromRepairOrder = async (orderId, orderNumber, amount, type, paymentMethod, clientId, userId, notesConcept) => {
   try {
-    if (!amount || amount <= 0) return;
-    if (!type || !['ingreso', 'egreso'].includes(type)) return;
-    const linkedRef = `REP-${orderNumber || orderId}`;
-    const payment = paymentMethod && String(paymentMethod).trim() ? String(paymentMethod).trim() : 'Efectivo';
-    await pool.query(
-      `INSERT INTO tech_cash_movements (movement_date, type, concept, linked_reference, client_id, payment_method, amount, user_id, notes)
-       VALUES (NOW(), ?, 'taller', ?, ?, ?, ?, ?, ?)`,
-      [type, linkedRef, clientId || null, payment, amount, userId || null, notesConcept || linkedRef]
-    );
-    console.log(`[TechCash] ${type} $${amount} - ${notesConcept || linkedRef}`);
+    await insertRepairOrderLinkedCashMovement(pool, {
+      type,
+      orderNumber,
+      orderId,
+      amount,
+      paymentMethod,
+      clientId,
+      userId,
+      notesConcept
+    });
   } catch (err) {
     console.error('[TechCash] Error registrando movimiento por orden:', err);
   }
@@ -261,5 +280,6 @@ module.exports = {
   updateMovement,
   deleteMovement,
   registerPaymentFromRepairOrder,
-  registerDepositMovementFromRepairOrder
+  registerDepositMovementFromRepairOrder,
+  insertRepairOrderLinkedCashMovement
 };
