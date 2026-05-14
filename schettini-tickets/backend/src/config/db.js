@@ -1,5 +1,9 @@
 const mysql = require('mysql2/promise');
 const dotenv = require('dotenv');
+const {
+    resolveRepairOrderPaymentsColumnTypes,
+    buildCreateRepairOrderPaymentsTableSql
+} = require('../utils/repairOrderPaymentsSchema');
 
 dotenv.config();
 
@@ -89,24 +93,8 @@ async function syncDatabase() {
             "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'repair_order_payments'"
         );
         if (ropTables.length === 0) {
-            await conn.query(`
-CREATE TABLE repair_order_payments (
-  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  repair_order_id INT NOT NULL,
-  amount DECIMAL(12,2) NOT NULL,
-  payment_method VARCHAR(100) NOT NULL DEFAULT 'Efectivo',
-  notes TEXT NULL,
-  registered_by_user_id INT NULL,
-  tech_cash_movement_id INT UNSIGNED NULL,
-  is_legacy_import TINYINT(1) NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  KEY idx_ro_payments_order (repair_order_id),
-  KEY idx_ro_payments_tcm (tech_cash_movement_id),
-  CONSTRAINT fk_rop_order FOREIGN KEY (repair_order_id) REFERENCES repair_orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_rop_registered_by FOREIGN KEY (registered_by_user_id) REFERENCES Users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            `);
+            const ropTypes = await resolveRepairOrderPaymentsColumnTypes(conn);
+            await conn.query(buildCreateRepairOrderPaymentsTableSql(ropTypes));
             console.log('[syncDatabase] Tabla repair_order_payments creada.');
         } else {
             console.log('[syncDatabase] Tabla repair_order_payments ya existe.');
