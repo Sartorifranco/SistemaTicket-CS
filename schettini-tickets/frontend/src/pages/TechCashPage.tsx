@@ -78,6 +78,18 @@ const TechCashPage: React.FC = () => {
     fetchMovements();
   }, [fetchMovements]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
+
   const ingresosDia = movements.filter((m) => m.type === 'ingreso').reduce((s, m) => s + Number(m.amount), 0);
   const egresosDia = movements.filter((m) => m.type === 'egreso').reduce((s, m) => s + Number(m.amount), 0);
   const saldoDia = ingresosDia - egresosDia;

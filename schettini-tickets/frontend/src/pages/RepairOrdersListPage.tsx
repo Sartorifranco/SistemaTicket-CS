@@ -15,6 +15,9 @@ interface RepairOrderRow {
   order_number: string;
   is_warranty?: number | null;
   has_warranty_items?: number | null;
+  created_by_user_id?: number | null;
+  created_by_username?: string | null;
+  created_by_full_name?: string | null;
   client_id?: number | null;
   client_name?: string;
   client_business_name?: string;
@@ -121,6 +124,31 @@ function getAlertBadge(order: RepairOrderRow): { text: string; className: string
   return null;
 }
 
+const REPAIR_ORDERS_FILTERS_STORAGE = 'schettini_repair_orders_filters_v1';
+
+const defaultRepairOrderFilters = {
+  orderNumber: '',
+  brand: '',
+  model: '',
+  serial: '',
+  clientId: '',
+  technicianId: '',
+  status: '',
+  dateFrom: '',
+  dateTo: ''
+};
+
+function loadRepairOrderFiltersFromStorage(): typeof defaultRepairOrderFilters {
+  try {
+    const raw = sessionStorage.getItem(REPAIR_ORDERS_FILTERS_STORAGE);
+    if (!raw) return { ...defaultRepairOrderFilters };
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return { ...defaultRepairOrderFilters, ...parsed };
+  } catch {
+    return { ...defaultRepairOrderFilters };
+  }
+}
+
 const RepairOrdersListPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -141,17 +169,24 @@ const RepairOrdersListPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   useReceiptPrintPortal();
 
-  const [filters, setFilters] = useState({
-    orderNumber: '',
-    brand: '',
-    model: '',
-    serial: '',
-    clientId: '',
-    technicianId: '',
-    status: '',
-    dateFrom: '',
-    dateTo: ''
-  });
+  const [filters, setFilters] = useState(loadRepairOrderFiltersFromStorage);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(REPAIR_ORDERS_FILTERS_STORAGE, JSON.stringify(filters));
+    } catch {
+      /* private mode / quota */
+    }
+  }, [filters]);
+
+  const clearFilters = () => {
+    setFilters({ ...defaultRepairOrderFilters });
+    try {
+      sessionStorage.removeItem(REPAIR_ORDERS_FILTERS_STORAGE);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const fetchOrders = useCallback(() => {
     const params = new URLSearchParams();
@@ -165,7 +200,7 @@ const RepairOrdersListPage: React.FC = () => {
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
     setLoading(true);
-    api
+    return api
       .get<{ success: boolean; data: RepairOrderRow[] }>(`/api/repair-orders?${params.toString()}`)
       .then((res) => setOrders(res.data.data || []))
       .catch(() => toast.error('Error al cargar órdenes'))
@@ -243,7 +278,7 @@ const RepairOrdersListPage: React.FC = () => {
     try {
       await api.put(`/api/repair-orders/${order.id}/status`, { status: newStatus });
       toast.success('Estado actualizado correctamente');
-      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o)));
+      await fetchOrders();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg || 'Error al actualizar estado');
@@ -352,6 +387,13 @@ const RepairOrdersListPage: React.FC = () => {
             onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
             className="px-3 py-2 border rounded-lg text-sm min-w-[120px] flex-1 max-w-[180px]"
           />
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 shrink-0"
+          >
+            Limpiar filtros
+          </button>
         </div>
       </SectionCard>
 
@@ -386,11 +428,18 @@ const RepairOrdersListPage: React.FC = () => {
                   return (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-medium">
-                        <span>{formatOrderNumber(o.order_number, !!(o.is_warranty || o.has_warranty_items))}</span>
-                        {(o.is_warranty || o.has_warranty_items) ? (
-                          <span className="ml-1.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
-                            Garantía
-                          </span>
+                        <div>
+                          <span>{formatOrderNumber(o.order_number, !!(o.is_warranty || o.has_warranty_items))}</span>
+                          {(o.is_warranty || o.has_warranty_items) ? (
+                            <span className="ml-1.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                              Garantía
+                            </span>
+                          ) : null}
+                        </div>
+                        {(o.created_by_full_name || o.created_by_username) ? (
+                          <div className="text-[11px] text-gray-500 font-normal mt-0.5">
+                            Alta: {o.created_by_full_name || o.created_by_username}
+                          </div>
                         ) : null}
                       </td>
                       <td className="px-4 py-2 text-gray-800">{formatRepairOrderClientDisplay(o)}</td>

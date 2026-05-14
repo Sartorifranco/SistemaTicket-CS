@@ -286,10 +286,13 @@ const getRepairOrders = async (req, res) => {
         u.business_name AS client_business_name,
         u.phone AS client_phone,
         t.username AS technician_name,
+        cb.username AS created_by_username,
+        cb.full_name AS created_by_full_name,
         ro.client_id, ro.technician_id
       FROM repair_orders ro
       LEFT JOIN Users u ON ro.client_id = u.id
       LEFT JOIN Users t ON ro.technician_id = t.id
+      LEFT JOIN Users cb ON ro.created_by_user_id = cb.id
       WHERE 1=1
     `;
     const params = [];
@@ -429,10 +432,13 @@ const getRepairOrderById = async (req, res) => {
         u.email AS client_email,
         u.phone AS client_phone,
         u.address AS client_address,
-        t.username AS technician_name
+        t.username AS technician_name,
+        cb.username AS created_by_username,
+        cb.full_name AS created_by_full_name
       FROM repair_orders ro
       LEFT JOIN Users u ON ro.client_id = u.id
       LEFT JOIN Users t ON ro.technician_id = t.id
+      LEFT JOIN Users cb ON ro.created_by_user_id = cb.id
       WHERE ro.id = ?`,
       [id]
     );
@@ -582,8 +588,9 @@ const createRepairOrder = async (req, res) => {
         public_notes, spare_parts_detail,
         order_type, visit_date, remote_platform, delivery_address,
         payment_method, payment_operation_number, priority,
-        is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier, requires_factory_shipping, warranty_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier, requires_factory_shipping, warranty_status,
+        created_by_user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clientId,
         orderNumber,
@@ -622,7 +629,8 @@ const createRepairOrder = async (req, res) => {
         (requiresFactoryShipping === true || requiresFactoryShipping === 'true' || requiresFactoryShipping === 1)
           ? 1
           : 0,
-        explicitOrderWarranty && warrantyStatus ? warrantyStatus : null
+        explicitOrderWarranty && warrantyStatus ? warrantyStatus : null,
+        req.user?.id || null
       ]
     );
 
@@ -759,7 +767,7 @@ const updateRepairOrder = async (req, res) => {
     } = req.body;
 
     const [existingRows] = await pool.query(
-      'SELECT id, status, deposit_paid, total_cost, order_number, client_id, payment_method, requires_factory_shipping, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier, spare_parts_detail FROM repair_orders WHERE id = ?',
+      'SELECT id, status, deposit_paid, total_cost, order_number, client_id, payment_method, requires_factory_shipping, warranty_status, is_warranty, warranty_type, purchase_invoice_number, purchase_date, original_supplier, spare_parts_detail, delivered_date FROM repair_orders WHERE id = ?',
       [id]
     );
     if (existingRows.length === 0) {
@@ -826,6 +834,22 @@ const updateRepairOrder = async (req, res) => {
       finalSparePartsCost = 0;
     }
 
+    // Fecha de entrega: al pasar a Entregado sin fecha previa, NOW(); si ya había fecha, no pisar; si el front envía fecha explícita, usarla.
+    const incomingSt = status !== undefined && status != null && status !== '' ? String(status).toLowerCase() : '';
+    const enteringDelivered = incomingSt === 'entregado' || incomingSt === 'entregado_sin_reparacion';
+    let deliveredDateResolved;
+    if (deliveredDate !== undefined && deliveredDate != null && String(deliveredDate).trim() !== '') {
+      deliveredDateResolved = deliveredDate;
+    } else if (enteringDelivered) {
+      const hadDelivered = existing.delivered_date != null && String(existing.delivered_date).trim() !== '';
+      if (!hadDelivered) {
+        const [nr] = await pool.query('SELECT NOW() AS n');
+        deliveredDateResolved = nr[0]?.n;
+      }
+    } else if (deliveredDate !== undefined) {
+      deliveredDateResolved = deliveredDate;
+    }
+
     const setClause = [];
     const setParams = [];
     const add = (col, val, isNum) => {
@@ -854,7 +878,7 @@ const updateRepairOrder = async (req, res) => {
     if (technicianId !== undefined) add('technician_id', technicianId || null);
     if (acceptedDate !== undefined) add('accepted_date', acceptedDate);
     if (promisedDate !== undefined) add('promised_date', promisedDate);
-    if (deliveredDate !== undefined) add('delivered_date', deliveredDate);
+    if (deliveredDateResolved !== undefined) add('delivered_date', deliveredDateResolved);
     if (warrantyExpirationDate !== undefined) add('warranty_expiration_date', warrantyExpirationDate);
     if (publicNotes !== undefined) add('public_notes', publicNotes);
     if (sparePartsDetail !== undefined) {
@@ -1086,14 +1110,24 @@ const updateRepairOrderStatus = async (req, res) => {
         message: 'Para declarar abandono debe entrar al detalle de la orden (se requieren fotos y notas obligatorias).'
       });
     }
-    const [existing] = await pool.query('SELECT id, status, client_id, is_warranty, warranty_status FROM repair_orders WHERE id = ?', [id]);
+    const [existing] = await pool.query(
+      'SELECT id, status, client_id, is_warranty, warranty_status, delivered_date FROM repair_orders WHERE id = ?',
+      [id]
+    );
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Orden no encontrada' });
     }
     const row = existing[0];
     const oldStatus = row.status;
     const clientId = row.client_id;
-    await pool.query('UPDATE repair_orders SET status = ?, updated_at = NOW() WHERE id = ?', [s, id]);
+    const enteringDelivered = s === 'entregado' || s === 'entregado_sin_reparacion';
+    const hadDelivered = row.delivered_date != null && String(row.delivered_date).trim() !== '';
+    if (enteringDelivered && !hadDelivered) {
+      const [nr] = await pool.query('SELECT NOW() AS n');
+      await pool.query('UPDATE repair_orders SET status = ?, delivered_date = ?, updated_at = NOW() WHERE id = ?', [s, nr[0]?.n, id]);
+    } else {
+      await pool.query('UPDATE repair_orders SET status = ?, updated_at = NOW() WHERE id = ?', [s, id]);
+    }
     await logStatusHistory(id, 'status', oldStatus, s, req.user?.id);
 
     // Si es una orden en garantía, sincronizar automáticamente warranty_status.
@@ -1364,8 +1398,8 @@ const createExternalRecycledOrder = async (req, res) => {
       `INSERT INTO repair_orders (
         client_id, order_number, entry_date, status,
         is_external_recycled, external_order_number, external_equipment_status,
-        recycling_photos, recycling_notes
-      ) VALUES (?, ?, NOW(), ?, 1, ?, ?, ?, ?)`,
+        recycling_photos, recycling_notes, created_by_user_id
+      ) VALUES (?, ?, NOW(), ?, 1, ?, ?, ?, ?, ?)`,
       [
         null,
         orderNumber,
@@ -1373,7 +1407,8 @@ const createExternalRecycledOrder = async (req, res) => {
         externalOrderNumber,
         equipmentStatus,
         recyclingPhotosJson,
-        recyclingNotes
+        recyclingNotes,
+        req.user?.id || null
       ]
     );
     const repairOrderId = result.insertId;

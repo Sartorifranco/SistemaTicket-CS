@@ -396,4 +396,8 @@ export interface RepairOrder {
     original_supplier?: string | null;
     requires_factory_shipping?: boolean | number;
     warranty_status?: string | null;
+    /** Usuario que dio de alta la orden (solo nuevas órdenes suelen tenerlo). */
+    created_by_user_id?: number | null;
+    created_by_username?: string | null;
+    created_by_full_name?: string | null;
 }

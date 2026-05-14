@@ -66,6 +66,24 @@ async function syncDatabase() {
         } else {
             console.log('[syncDatabase] Columna repair_orders.warranty_status ya existe.');
         }
+
+        const [createdByCols] = await conn.query("SHOW COLUMNS FROM repair_orders LIKE 'created_by_user_id'");
+        if (createdByCols.length === 0) {
+            await conn.query(
+                'ALTER TABLE repair_orders ADD COLUMN created_by_user_id INT UNSIGNED NULL COMMENT "Usuario que dio de alta la orden"'
+            );
+            console.log('[syncDatabase] Columna repair_orders.created_by_user_id creada.');
+            try {
+                await conn.query(
+                    'ALTER TABLE repair_orders ADD CONSTRAINT fk_ro_created_by FOREIGN KEY (created_by_user_id) REFERENCES Users(id) ON DELETE SET NULL'
+                );
+                console.log('[syncDatabase] FK fk_ro_created_by creada.');
+            } catch (fkErr) {
+                console.warn('[syncDatabase] No se pudo crear FK fk_ro_created_by (puede existir o faltar índice):', fkErr.message);
+            }
+        } else {
+            console.log('[syncDatabase] Columna repair_orders.created_by_user_id ya existe.');
+        }
     } catch (err) {
         if (err.message && (err.message.includes("doesn't exist") || err.message.includes('Unknown table'))) {
             console.warn('[syncDatabase] Tabla repair_orders no existe en este esquema, omitiendo columnas is_warranty/warranty_status.');

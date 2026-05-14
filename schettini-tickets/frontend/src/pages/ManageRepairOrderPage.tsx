@@ -122,6 +122,9 @@ interface RepairOrder {
   technical_report?: string | null;
   internal_notes?: string;
   entry_date?: string;
+  created_by_user_id?: number | null;
+  created_by_username?: string | null;
+  created_by_full_name?: string | null;
   accepted_date?: string | null;
   promised_date?: string | null;
   delivered_date?: string | null;
@@ -766,12 +769,19 @@ const ManageRepairOrderPage: React.FC = () => {
           ← Volver
         </button>
         <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <h1 className="text-2xl font-bold text-gray-800">
             Orden {order.order_number}
             <span className="ml-2 text-sm font-normal px-2 py-0.5 rounded bg-gray-200">
               {STATUS_LABELS[order.status] || order.status}
             </span>
           </h1>
+          {(order.created_by_full_name || order.created_by_username) && (
+            <p className="text-sm text-gray-600">
+              Registrada por: <span className="font-medium text-gray-800">{order.created_by_full_name || order.created_by_username}</span>
+            </p>
+          )}
+        </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
