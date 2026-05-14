@@ -841,7 +841,8 @@ const updateRepairOrder = async (req, res) => {
       add('client_id', cid);
     }
     if (entryDate !== undefined) add('entry_date', entryDate);
-    if (status !== undefined && status !== '') add('status', status);
+    // No actualizar estado con null/'' (JSON puede mandar null si el front arma mail el campo; en ENUM NOT NULL eso puede degradar a "ingresado").
+    if (status !== undefined && status !== null && status !== '') add('status', status);
     if (finalLaborCost !== undefined) add('labor_cost', finalLaborCost, true);
     else if (laborCost !== undefined) add('labor_cost', laborCost, true);
     if (finalSparePartsCost !== undefined) add('spare_parts_cost', finalSparePartsCost, true);
@@ -922,7 +923,8 @@ const updateRepairOrder = async (req, res) => {
     }
 
     // Saldo final en Caja Técnica: solo cuando la orden pasa a "Entregado" por primera vez (no duplicar)
-    const incomingStatus = (status !== undefined && status !== '') ? String(status).toLowerCase() : null;
+    const incomingStatus =
+      status !== undefined && status != null && status !== '' ? String(status).toLowerCase() : null;
     const isNowDelivered = incomingStatus === 'entregado' || incomingStatus === 'entregado_sin_reparacion';
     const wasDelivered = (String(existing.status || '').toLowerCase() === 'entregado') || (String(existing.status || '').toLowerCase() === 'entregado_sin_reparacion');
     if (isNowDelivered && !wasDelivered) {
@@ -963,7 +965,7 @@ const updateRepairOrder = async (req, res) => {
     }
 
     const userId = req.user?.id || null;
-    if (status !== undefined && status !== '' && String(status) !== String(existing.status)) {
+    if (status !== undefined && status != null && status !== '' && String(status) !== String(existing.status)) {
       await logStatusHistory(id, 'status', existing.status, status, userId);
     }
     if (computedWarrantyStatus !== undefined && String(computedWarrantyStatus || '') !== String(existing.warranty_status || '')) {

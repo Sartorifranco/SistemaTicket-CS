@@ -592,6 +592,13 @@ const ManageRepairOrderPage: React.FC = () => {
     }
     setSaving(true);
     try {
+      /** Estado: nunca mandar null por `form.status || null` si el select quedó vacío — el backend podría grabar NULL en el ENUM y la orden vuelve a "ingresado". */
+      const statusForSave =
+        form.status != null && String(form.status).trim() !== ''
+          ? String(form.status).trim()
+          : order?.status && String(order.status).trim() !== ''
+            ? String(order.status).trim()
+            : undefined;
       /** Si sparePartsList queda vacío tras borrar ítems, hay que enviar explícitamente vacío/null.
        *  No usar form.sparePartsDetail como respaldo: conserva el texto cargado al abrir la orden y el backend volvería a guardar los repuestos “fantasma”. */
       const sparePartsDetailPayload =
@@ -601,7 +608,7 @@ const ManageRepairOrderPage: React.FC = () => {
       // Si no hay fotos nuevas, mantenemos el flujo JSON existente (sin multipart)
       if (newPhotos.length === 0) {
         await api.put(`/api/repair-orders/${id}`, {
-          status: form.status || null,
+          status: statusForSave,
           equipmentType: form.equipmentType || null,
           brand: form.brand || null,
           model: form.model || null,
@@ -633,7 +640,7 @@ const ManageRepairOrderPage: React.FC = () => {
       } else {
         // Cuando hay fotos nuevas, usamos FormData para enviar archivos + campos + ids de fotos que se conservan.
         const formData = new FormData();
-        formData.append('status', form.status || '');
+        formData.append('status', statusForSave ?? '');
         formData.append('equipmentType', form.equipmentType || '');
         formData.append('brand', form.brand || '');
         formData.append('model', form.model || '');

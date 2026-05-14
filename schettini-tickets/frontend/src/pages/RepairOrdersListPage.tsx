@@ -386,7 +386,12 @@ const RepairOrdersListPage: React.FC = () => {
                   return (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-medium">
-                        {formatOrderNumber(o.order_number, !!(o.is_warranty || o.has_warranty_items))}
+                        <span>{formatOrderNumber(o.order_number, !!(o.is_warranty || o.has_warranty_items))}</span>
+                        {(o.is_warranty || o.has_warranty_items) ? (
+                          <span className="ml-1.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                            Garantía
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-2 text-gray-800">{formatRepairOrderClientDisplay(o)}</td>
                       <td className="px-4 py-2">{o.equipment_type || '—'} {o.model && <span className="text-gray-500 text-sm">/ {o.model}</span>}</td>

@@ -2,16 +2,14 @@
 export const REPAIR_ORDER_EXTERNAL_CLIENT_LABEL = 'Cliente externo / histórico';
 
 /**
- * Si la orden es de garantía, reemplaza el prefijo REP- por GAR-.
- * Ej: "REP-0042" → "GAR-0042".
+ * Número de orden tal como está en base (siempre REP-xxxx).
+ * La garantía se indica con badge/icono en listados — no se cambia el prefijo,
+ * para que coincida con WhatsApp, comprobantes y lo que ve el cliente.
  */
 export function formatOrderNumber(
   orderNumber: string,
-  isWarranty: number | boolean | null | undefined
+  _isWarranty?: number | boolean | null | undefined
 ): string {
-  if (isWarranty) {
-    return (orderNumber || '').replace(/^REP-/i, 'GAR-');
-  }
   return orderNumber || '';
 }
 
