@@ -31,12 +31,15 @@ const AgentTicketDetailPage: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const isViewer = user?.role === 'viewer';
-    
+    /** Solo admin y agente pueden cambiar estado desde el detalle (mismo endpoint que el listado). */
+    const canChangeTicketStatus = user?.role === 'admin' || user?.role === 'agent';
+
     const [ticket, setTicket] = useState<TicketData | null>(null);
     const [agents, setAgents] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedAgentId, setSelectedAgentId] = useState<string>('');
     const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
+    const [statusSaving, setStatusSaving] = useState(false);
 
     // Carga todos los datos necesarios para la página (ticket y agentes) en una sola llamada.
     const fetchAllData = useCallback(async () => {
@@ -103,6 +106,21 @@ const AgentTicketDetailPage: React.FC = () => {
             fetchAllData(); // Recargamos los datos del ticket
         } catch (error) {
             toast.error("No se pudo actualizar la prioridad del ticket.");
+        }
+    };
+
+    const handleStatusChange = async (newStatus: TicketStatus) => {
+        if (!ticket || newStatus === ticket.status) return;
+        setStatusSaving(true);
+        try {
+            await api.put(`/api/tickets/${ticket.id}/status`, { status: newStatus });
+            toast.success(`El estado del ticket se actualizó a "${ticketStatusTranslations[newStatus] || newStatus}".`);
+            await fetchAllData();
+        } catch (error: unknown) {
+            const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            toast.error(msg || 'No se pudo actualizar el estado del ticket.');
+        } finally {
+            setStatusSaving(false);
         }
     };
     // FIN MODIFICACIÓN
@@ -276,12 +294,27 @@ const AgentTicketDetailPage: React.FC = () => {
                     <SectionCard title="Estado y Prioridad">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Estado Actual</label>
-                                <div className="mt-1">
-                                    <Badge color={getStatusBadgeColor(ticket.status)}>
-                                        {ticketStatusTranslations[ticket.status] || ticket.status}
-                                    </Badge>
-                                </div>
+                                <label htmlFor="ticket-status-select" className="block text-sm font-medium text-gray-700">Estado</label>
+                                {canChangeTicketStatus ? (
+                                    <select
+                                        id="ticket-status-select"
+                                        value={ticket.status}
+                                        onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
+                                        disabled={ticket.status === 'closed' || statusSaving}
+                                        aria-busy={statusSaving}
+                                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        {Object.entries(ticketStatusTranslations).map(([key, value]) => (
+                                            <option key={key} value={key}>{value}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="mt-1">
+                                        <Badge color={getStatusBadgeColor(ticket.status)}>
+                                            {ticketStatusTranslations[ticket.status] || ticket.status}
+                                        </Badge>
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label htmlFor="priority-select" className="block text-sm font-medium text-gray-700">Prioridad</label>
