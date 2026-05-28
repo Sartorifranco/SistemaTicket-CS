@@ -345,11 +345,14 @@ export interface Module {
 // ====================================================================
 // SYSTEM FORMS (Planillas externas — Google Forms)
 // ====================================================================
+export type SystemFormActionType = 'iframe' | 'external_link';
+
 export interface SystemForm {
     id: number;
     title: string;
     description: string;
     external_url: string;
+    action_type?: SystemFormActionType;
     is_active: boolean;
     sort_order?: number;
     created_at?: string;

@@ -4,11 +4,14 @@ import api from '../config/axiosConfig';
 import SectionCard from '../components/Common/SectionCard';
 import { FaEdit, FaPlus, FaTimes, FaTrash, FaExternalLinkAlt } from 'react-icons/fa';
 
+export type SystemFormActionType = 'iframe' | 'external_link';
+
 export interface SystemForm {
   id: number;
   title: string;
   description: string;
   external_url: string;
+  action_type?: SystemFormActionType;
   is_active: boolean;
   sort_order: number;
   created_at?: string;
@@ -19,6 +22,7 @@ const emptyForm = {
   title: '',
   description: '',
   external_url: '',
+  action_type: 'iframe' as SystemFormActionType,
   is_active: true,
   sort_order: '0'
 };
@@ -56,6 +60,7 @@ const AdminSystemFormsPage: React.FC = () => {
       title: row.title,
       description: row.description,
       external_url: row.external_url,
+      action_type: row.action_type === 'external_link' ? 'external_link' : 'iframe',
       is_active: row.is_active,
       sort_order: String(row.sort_order ?? 0)
     });
@@ -81,6 +86,7 @@ const AdminSystemFormsPage: React.FC = () => {
       title,
       description,
       external_url,
+      action_type: form.action_type,
       is_active: form.is_active,
       sort_order: parseInt(form.sort_order, 10) || 0
     };
@@ -254,6 +260,26 @@ const AdminSystemFormsPage: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comportamiento del enlace</label>
+                <select
+                  value={form.action_type}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      action_type: e.target.value as SystemFormActionType
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="iframe">
+                    Abrir dentro del sistema (Iframe - Recomendado para Google Forms)
+                  </option>
+                  <option value="external_link">
+                    Abrir en nueva pestaña (Recomendado para Descargas de PDF/Drive)
+                  </option>
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

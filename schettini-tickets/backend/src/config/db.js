@@ -110,6 +110,7 @@ CREATE TABLE system_forms (
   title VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
   external_url VARCHAR(2048) NOT NULL,
+  action_type VARCHAR(32) NOT NULL DEFAULT 'iframe',
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   sort_order INT NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -121,7 +122,21 @@ CREATE TABLE system_forms (
             `);
             console.log('[syncDatabase] Tabla system_forms creada.');
         } else {
-            console.log('[syncDatabase] Tabla system_forms ya existe.');
+            const [sfActionCol] = await conn.query(
+                `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_forms' AND COLUMN_NAME = 'action_type'`
+            );
+            if (sfActionCol.length === 0) {
+                await conn.query(`
+                    ALTER TABLE system_forms
+                    ADD COLUMN action_type VARCHAR(32) NOT NULL DEFAULT 'iframe'
+                    COMMENT 'iframe | external_link'
+                    AFTER external_url
+                `);
+                console.log('[syncDatabase] Columna system_forms.action_type agregada.');
+            } else {
+                console.log('[syncDatabase] Tabla system_forms ya existe.');
+            }
         }
     } catch (err) {
         if (err.message && (err.message.includes("doesn't exist") || err.message.includes('Unknown table'))) {

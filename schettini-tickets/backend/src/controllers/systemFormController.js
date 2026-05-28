@@ -1,10 +1,31 @@
 const pool = require('../config/db');
 
+const VALID_ACTION_TYPES = new Set(['iframe', 'external_link']);
+
+/** Registros legacy sin columna o NULL → iframe */
+const normalizeActionType = (raw) => {
+  const v = raw != null ? String(raw).trim().toLowerCase() : '';
+  if (v === 'external_link') return 'external_link';
+  return 'iframe';
+};
+
+const parseActionTypeInput = (raw) => {
+  if (raw === undefined || raw === null || String(raw).trim() === '') {
+    return { value: undefined };
+  }
+  const v = String(raw).trim().toLowerCase();
+  if (!VALID_ACTION_TYPES.has(v)) {
+    return { error: "action_type debe ser 'iframe' o 'external_link'" };
+  }
+  return { value: v };
+};
+
 const mapRow = (row) => ({
   id: row.id,
   title: row.title,
   description: row.description,
   external_url: row.external_url,
+  action_type: normalizeActionType(row.action_type),
   is_active: !!row.is_active,
   sort_order: row.sort_order ?? 0,
   created_at: row.created_at,
@@ -43,7 +64,18 @@ const listAdminForms = async (req, res) => {
 /** POST /api/admin/forms */
 const createAdminForm = async (req, res) => {
   try {
-    const { title, description, external_url, externalUrl, is_active, isActive, sort_order, sortOrder } = req.body || {};
+    const {
+      title,
+      description,
+      external_url,
+      externalUrl,
+      is_active,
+      isActive,
+      sort_order,
+      sortOrder,
+      action_type,
+      actionType
+    } = req.body || {};
     const t = title != null ? String(title).trim() : '';
     const d = description != null ? String(description).trim() : '';
     const url = (external_url ?? externalUrl ?? '').trim();
@@ -55,11 +87,16 @@ const createAdminForm = async (req, res) => {
     const active = is_active !== undefined ? (is_active === true || is_active === 1 || is_active === '1') : (isActive !== false && isActive !== 0 && isActive !== '0');
     const sort = sort_order !== undefined ? parseInt(sort_order, 10) : parseInt(sortOrder, 10);
     const sortVal = Number.isNaN(sort) ? 0 : sort;
+    const parsedAction = parseActionTypeInput(action_type ?? actionType);
+    if (parsedAction.error) {
+      return res.status(400).json({ success: false, message: parsedAction.error });
+    }
+    const actionTypeVal = parsedAction.value !== undefined ? parsedAction.value : 'iframe';
 
     const [result] = await pool.query(
-      `INSERT INTO system_forms (title, description, external_url, is_active, sort_order)
-       VALUES (?, ?, ?, ?, ?)`,
-      [t, d, url, active ? 1 : 0, sortVal]
+      `INSERT INTO system_forms (title, description, external_url, action_type, is_active, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [t, d, url, actionTypeVal, active ? 1 : 0, sortVal]
     );
     const [rows] = await pool.query('SELECT * FROM system_forms WHERE id = ?', [result.insertId]);
     res.status(201).json({ success: true, message: 'Planilla creada', data: mapRow(rows[0]) });
@@ -80,7 +117,18 @@ const updateAdminForm = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Planilla no encontrada' });
     }
 
-    const { title, description, external_url, externalUrl, is_active, isActive, sort_order, sortOrder } = req.body || {};
+    const {
+      title,
+      description,
+      external_url,
+      externalUrl,
+      is_active,
+      isActive,
+      sort_order,
+      sortOrder,
+      action_type,
+      actionType
+    } = req.body || {};
     const updates = [];
     const params = [];
 
@@ -114,6 +162,14 @@ const updateAdminForm = async (req, res) => {
       const sort = parseInt(sort_order !== undefined ? sort_order : sortOrder, 10);
       updates.push('sort_order = ?');
       params.push(Number.isNaN(sort) ? 0 : sort);
+    }
+    if (action_type !== undefined || actionType !== undefined) {
+      const parsedAction = parseActionTypeInput(action_type ?? actionType);
+      if (parsedAction.error) {
+        return res.status(400).json({ success: false, message: parsedAction.error });
+      }
+      updates.push('action_type = ?');
+      params.push(parsedAction.value);
     }
 
     if (updates.length === 0) {
@@ -150,7 +206,7 @@ const deleteAdminForm = async (req, res) => {
 const listClientForms = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, title, description, external_url, sort_order
+      `SELECT id, title, description, external_url, action_type, sort_order
        FROM system_forms WHERE is_active = 1
        ORDER BY sort_order ASC, id ASC`
     );
@@ -161,6 +217,7 @@ const listClientForms = async (req, res) => {
         title: r.title,
         description: r.description,
         external_url: r.external_url,
+        action_type: normalizeActionType(r.action_type),
         sort_order: r.sort_order ?? 0
       }))
     });

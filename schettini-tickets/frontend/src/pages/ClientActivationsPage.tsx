@@ -12,11 +12,14 @@ import SystemFormViewerModal from '../components/SystemForms/SystemFormViewerMod
 /** Flujo legacy: modal "Solicitar Alta" + validación de factura (conservado en código, desactivado en UI). */
 const ENABLE_LEGACY_REQUEST_FLOW = false;
 
+type SystemFormActionType = 'iframe' | 'external_link';
+
 interface SystemFormCard {
   id: number;
   title: string;
   description: string;
   external_url: string;
+  action_type?: SystemFormActionType;
   sort_order?: number;
 }
 
@@ -153,6 +156,14 @@ const ClientActivationsPage: React.FC = () => {
 
   const legacyInProgress = list.filter((a) => a.status !== 'ready');
 
+  const openSystemForm = (f: SystemFormCard) => {
+    if (f.action_type === 'external_link') {
+      window.open(f.external_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setActiveSystemForm(f);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -197,10 +208,11 @@ const ClientActivationsPage: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActiveSystemForm(f)}
+                  onClick={() => openSystemForm(f)}
                   className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
-                  <FaFileAlt /> Completar Planilla
+                  <FaFileAlt />{' '}
+                  {f.action_type === 'external_link' ? 'Descargar Formulario' : 'Completar Planilla'}
                 </button>
               </div>
             ))}
