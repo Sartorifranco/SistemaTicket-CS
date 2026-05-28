@@ -343,6 +343,20 @@ export interface Module {
 }
 
 // ====================================================================
+// SYSTEM FORMS (Planillas externas — Google Forms)
+// ====================================================================
+export interface SystemForm {
+    id: number;
+    title: string;
+    description: string;
+    external_url: string;
+    is_active: boolean;
+    sort_order?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// ====================================================================
 // REPAIR ORDER TYPES (Órdenes de Taller + Módulo Garantías)
 // ====================================================================
 /** Cobro registrado en historial (GET orden incluye `payments`). */

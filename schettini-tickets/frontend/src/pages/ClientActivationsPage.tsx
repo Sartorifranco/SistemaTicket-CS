@@ -6,7 +6,18 @@ import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import { formatDateArgentina } from '../utils/dateFormatter';
-import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt } from 'react-icons/fa';
+import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt, FaExclamationTriangle, FaExternalLinkAlt } from 'react-icons/fa';
+
+/** Flujo legacy: modal "Solicitar Alta" + validación de factura (conservado en código, desactivado en UI). */
+const ENABLE_LEGACY_REQUEST_FLOW = false;
+
+interface SystemFormCard {
+  id: number;
+  title: string;
+  description: string;
+  external_url: string;
+  sort_order?: number;
+}
 
 type ActivationStatus = 'pending_validation' | 'pending_client_fill' | 'processing' | 'ready';
 type FormType = 'general' | 'alta_general' | 'controlador_fiscal' | 'fiscal' | 'no_fiscal' | 'none';
@@ -78,6 +89,8 @@ interface CloudContractTemplate {
 }
 
 const ClientActivationsPage: React.FC = () => {
+  const [systemForms, setSystemForms] = useState<SystemFormCard[]>([]);
+  const [formsLoading, setFormsLoading] = useState(true);
   const [list, setList] = useState<Activation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -98,6 +111,15 @@ const ClientActivationsPage: React.FC = () => {
   useEffect(() => {
     fetchList();
   }, [fetchList]);
+
+  useEffect(() => {
+    setFormsLoading(true);
+    api
+      .get<{ success: boolean; data: SystemFormCard[] }>('/api/client/forms')
+      .then((res) => setSystemForms(res.data.data || []))
+      .catch(() => toast.error('Error al cargar planillas disponibles'))
+      .finally(() => setFormsLoading(false));
+  }, []);
 
   useEffect(() => {
     api.get<{ success: boolean; data: CloudContractTemplate[] }>('/api/settings/cloud-contracts')
@@ -126,26 +148,70 @@ const ClientActivationsPage: React.FC = () => {
   const activationToComplete = list.find((a) => a.id === completeModalId);
   const formType = activationToComplete?.form_type;
 
+  const legacyInProgress = list.filter((a) => a.status !== 'ready');
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div>
         <h1 className="text-2xl font-bold text-gray-800">Mis Activaciones / Planillas</h1>
-        <button
-          type="button"
-          onClick={() => setShowRequestModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
-        >
-          <FaPlus /> Solicitar Alta
-        </button>
+        <p className="text-sm text-gray-600 mt-1">
+          Elegí la planilla que corresponda a tu producto y completala en el formulario externo. Leé la advertencia legal antes de continuar.
+        </p>
       </div>
 
-      <SectionCard title="Solicitudes">
+      {ENABLE_LEGACY_REQUEST_FLOW && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowRequestModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
+          >
+            <FaPlus /> Solicitar Alta
+          </button>
+        </div>
+      )}
+
+      <SectionCard title="Planillas disponibles">
+        {formsLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+          </div>
+        ) : systemForms.length === 0 ? (
+          <p className="text-center text-gray-500 py-8">
+            No hay planillas disponibles en este momento. Contactá al equipo de soporte si necesitás dar de alta un equipo.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {systemForms.map((f) => (
+              <div
+                key={f.id}
+                className="flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm hover:border-indigo-200 hover:shadow-md transition-shadow p-5"
+              >
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">{f.title}</h3>
+                <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 mb-4 flex-1">
+                  <FaExclamationTriangle className="text-amber-600 shrink-0 mt-0.5" aria-hidden />
+                  <p className="text-sm text-amber-950 whitespace-pre-wrap">{f.description}</p>
+                </div>
+                <a
+                  href={f.external_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                >
+                  <FaExternalLinkAlt /> Completar Planilla
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      {legacyInProgress.length > 0 && (
+      <SectionCard title="Solicitudes en curso (sistema anterior)">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
           </div>
-        ) : list.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">No tenés solicitudes. Usá "Solicitar Alta" para comenzar.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -160,7 +226,7 @@ const ClientActivationsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {list.map((a) => (
+                {legacyInProgress.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 font-medium">{a.invoice_number}</td>
                     <td className="px-4 py-2 text-sm">{FORM_TYPE_LABELS[a.form_type]}</td>
@@ -199,9 +265,10 @@ const ClientActivationsPage: React.FC = () => {
           </div>
         )}
       </SectionCard>
+      )}
 
-      {/* Modal Solicitar Alta */}
-      {showRequestModal && (
+      {/* Modal Solicitar Alta (flujo legacy — conservado, no visible en UI) */}
+      {ENABLE_LEGACY_REQUEST_FLOW && showRequestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">

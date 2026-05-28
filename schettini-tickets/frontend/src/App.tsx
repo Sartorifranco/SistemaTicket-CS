@@ -64,6 +64,7 @@ import RepairOrderDetailPage from './pages/RepairOrderDetailPage';
 import ClientActivationsPage from './pages/ClientActivationsPage';
 import OffersPage from './pages/OffersPage';
 import AdminActivationsPage from './pages/AdminActivationsPage';
+import AdminSystemFormsPage from './pages/AdminSystemFormsPage';
 import ReadyEquipmentsPage from './pages/ReadyEquipmentsPage';
 
 import PrivateRoute from './components/Common/PrivateRoute';
@@ -168,6 +169,7 @@ const App: React.FC = () => {
                             <Route path="/admin/warranties" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><WarrantiesDashboardPage /></PrivateRoute>} />
                             <Route path="/admin/tech-cash" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><TechCashPage /></PrivateRoute>} />
                             <Route path="/admin/tech-debts" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']}><TechDebtsReportsPage /></PrivateRoute>} />
+                            <Route path="/admin/forms" element={<PrivateRoute roles={['admin']}><AdminSystemFormsPage /></PrivateRoute>} />
                             <Route path="/admin/activations" element={<PrivateRoute roles={['admin']}><AdminActivationsPage /></PrivateRoute>} />
                             <Route path="/admin/ready-equipments" element={<PrivateRoute roles={['admin']}><ReadyEquipmentsPage /></PrivateRoute>} />
                             <Route path="/admin/refurbished" element={<PrivateRoute roles={['admin', 'supervisor', 'agent']}><RefurbishedPage /></PrivateRoute>} />

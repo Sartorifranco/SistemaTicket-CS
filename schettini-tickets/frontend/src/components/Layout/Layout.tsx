@@ -104,7 +104,8 @@ const Layout: React.FC = () => {
                         <li><NavLink to="/admin/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>
                         <li><NavLink to="/admin/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>
                         <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>
-                        <li><NavLink to="/admin/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>
+                        <li><NavLink to="/admin/forms" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>
+                        <li><NavLink to="/admin/activations" className={getLinkClassName}><FaFileAlt /> Solicitudes de alta (interno)</NavLink></li>
                         <li><NavLink to="/admin/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>
                         <li><NavLink to="/admin/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>
                         <li><NavLink to="/admin/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>
@@ -176,7 +177,7 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
                                 {hasWarranties && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
-                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
+                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Solicitudes de planillas</NavLink></li>}
                                 {hasReady && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasRefurbished && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
                                 {hasMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
@@ -238,7 +239,7 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
                                 {hasWarranties && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
-                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
+                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Solicitudes de planillas</NavLink></li>}
                                 {hasReady && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasRefurbished && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
                                 {hasMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}
@@ -312,7 +313,7 @@ const Layout: React.FC = () => {
                                 {hasRepairs && <li><NavLink to="/agent/recycling-area" className={getLinkClassName}><FaRecycle /> Área de Reciclaje</NavLink></li>}
                                 {hasRepairs && <li><NavLink to="/agent/monitor" className={getLinkClassName}><FaTv /> Monitor Órdenes</NavLink></li>}
                                 {hasWarranties && <li><NavLink to="/admin/warranties" className={getLinkClassName}><FaShieldAlt /> Garantías</NavLink></li>}
-                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Gestión de Planillas</NavLink></li>}
+                                {hasActivations && <li><NavLink to="/agent/activations" className={getLinkClassName}><FaFileAlt /> Solicitudes de planillas</NavLink></li>}
                                 {hasReady && <li><NavLink to="/agent/ready-equipments" className={getLinkClassName}><FaBoxOpen /> Equipos Listos</NavLink></li>}
                                 {hasRefurbished && <li><NavLink to="/agent/refurbished" className={getLinkClassName}><FaCubes /> Equipos Reacondicionados</NavLink></li>}
                                 {hasMovements && <li><NavLink to="/agent/movements" className={getLinkClassName}><FaBoxOpen /> Movimientos de Artículos</NavLink></li>}

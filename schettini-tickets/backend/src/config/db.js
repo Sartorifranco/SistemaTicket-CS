@@ -99,6 +99,30 @@ async function syncDatabase() {
         } else {
             console.log('[syncDatabase] Tabla repair_order_payments ya existe.');
         }
+
+        const [sfTables] = await conn.query(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_forms'"
+        );
+        if (sfTables.length === 0) {
+            await conn.query(`
+CREATE TABLE system_forms (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  external_url VARCHAR(2048) NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_system_forms_active (is_active),
+  KEY idx_system_forms_sort (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+            console.log('[syncDatabase] Tabla system_forms creada.');
+        } else {
+            console.log('[syncDatabase] Tabla system_forms ya existe.');
+        }
     } catch (err) {
         if (err.message && (err.message.includes("doesn't exist") || err.message.includes('Unknown table'))) {
             console.warn('[syncDatabase] Tabla repair_orders no existe en este esquema, omitiendo columnas is_warranty/warranty_status.');
