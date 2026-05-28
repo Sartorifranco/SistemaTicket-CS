@@ -6,7 +6,8 @@ import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import { formatDateArgentina } from '../utils/dateFormatter';
-import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt, FaExclamationTriangle, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt, FaExclamationTriangle } from 'react-icons/fa';
+import SystemFormViewerModal from '../components/SystemForms/SystemFormViewerModal';
 
 /** Flujo legacy: modal "Solicitar Alta" + validación de factura (conservado en código, desactivado en UI). */
 const ENABLE_LEGACY_REQUEST_FLOW = false;
@@ -99,6 +100,8 @@ const ClientActivationsPage: React.FC = () => {
   const [completeModalId, setCompleteModalId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [cloudContracts, setCloudContracts] = useState<CloudContractTemplate[]>([]);
+  /** Planilla externa abierta en visualizador iframe (dentro del sistema). */
+  const [activeSystemForm, setActiveSystemForm] = useState<SystemFormCard | null>(null);
 
   const fetchList = useCallback(() => {
     setLoading(true);
@@ -155,7 +158,7 @@ const ClientActivationsPage: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Mis Activaciones / Planillas</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Elegí la planilla que corresponda a tu producto y completala en el formulario externo. Leé la advertencia legal antes de continuar.
+          Elegí la planilla que corresponda a tu producto y completala aquí mismo. Leé la advertencia legal antes de continuar.
         </p>
       </div>
 
@@ -192,19 +195,20 @@ const ClientActivationsPage: React.FC = () => {
                   <FaExclamationTriangle className="text-amber-600 shrink-0 mt-0.5" aria-hidden />
                   <p className="text-sm text-amber-950 whitespace-pre-wrap">{f.description}</p>
                 </div>
-                <a
-                  href={f.external_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setActiveSystemForm(f)}
                   className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
-                  <FaExternalLinkAlt /> Completar Planilla
-                </a>
+                  <FaFileAlt /> Completar Planilla
+                </button>
               </div>
             ))}
           </div>
         )}
       </SectionCard>
+
+      <SystemFormViewerModal form={activeSystemForm} onClose={() => setActiveSystemForm(null)} />
 
       {legacyInProgress.length > 0 && (
       <SectionCard title="Solicitudes en curso (sistema anterior)">
