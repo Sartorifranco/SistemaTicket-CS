@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import CreatableSelect from 'react-select/creatable';
 import api from '../config/axiosConfig';
@@ -6,7 +7,7 @@ import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import { formatDateArgentina } from '../utils/dateFormatter';
-import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt, FaExclamationTriangle, FaUpload } from 'react-icons/fa';
 import SystemFormViewerModal from '../components/SystemForms/SystemFormViewerModal';
 
 /** Flujo legacy: modal "Solicitar Alta" + validación de factura (conservado en código, desactivado en UI). */
@@ -105,6 +106,9 @@ const ClientActivationsPage: React.FC = () => {
   const [cloudContracts, setCloudContracts] = useState<CloudContractTemplate[]>([]);
   /** Planilla externa abierta en visualizador iframe (dentro del sistema). */
   const [activeSystemForm, setActiveSystemForm] = useState<SystemFormCard | null>(null);
+  /** ID de planilla cuyo formulario completado se está subiendo como ticket. */
+  const [uploadingFormId, setUploadingFormId] = useState<number | null>(null);
+  const completedFormFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const fetchList = useCallback(() => {
     setLoading(true);
@@ -164,6 +168,53 @@ const ClientActivationsPage: React.FC = () => {
     setActiveSystemForm(f);
   };
 
+  const submitCompletedFormAsTicket = async (planilla: SystemFormCard, file: File) => {
+    const formData = new FormData();
+    formData.append('title', `Formulario completado: ${planilla.title}`);
+    formData.append('description', 'El cliente ha subido este formulario desde el módulo de Activaciones.');
+    formData.append('priority', 'medium');
+    formData.append('attachments', file);
+
+    await api.post('/api/tickets', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  };
+
+  const handleCompletedFormFileChange = async (
+    planilla: SystemFormCard,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (uploadingFormId !== null) {
+      toast.warn('Esperá a que termine la subida en curso.');
+      event.target.value = '';
+      return;
+    }
+
+    setUploadingFormId(planilla.id);
+    try {
+      await submitCompletedFormAsTicket(planilla, file);
+      toast.success('¡Formulario enviado con éxito! Los técnicos lo revisarán a la brevedad.');
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'data' in err.response
+          ? (err.response.data as { message?: string })?.message
+          : undefined;
+      toast.error(msg || 'No se pudo enviar el formulario. Intentá de nuevo.');
+    } finally {
+      setUploadingFormId(null);
+      const input = completedFormFileRefs.current[planilla.id];
+      if (input) input.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -214,6 +265,51 @@ const ClientActivationsPage: React.FC = () => {
                   <FaFileAlt />{' '}
                   {f.action_type === 'external_link' ? 'Descargar Formulario' : 'Completar Planilla'}
                 </button>
+                {f.action_type === 'external_link' && (
+                  <>
+                    <div className="border-t border-gray-200 mt-4 pt-4">
+                      <input
+                        ref={(el) => {
+                          completedFormFileRefs.current[f.id] = el;
+                        }}
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"
+                        disabled={uploadingFormId !== null}
+                        onChange={(e) => handleCompletedFormFileChange(f, e)}
+                        aria-hidden
+                        tabIndex={-1}
+                      />
+                      <button
+                        type="button"
+                        disabled={uploadingFormId !== null}
+                        onClick={() => completedFormFileRefs.current[f.id]?.click()}
+                        className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 border-2 border-indigo-600 text-indigo-700 font-semibold rounded-lg bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <FaUpload aria-hidden />
+                        {uploadingFormId === f.id ? 'Subiendo...' : 'Subir formulario completado'}
+                      </button>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
+                        Siguientes pasos
+                      </p>
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 text-sm text-blue-950">
+                        <p>
+                          Paso 2: Una vez descargado y completado el documento, debe enviarlo adjuntándolo en un nuevo
+                          Ticket de Soporte.
+                        </p>
+                        <Link
+                          to="/client/tickets"
+                          className="mt-3 inline-flex items-center justify-center gap-2 w-full px-4 py-2 border border-blue-600 text-blue-700 font-medium rounded-lg bg-white hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        >
+                          <FaTicketAlt aria-hidden />
+                          Ir a Tickets de Soporte
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
