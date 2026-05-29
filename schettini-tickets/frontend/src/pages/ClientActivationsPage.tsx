@@ -7,13 +7,25 @@ import { getImageUrl } from '../utils/imageUrl';
 import SectionCard from '../components/Common/SectionCard';
 import HelpTooltip from '../components/Common/HelpTooltip';
 import { formatDateArgentina } from '../utils/dateFormatter';
-import { FaPlus, FaFileAlt, FaTimes, FaTicketAlt, FaExclamationTriangle, FaUpload } from 'react-icons/fa';
+import {
+  FaPlus,
+  FaFileAlt,
+  FaTimes,
+  FaTicketAlt,
+  FaExclamationTriangle,
+  FaUpload,
+  FaList,
+  FaThLarge
+} from 'react-icons/fa';
 import SystemFormViewerModal from '../components/SystemForms/SystemFormViewerModal';
 
 /** Flujo legacy: modal "Solicitar Alta" + validación de factura (conservado en código, desactivado en UI). */
 const ENABLE_LEGACY_REQUEST_FLOW = false;
 
+const PLANILLAS_VIEW_STORAGE_KEY = 'client-planillas-view-mode';
+
 type SystemFormActionType = 'iframe' | 'external_link';
+type PlanillasViewMode = 'list' | 'grid';
 
 interface SystemFormCard {
   id: number;
@@ -93,6 +105,122 @@ interface CloudContractTemplate {
   url: string;
 }
 
+interface PlanillaCardItemProps {
+  form: SystemFormCard;
+  viewMode: PlanillasViewMode;
+  uploadingFormId: number | null;
+  onOpen: (form: SystemFormCard) => void;
+  onFileChange: (form: SystemFormCard, event: React.ChangeEvent<HTMLInputElement>) => void;
+  setFileInputRef: (id: number, el: HTMLInputElement | null) => void;
+  onTriggerUpload: (formId: number) => void;
+}
+
+/** Tarjeta/fila de planilla: texto a la izquierda, acciones compactas a la derecha. */
+const PlanillaCardItem: React.FC<PlanillaCardItemProps> = ({
+  form: f,
+  viewMode,
+  uploadingFormId,
+  onOpen,
+  onFileChange,
+  setFileInputRef,
+  onTriggerUpload
+}) => {
+  const isExternal = f.action_type === 'external_link';
+  const isUploading = uploadingFormId === f.id;
+  const actionsBusy = uploadingFormId !== null;
+
+  const btnPrimary =
+    'inline-flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2';
+  const btnOutline =
+    'inline-flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-600 text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed';
+
+  return (
+    <article
+      className={`flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 rounded-xl border border-gray-200 bg-white shadow-sm hover:border-indigo-200 hover:shadow-md transition-shadow p-4 ${
+        viewMode === 'grid' ? 'h-full' : ''
+      }`}
+    >
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 leading-snug">{f.title}</h3>
+        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 sm:p-3">
+          <FaExclamationTriangle className="text-amber-600 shrink-0 mt-0.5 text-sm" aria-hidden />
+          <p
+            className={`text-xs sm:text-sm text-amber-950 whitespace-pre-wrap ${
+              viewMode === 'list' ? 'max-h-24 sm:max-h-28 overflow-y-auto pr-1' : 'max-h-20 sm:max-h-24 overflow-y-auto pr-1'
+            }`}
+          >
+            {f.description}
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full sm:w-44 md:w-48 lg:w-52 shrink-0 flex flex-col gap-2 sm:pt-0.5">
+        <button
+          type="button"
+          onClick={() => onOpen(f)}
+          className={btnPrimary}
+          aria-label={isExternal ? 'Descargar Formulario' : 'Completar Planilla'}
+        >
+          <FaFileAlt className="shrink-0" aria-hidden />
+          <span className="truncate">
+            {isExternal ? (
+              <>
+                <span className="sm:hidden">Descargar</span>
+                <span className="hidden sm:inline">Descargar Formulario</span>
+              </>
+            ) : (
+              <>
+                <span className="sm:hidden">Completar</span>
+                <span className="hidden sm:inline">Completar Planilla</span>
+              </>
+            )}
+          </span>
+        </button>
+
+        {isExternal && (
+          <>
+            <input
+              ref={(el) => setFileInputRef(f.id, el)}
+              type="file"
+              className="hidden"
+              accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"
+              disabled={actionsBusy}
+              onChange={(e) => onFileChange(f, e)}
+              aria-hidden
+              tabIndex={-1}
+            />
+            <button
+              type="button"
+              disabled={actionsBusy}
+              onClick={() => onTriggerUpload(f.id)}
+              className={btnOutline}
+              aria-label="Subir formulario completado"
+            >
+              <FaUpload className="shrink-0" aria-hidden />
+              <span className="truncate">
+                {isUploading ? (
+                  'Subiendo...'
+                ) : (
+                  <>
+                    <span className="sm:hidden">Subir archivo</span>
+                    <span className="hidden sm:inline">Subir completado</span>
+                  </>
+                )}
+              </span>
+            </button>
+            <p className="text-[11px] leading-snug text-blue-900 bg-blue-50 rounded-md px-2 py-1.5 border border-blue-100">
+              Paso 2: enviá el documento completado.{' '}
+              <Link to="/client/tickets" className="font-semibold text-blue-700 hover:underline whitespace-nowrap">
+                Ir a Tickets
+              </Link>
+            </p>
+          </>
+        )}
+      </div>
+    </article>
+  );
+};
+
 const ClientActivationsPage: React.FC = () => {
   const [systemForms, setSystemForms] = useState<SystemFormCard[]>([]);
   const [formsLoading, setFormsLoading] = useState(true);
@@ -109,6 +237,28 @@ const ClientActivationsPage: React.FC = () => {
   /** ID de planilla cuyo formulario completado se está subiendo como ticket. */
   const [uploadingFormId, setUploadingFormId] = useState<number | null>(null);
   const completedFormFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [planillasViewMode, setPlanillasViewMode] = useState<PlanillasViewMode>(() => {
+    try {
+      const saved = sessionStorage.getItem(PLANILLAS_VIEW_STORAGE_KEY);
+      if (saved === 'list' || saved === 'grid') return saved;
+    } catch {
+      /* ignore */
+    }
+    return 'list';
+  });
+
+  const setPlanillasView = (mode: PlanillasViewMode) => {
+    setPlanillasViewMode(mode);
+    try {
+      sessionStorage.setItem(PLANILLAS_VIEW_STORAGE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const triggerPlanillaUpload = (formId: number) => {
+    completedFormFileRefs.current[formId]?.click();
+  };
 
   const fetchList = useCallback(() => {
     setLoading(true);
@@ -246,73 +396,66 @@ const ClientActivationsPage: React.FC = () => {
             No hay planillas disponibles en este momento. Contactá al equipo de soporte si necesitás dar de alta un equipo.
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {systemForms.map((f) => (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <p className="text-sm text-gray-600">
+                {systemForms.length} planilla{systemForms.length !== 1 ? 's' : ''} — elegí cómo verlas
+              </p>
               <div
-                key={f.id}
-                className="flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm hover:border-indigo-200 hover:shadow-md transition-shadow p-5"
+                className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5"
+                role="group"
+                aria-label="Vista de planillas"
               >
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{f.title}</h3>
-                <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 mb-4 flex-1">
-                  <FaExclamationTriangle className="text-amber-600 shrink-0 mt-0.5" aria-hidden />
-                  <p className="text-sm text-amber-950 whitespace-pre-wrap">{f.description}</p>
-                </div>
                 <button
                   type="button"
-                  onClick={() => openSystemForm(f)}
-                  className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  onClick={() => setPlanillasView('list')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition ${
+                    planillasViewMode === 'list'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  aria-pressed={planillasViewMode === 'list'}
                 >
-                  <FaFileAlt />{' '}
-                  {f.action_type === 'external_link' ? 'Descargar Formulario' : 'Completar Planilla'}
+                  <FaList aria-hidden /> Lista
                 </button>
-                {f.action_type === 'external_link' && (
-                  <>
-                    <div className="border-t border-gray-200 mt-4 pt-4">
-                      <input
-                        ref={(el) => {
-                          completedFormFileRefs.current[f.id] = el;
-                        }}
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"
-                        disabled={uploadingFormId !== null}
-                        onChange={(e) => handleCompletedFormFileChange(f, e)}
-                        aria-hidden
-                        tabIndex={-1}
-                      />
-                      <button
-                        type="button"
-                        disabled={uploadingFormId !== null}
-                        onClick={() => completedFormFileRefs.current[f.id]?.click()}
-                        className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 border-2 border-indigo-600 text-indigo-700 font-semibold rounded-lg bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        <FaUpload aria-hidden />
-                        {uploadingFormId === f.id ? 'Subiendo...' : 'Subir formulario completado'}
-                      </button>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                        Siguientes pasos
-                      </p>
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 text-sm text-blue-950">
-                        <p>
-                          Paso 2: Una vez descargado y completado el documento, debe enviarlo adjuntándolo en un nuevo
-                          Ticket de Soporte.
-                        </p>
-                        <Link
-                          to="/client/tickets"
-                          className="mt-3 inline-flex items-center justify-center gap-2 w-full px-4 py-2 border border-blue-600 text-blue-700 font-medium rounded-lg bg-white hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        >
-                          <FaTicketAlt aria-hidden />
-                          Ir a Tickets de Soporte
-                        </Link>
-                      </div>
-                    </div>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setPlanillasView('grid')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition ${
+                    planillasViewMode === 'grid'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  aria-pressed={planillasViewMode === 'grid'}
+                >
+                  <FaThLarge aria-hidden /> Cuadrícula
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+
+            <div
+              className={
+                planillasViewMode === 'list'
+                  ? 'flex flex-col gap-3'
+                  : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'
+              }
+            >
+              {systemForms.map((f) => (
+                <PlanillaCardItem
+                  key={f.id}
+                  form={f}
+                  viewMode={planillasViewMode}
+                  uploadingFormId={uploadingFormId}
+                  onOpen={openSystemForm}
+                  onFileChange={handleCompletedFormFileChange}
+                  setFileInputRef={(id, el) => {
+                    completedFormFileRefs.current[id] = el;
+                  }}
+                  onTriggerUpload={triggerPlanillaUpload}
+                />
+              ))}
+            </div>
+          </>
         )}
       </SectionCard>
 
