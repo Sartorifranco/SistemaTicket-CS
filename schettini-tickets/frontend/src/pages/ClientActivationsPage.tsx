@@ -107,7 +107,6 @@ interface CloudContractTemplate {
 
 interface PlanillaCardItemProps {
   form: SystemFormCard;
-  viewMode: PlanillasViewMode;
   uploadingFormId: number | null;
   onOpen: (form: SystemFormCard) => void;
   onFileChange: (form: SystemFormCard, event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -115,66 +114,65 @@ interface PlanillaCardItemProps {
   onTriggerUpload: (formId: number) => void;
 }
 
-/** Tarjeta/fila de planilla: texto a la izquierda, acciones compactas a la derecha. */
+const PLANILLA_DESC_COLLAPSE_CHARS = 120;
+
+/** Fila compacta: aviso colapsable + acciones a la derecha (poca altura). */
 const PlanillaCardItem: React.FC<PlanillaCardItemProps> = ({
   form: f,
-  viewMode,
   uploadingFormId,
   onOpen,
   onFileChange,
   setFileInputRef,
   onTriggerUpload
 }) => {
+  const [legalExpanded, setLegalExpanded] = useState(false);
   const isExternal = f.action_type === 'external_link';
   const isUploading = uploadingFormId === f.id;
   const actionsBusy = uploadingFormId !== null;
+  const isLongLegal =
+    f.description.length > PLANILLA_DESC_COLLAPSE_CHARS || (f.description.match(/\n/g)?.length ?? 0) >= 2;
 
-  const btnPrimary =
-    'inline-flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2';
-  const btnOutline =
-    'inline-flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-600 text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed';
+  const btnBase =
+    'inline-flex items-center justify-center gap-1 w-full px-2 py-1.5 text-xs font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-60 disabled:cursor-not-allowed';
+  const btnPrimary = `${btnBase} bg-indigo-600 text-white hover:bg-indigo-700`;
+  const btnOutline = `${btnBase} border border-indigo-600 text-indigo-700 bg-white hover:bg-indigo-50`;
 
   return (
-    <article
-      className={`flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 rounded-xl border border-gray-200 bg-white shadow-sm hover:border-indigo-200 hover:shadow-md transition-shadow p-4 ${
-        viewMode === 'grid' ? 'h-full' : ''
-      }`}
-    >
+    <article className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-lg border border-gray-200 bg-white hover:border-indigo-200 transition-colors px-2.5 py-2 sm:px-3 sm:py-2.5">
       <div className="flex-1 min-w-0">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 leading-snug">{f.title}</h3>
-        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 sm:p-3">
-          <FaExclamationTriangle className="text-amber-600 shrink-0 mt-0.5 text-sm" aria-hidden />
-          <p
-            className={`text-xs sm:text-sm text-amber-950 whitespace-pre-wrap ${
-              viewMode === 'list' ? 'max-h-24 sm:max-h-28 overflow-y-auto pr-1' : 'max-h-20 sm:max-h-24 overflow-y-auto pr-1'
-            }`}
-          >
-            {f.description}
-          </p>
+        <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1">{f.title}</h3>
+        <div className="flex gap-1.5 rounded-md border border-amber-200/90 bg-amber-50/90 px-2 py-1.5">
+          <FaExclamationTriangle className="text-amber-600 shrink-0 mt-px text-[10px] sm:text-xs" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p
+              className={`text-[11px] sm:text-xs text-amber-950 whitespace-pre-wrap leading-snug ${
+                !legalExpanded && isLongLegal ? 'line-clamp-2' : ''
+              }`}
+            >
+              {f.description}
+            </p>
+            {isLongLegal && (
+              <button
+                type="button"
+                onClick={() => setLegalExpanded((v) => !v)}
+                className="mt-0.5 text-[10px] sm:text-xs font-medium text-amber-900 underline hover:text-amber-950"
+              >
+                {legalExpanded ? 'Ocultar aviso' : 'Ver aviso completo'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="w-full sm:w-44 md:w-48 lg:w-52 shrink-0 flex flex-col gap-2 sm:pt-0.5">
+      <div className="w-full sm:w-[9.5rem] md:w-40 shrink-0 flex flex-col gap-1">
         <button
           type="button"
           onClick={() => onOpen(f)}
           className={btnPrimary}
           aria-label={isExternal ? 'Descargar Formulario' : 'Completar Planilla'}
         >
-          <FaFileAlt className="shrink-0" aria-hidden />
-          <span className="truncate">
-            {isExternal ? (
-              <>
-                <span className="sm:hidden">Descargar</span>
-                <span className="hidden sm:inline">Descargar Formulario</span>
-              </>
-            ) : (
-              <>
-                <span className="sm:hidden">Completar</span>
-                <span className="hidden sm:inline">Completar Planilla</span>
-              </>
-            )}
-          </span>
+          <FaFileAlt className="shrink-0 text-[10px]" aria-hidden />
+          <span className="truncate">{isExternal ? 'Descargar' : 'Completar'}</span>
         </button>
 
         {isExternal && (
@@ -196,24 +194,15 @@ const PlanillaCardItem: React.FC<PlanillaCardItemProps> = ({
               className={btnOutline}
               aria-label="Subir formulario completado"
             >
-              <FaUpload className="shrink-0" aria-hidden />
-              <span className="truncate">
-                {isUploading ? (
-                  'Subiendo...'
-                ) : (
-                  <>
-                    <span className="sm:hidden">Subir archivo</span>
-                    <span className="hidden sm:inline">Subir completado</span>
-                  </>
-                )}
-              </span>
+              <FaUpload className="shrink-0 text-[10px]" aria-hidden />
+              <span className="truncate">{isUploading ? 'Subiendo...' : 'Subir archivo'}</span>
             </button>
-            <p className="text-[11px] leading-snug text-blue-900 bg-blue-50 rounded-md px-2 py-1.5 border border-blue-100">
-              Paso 2: enviá el documento completado.{' '}
-              <Link to="/client/tickets" className="font-semibold text-blue-700 hover:underline whitespace-nowrap">
-                Ir a Tickets
-              </Link>
-            </p>
+            <Link
+              to="/client/tickets"
+              className="text-center text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline py-0.5"
+            >
+              Ir a Tickets
+            </Link>
           </>
         )}
       </div>
@@ -386,7 +375,7 @@ const ClientActivationsPage: React.FC = () => {
         </div>
       )}
 
-      <SectionCard title="Planillas disponibles">
+      <SectionCard title="Planillas disponibles" dense>
         {formsLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
@@ -397,9 +386,9 @@ const ClientActivationsPage: React.FC = () => {
           </p>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <p className="text-sm text-gray-600">
-                {systemForms.length} planilla{systemForms.length !== 1 ? 's' : ''} — elegí cómo verlas
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <p className="text-xs text-gray-500">
+                {systemForms.length} planilla{systemForms.length !== 1 ? 's' : ''}
               </p>
               <div
                 className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5"
@@ -436,15 +425,14 @@ const ClientActivationsPage: React.FC = () => {
             <div
               className={
                 planillasViewMode === 'list'
-                  ? 'flex flex-col gap-3'
-                  : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'
+                  ? 'flex flex-col gap-1.5'
+                  : 'grid grid-cols-1 lg:grid-cols-2 gap-1.5'
               }
             >
               {systemForms.map((f) => (
                 <PlanillaCardItem
                   key={f.id}
                   form={f}
-                  viewMode={planillasViewMode}
                   uploadingFormId={uploadingFormId}
                   onOpen={openSystemForm}
                   onFileChange={handleCompletedFormFileChange}
