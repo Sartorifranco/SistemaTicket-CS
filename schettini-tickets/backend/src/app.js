@@ -139,6 +139,8 @@ const systemOptionsRoutes = require('./routes/systemOptionsRoutes');
 const sparePartsCatalogRoutes = require('./routes/sparePartsCatalogRoutes');
 const cloudContractsRoutes = require('./routes/cloudContractsRoutes');
 const activationRoutes = require('./routes/activationRoutes');
+const clientActivationRoutes = require('./routes/clientActivationRoutes');
+const googleFormsWebhookRoutes = require('./routes/googleFormsWebhookRoutes');
 const factoryShipmentRoutes = require('./routes/factoryShipmentRoutes');
 const techCashRoutes = require('./routes/techCashRoutes');
 const refurbishedRoutes = require('./routes/refurbishedRoutes');
@@ -168,6 +170,7 @@ app.get('/api/build-info', (req, res) => {
   });
 });
 
+app.use('/api/webhooks', googleFormsWebhookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tickets', ticketRoutes);
@@ -199,6 +202,7 @@ app.use('/api/settings/system-options', systemOptionsRoutes);
 app.use('/api/settings/spare-parts-catalog', sparePartsCatalogRoutes);
 app.use('/api/settings/cloud-contracts', cloudContractsRoutes);
 app.use('/api/activations', activationRoutes);
+app.use('/api/client/activations', clientActivationRoutes);
 app.use('/api/factory-shipments', factoryShipmentRoutes);
 app.use('/api/tech-cash', techCashRoutes);
 app.use('/api/refurbished-equipments', refurbishedRoutes);

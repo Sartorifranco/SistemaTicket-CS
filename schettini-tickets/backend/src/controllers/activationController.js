@@ -3,7 +3,78 @@ const { sendEquipmentReadyEmail } = require('../services/emailService');
 const { createNotification } = require('../utils/notificationManager');
 
 const VALID_FORM_TYPES = ['general', 'controlador_fiscal', 'alta_general', 'fiscal', 'no_fiscal', 'none'];
-const VALID_STATUSES = ['pending_validation', 'pending_client_fill', 'processing', 'ready'];
+const VALID_STATUSES = ['pending_validation', 'pending_client_fill', 'processing', 'ready', 'rejected'];
+
+/** Notifica a admin y agentes: nueva planilla / solicitud de alta. */
+async function notifyStaffNewPlanillaActivation(clientOrEmailLabel, activationId, io) {
+  const label = clientOrEmailLabel || 'Cliente';
+  const message = `Nueva solicitud de alta / planilla recibida de ${label}`;
+  const [staffRows] = await pool.query(
+    "SELECT id FROM Users WHERE role IN ('admin', 'agent') AND (is_active = 1 OR is_active IS NULL)"
+  );
+  for (const row of staffRows) {
+    await createNotification(
+      row.id,
+      'Nueva planilla recibida',
+      message,
+      'info',
+      io || null,
+      activationId,
+      'activation'
+    );
+  }
+  if (io) {
+    io.to('admin').to('agent').emit('dashboard_update', { message: 'Nueva planilla / activación recibida' });
+  }
+}
+
+// POST /api/client/activations — Cliente sube PDF de planilla (system_forms external_link)
+const submitClientPlanilla = async (req, res) => {
+  try {
+    const clientId = req.user.id;
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ success: false, message: 'Solo clientes pueden enviar planillas.' });
+    }
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'El archivo PDF es obligatorio.' });
+    }
+
+    const equipment =
+      (req.body.equipment && String(req.body.equipment).trim()) ||
+      (req.body.planilla_title && String(req.body.planilla_title).trim()) ||
+      (req.body.form_title && String(req.body.form_title).trim()) ||
+      'Planilla completada';
+
+    const invoiceRaw = req.body.invoice_number != null ? String(req.body.invoice_number).trim() : '';
+    const invoice_number = invoiceRaw || `PLANILLA-${Date.now()}`;
+
+    const attachment_url = `/uploads/${file.filename}`;
+
+    const [result] = await pool.query(
+      `INSERT INTO activations (
+        client_id, invoice_number, equipment, form_type, status, attachment_url, created_at
+      ) VALUES (?, ?, ?, 'general', 'processing', ?, NOW())`,
+      [clientId, invoice_number, equipment, attachment_url]
+    );
+
+    const activationId = result.insertId;
+    const [clientRow] = await pool.query('SELECT username, full_name FROM Users WHERE id = ?', [clientId]);
+    const clientName = (clientRow[0] && (clientRow[0].full_name || clientRow[0].username)) || 'Un cliente';
+
+    await notifyStaffNewPlanillaActivation(clientName, activationId, req.io);
+
+    res.status(201).json({
+      success: true,
+      message: 'Planilla enviada correctamente. El equipo la revisará a la brevedad.',
+      data: { id: activationId, status: 'processing', equipment, invoice_number }
+    });
+  } catch (error) {
+    console.error('Error submitClientPlanilla:', error);
+    res.status(500).json({ success: false, message: 'Error al enviar la planilla.' });
+  }
+};
 
 // POST /api/activations/request — Cliente envía { invoice_number }
 const requestActivation = async (req, res) => {
@@ -29,20 +100,11 @@ const requestActivation = async (req, res) => {
 
     const [clientRow] = await pool.query('SELECT username, full_name FROM Users WHERE id = ?', [clientId]);
     const clientName = (clientRow[0] && (clientRow[0].full_name || clientRow[0].username)) || 'Un cliente';
-    const [staffRows] = await pool.query(
-      "SELECT id FROM Users WHERE role IN ('admin', 'supervisor', 'agent') AND (is_active = 1 OR is_active IS NULL)"
+    await notifyStaffNewPlanillaActivation(
+      `${clientName} (factura ${String(invoice_number).trim()})`,
+      activationId,
+      req.io
     );
-    for (const row of staffRows) {
-      await createNotification(
-        row.id,
-        'Nueva Planilla Solicitada',
-        `${clientName} ha solicitado una planilla para validación (factura ${String(invoice_number).trim()}).`,
-        'info',
-        req.io || null,
-        activationId,
-        'activation'
-      );
-    }
 
     res.status(201).json({
       success: true,
@@ -176,47 +238,26 @@ const submitForm = async (req, res) => {
       }
     }
 
-    const invoiceNumber = activation.invoice_number || '';
-    const ticketTitle = `Alta de Sistema - Factura ${invoiceNumber}`.trim();
-    const ticketDescription = `Activación/Planilla asociada. Factura/Pedido: ${invoiceNumber}. Formulario enviado por el cliente.`;
-
-    // assigned_to_user_id debe ser NULL: el cliente no puede ser agente asignado
-    const [ticketResult] = await pool.query(
-      `INSERT INTO Tickets (user_id, assigned_to_user_id, title, description, priority, status, created_at)
-       VALUES (?, NULL, ?, ?, 'medium', ?, NOW())`,
-      [clientId, ticketTitle, ticketDescription, 'Alta pendiente']
-    );
-    const ticketId = ticketResult.insertId;
+    const equipmentHint =
+      (body.product_type && String(body.product_type)) ||
+      (body.software_type && String(body.software_type)) ||
+      (body.model && String(body.model)) ||
+      null;
 
     await pool.query(
-      `UPDATE activations SET form_data = ?, ticket_id = ?, status = 'processing', updated_at = NOW() WHERE id = ?`,
-      [JSON.stringify(formData), ticketId, id]
+      `UPDATE activations SET form_data = ?, status = 'processing', updated_at = NOW(),
+       equipment = COALESCE(NULLIF(equipment, ''), ?) WHERE id = ?`,
+      [JSON.stringify(formData), equipmentHint, id]
     );
 
     const [clientRow] = await pool.query('SELECT username, full_name FROM Users WHERE id = ?', [clientId]);
     const clientName = (clientRow[0] && (clientRow[0].full_name || clientRow[0].username)) || 'Un cliente';
-    const [staffRows] = await pool.query(
-      "SELECT id FROM Users WHERE role IN ('admin', 'supervisor', 'agent') AND (is_active = 1 OR is_active IS NULL)"
-    );
-    for (const row of staffRows) {
-      await createNotification(
-        row.id,
-        'Nueva Planilla Recibida',
-        `${clientName} ha enviado una planilla para validación.`,
-        'info',
-        req.io || null,
-        parseInt(id, 10),
-        'activation'
-      );
-    }
-    if (req.io) {
-      req.io.to('admin').to('agent').to('supervisor').emit('dashboard_update', { message: 'Nueva activación con formulario enviado' });
-    }
+    await notifyStaffNewPlanillaActivation(clientName, parseInt(id, 10), req.io);
 
     res.json({
       success: true,
-      message: 'Formulario enviado. Se creó el ticket de alta y la activación está en proceso.',
-      data: { activationId: parseInt(id, 10), ticketId, status: 'processing' }
+      message: 'Formulario enviado. La solicitud de alta está en proceso.',
+      data: { activationId: parseInt(id, 10), status: 'processing' }
     });
   } catch (error) {
     console.error('Error submitForm:', error);
@@ -389,9 +430,11 @@ const deleteActivation = async (req, res) => {
 };
 
 module.exports = {
+  notifyStaffNewPlanillaActivation,
   requestActivation,
   validateActivation,
   submitForm,
+  submitClientPlanilla,
   getActivations,
   getClientActivations,
   getActivationById,

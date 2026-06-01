@@ -59,6 +59,16 @@ const NotificationBell: React.FC = () => {
         } else if (notification.related_type === 'repair_order' && notification.related_id) {
             const basePath = user?.role === 'admin' ? '/admin' : (user?.role === 'agent' || user?.role === 'supervisor') ? '/agent' : '/client';
             navigate(`${basePath}/repair-orders/${notification.related_id}`);
+        } else if (notification.related_type === 'activation') {
+            const basePath =
+                user?.role === 'admin'
+                    ? '/admin'
+                    : user?.role === 'agent' || user?.role === 'supervisor' || user?.role === 'viewer'
+                      ? '/agent'
+                      : null;
+            if (basePath) {
+                navigate(`${basePath}/activations`);
+            }
         } else if (notification.related_type === 'payment' && notification.related_id) {
             const canReview =
                 user?.role === 'admin' ||

@@ -307,14 +307,14 @@ const ClientActivationsPage: React.FC = () => {
     setActiveSystemForm(f);
   };
 
+  /** Envía PDF de planilla completada al módulo de Activaciones (no crea ticket de soporte). */
   const submitCompletedFormAsTicket = async (planilla: SystemFormCard, file: File) => {
     const formData = new FormData();
-    formData.append('title', `Formulario completado: ${planilla.title}`);
-    formData.append('description', 'El cliente ha subido este formulario desde el módulo de Activaciones.');
-    formData.append('priority', 'medium');
-    formData.append('attachments', file);
+    formData.append('attachment', file);
+    formData.append('planilla_title', planilla.title);
+    formData.append('equipment', planilla.title);
 
-    await api.post('/api/tickets', formData, {
+    await api.post('/api/client/activations', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   };
@@ -335,7 +335,7 @@ const ClientActivationsPage: React.FC = () => {
     setUploadingFormId(planilla.id);
     try {
       await submitCompletedFormAsTicket(planilla, file);
-      toast.success('¡Formulario enviado con éxito! Los técnicos lo revisarán a la brevedad.');
+      toast.success('¡Planilla enviada con éxito! La verás en Solicitudes de alta y el equipo la revisará.');
     } catch (err: unknown) {
       const msg =
         err &&
