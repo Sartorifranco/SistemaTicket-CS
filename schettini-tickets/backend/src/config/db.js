@@ -21,8 +21,8 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0,
     ssl: sslConfig, // ✅ CRÍTICO PARA LA NUBE
-    // Argentina (UTC-3): evita doble conversión si la BD ya guarda hora local.
-    // dateStrings: true devuelve DATETIME/TIMESTAMP tal cual en la BD, sin instancias Date desplazadas en Node.
+    // Argentina (UTC-3): NOW() y created_at se guardan como hora local. El frontend interpreta
+    // "YYYY-MM-DD HH:mm:ss" sin Z como -03:00 (ver frontend/utils/dateFormatter.ts).
     timezone: '-03:00',
     dateStrings: true
 });

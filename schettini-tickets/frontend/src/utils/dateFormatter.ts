@@ -1,12 +1,15 @@
 // frontend/src/utils/dateFormatter.ts
 
-/** Zona horaria del cliente: Córdoba, Argentina (UTC-3). Las fechas del servidor vienen en UTC. */
+/** Zona horaria operativa: Córdoba, Argentina (UTC-3, sin horario de verano). */
 const ARGENTINA_TZ = 'America/Argentina/Cordoba';
+/** Offset fijo del backend MySQL (db.js timezone: '-03:00') para strings sin zona. */
+const ARGENTINA_OFFSET = '-03:00';
 
 /**
- * Interpreta un string de fecha/hora del API como UTC y devuelve un Date.
- * MySQL/backend suelen devolver "YYYY-MM-DD HH:mm:ss" sin Z; el navegador lo interpreta como hora local.
- * Forzamos interpretación UTC añadiendo Z cuando no hay indicador de zona.
+ * Interpreta fechas del API (MySQL vía backend).
+ * - Con Z u offset explícito: se respeta tal cual.
+ * - "YYYY-MM-DD HH:mm:ss" sin zona: hora de pared Argentina (como guarda NOW() en el servidor).
+ *   Antes se trataba como UTC (+Z) y restaba 3 h al mostrar (ej. 16:19 → 13:19).
  */
 export function parseDateAsUTC(dateString: string | null | undefined): Date | null {
   if (dateString == null || String(dateString).trim() === '') return null;
@@ -16,10 +19,13 @@ export function parseDateAsUTC(dateString: string | null | undefined): Date | nu
     return isNaN(d.getTime()) ? null : d;
   }
   const isoLike = s.replace(' ', 'T');
-  const withZ = /\d{4}-\d{2}-\d{2}T\d{1,2}:\d{2}/.test(isoLike)
-    ? isoLike.replace(/T(\d):/, 'T0$1:').slice(0, 19) + 'Z'
-    : isoLike.slice(0, 10) + 'T00:00:00.000Z';
-  const date = new Date(withZ);
+  if (/\d{4}-\d{2}-\d{2}T\d{1,2}:\d{2}/.test(isoLike)) {
+    const normalized = isoLike.replace(/T(\d):/, 'T0$1:').slice(0, 19) + ARGENTINA_OFFSET;
+    const date = new Date(normalized);
+    return isNaN(date.getTime()) ? null : date;
+  }
+  const dateOnly = isoLike.slice(0, 10) + 'T12:00:00.000' + ARGENTINA_OFFSET;
+  const date = new Date(dateOnly);
   return isNaN(date.getTime()) ? null : date;
 }
 
@@ -37,7 +43,7 @@ function parseDateOnlyAsNoonUTC(dateString: string | null | undefined): Date | n
 
 /**
  * Formatea fecha+hora para mostrar en Argentina (Córdoba).
- * Acepta strings del API (se interpretan como UTC) o Date.
+ * Acepta strings del API (hora Argentina en BD) o Date.
  */
 export function formatDateTimeArgentina(
   dateString: string | Date | null | undefined,
