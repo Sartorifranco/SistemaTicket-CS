@@ -207,7 +207,12 @@ const AdminResourcesPage: React.FC = () => {
             let msg = ax.response?.data?.message || ax.message;
             if (ax.response?.status === 413) {
                 const sizeMb = file ? (file.size / (1024 * 1024)).toFixed(1) : '?';
-                msg = `El archivo es demasiado grande (${sizeMb} MB). El servidor permite hasta 200 MB. Si ya subiste el límite en Nginx, ejecutá en el VPS: bash scripts/nginx-upload-limit-200m.sh y recargá Nginx.`;
+                const n = parseFloat(sizeMb);
+                if (!Number.isNaN(n) && n < 200) {
+                    msg = `El servidor rechazó la subida (${sizeMb} MB). Suele ser un límite de 100 MB en Nginx o Cloudflare. En el VPS: bash scripts/nginx-upload-limit-200m.sh y bash scripts/diagnose-413-upload.sh. Si usás Cloudflare, activá "Solo DNS" (nube gris) o comprimí el video a menos de 100 MB.`;
+                } else {
+                    msg = `El archivo pesa ${sizeMb} MB. El máximo permitido es 200 MB. Comprimí el video e intentá de nuevo.`;
+                }
             }
             toast.error(msg || 'Error al agregar el recurso');
         }
