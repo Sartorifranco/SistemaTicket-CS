@@ -9,8 +9,13 @@ echo "=== 1. Todos los client_max_body_size en Nginx ==="
 grep -rn "client_max_body_size" /etc/nginx/ 2>/dev/null || echo "(ninguno)"
 
 echo ""
-echo "=== 2. Sitios habilitados ==="
+echo "=== 2. Sitios habilitados (NO debe haber .bak ni .save — nginx los carga todos) ==="
 ls -la /etc/nginx/sites-enabled/ 2>/dev/null || true
+JUNK=$(ls /etc/nginx/sites-enabled/*.bak.* /etc/nginx/sites-enabled/*.save* 2>/dev/null || true)
+if [[ -n "$JUNK" ]]; then
+  echo ">>> PROBLEMA: archivos basura en sites-enabled. Moverlos:"
+  echo ">>>   mkdir -p /etc/nginx/backups-manual && mv /etc/nginx/sites-enabled/*.bak.* /etc/nginx/sites-enabled/*.save* /etc/nginx/backups-manual/ 2>/dev/null; nginx -t && systemctl reload nginx"
+fi
 
 echo ""
 echo "=== 3. ¿Sigue apareciendo 100M? (debe ser 0 líneas tras nginx-upload-limit-200m.sh) ==="
