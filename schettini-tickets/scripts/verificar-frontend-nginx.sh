@@ -26,8 +26,20 @@ echo "=== 4. Qué devuelve Nginx para Host sch.soporte.com.ar (HTTPS, -k ignora 
 curl -s -k -H "Host: sch.soporte.com.ar" https://127.0.0.1/ 2>/dev/null | grep -o 'main\.[a-z0-9]*\.js' || echo "(sin coincidencia o error)"
 
 echo ""
-echo "=== 5. Límite de subida Nginx (videos: backend 200 MB — Nginx debe ser >= 200m) ==="
-grep -rn "client_max_body_size" /etc/nginx/sites-available/tickets /etc/nginx/nginx.conf 2>/dev/null | head -10 || echo "(no encontrado — agregar client_max_body_size 200m; en server o location /api)"
+echo "=== 5. Límite de subida Nginx (videos: backend 200 MB — todos los vhosts + conf.d) ==="
+grep -rn "client_max_body_size" /etc/nginx/sites-available/ /etc/nginx/conf.d/ /etc/nginx/nginx.conf 2>/dev/null | head -15 || echo "(no encontrado)"
+
+echo ""
+echo "=== 5b. Timeouts proxy (uploads lentos; recomendado proxy_read_timeout >= 600s) ==="
+grep -rn "proxy_read_timeout\|client_body_timeout" /etc/nginx/conf.d/ /etc/nginx/sites-available/tickets 2>/dev/null | head -10 || echo "(sin timeouts — ejecutá bash scripts/nginx-upload-limit-200m.sh)"
+
+echo ""
+echo "=== 5c. API en producción (el frontend sube videos a esta URL, no al dominio del panel) ==="
+if [[ -f "$PROJECT_ROOT/frontend/.env" ]]; then
+  grep REACT_APP_API_URL "$PROJECT_ROOT/frontend/.env" || echo "(sin REACT_APP_API_URL en frontend/.env)"
+else
+  echo "No hay frontend/.env — revisá REACT_APP_API_URL del build"
+fi
 
 LIMIT_LINE="$(grep -h "client_max_body_size" /etc/nginx/sites-available/tickets /etc/nginx/nginx.conf 2>/dev/null | head -1 || true)"
 if echo "$LIMIT_LINE" | grep -qiE '100m|50m|1m|10m'; then

@@ -193,7 +193,16 @@ const createResource = async (req, res) => {
 
         if (type === 'video' || type === 'image') {
             if (!file) {
-                return res.status(400).json({ message: 'Debes subir un archivo para este tipo de recurso' });
+                console.warn('[createResource] Sin archivo en multipart', {
+                    type,
+                    contentType: req.headers['content-type'],
+                    hasFiles: !!req.files,
+                    fileKeys: req.files ? Object.keys(req.files) : []
+                });
+                return res.status(400).json({
+                    success: false,
+                    message: 'No se recibió el archivo. Si el video es grande, esperá a que termine la barra de carga o volvé a iniciar sesión e intentá de nuevo.'
+                });
             }
             finalContent = `/uploads/${file.filename}`;
         } else if (file) {
@@ -217,6 +226,14 @@ const createResource = async (req, res) => {
         let imageUrl = null;
         if (thumbnailFile) imageUrl = `/uploads/${thumbnailFile.filename}`;
         else if (imageFile) imageUrl = `/uploads/${imageFile.filename}`;
+
+        console.log('[createResource] OK archivo', {
+            title,
+            type,
+            folder_id: folderResolved.folderId,
+            size: file?.size,
+            filename: file?.filename
+        });
 
         try {
             await insertKnowledgeBaseRow({
