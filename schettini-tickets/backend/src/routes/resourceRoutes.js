@@ -6,7 +6,7 @@ const uploadsDir = require('../utils/uploadsDir');
 const { getResources, getExplorer, createResource, updateResource, deleteResource, moveResource } = require('../controllers/resourceController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-const MAX_VIDEO_MB = 500;
+const MAX_VIDEO_MB = 200;
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {

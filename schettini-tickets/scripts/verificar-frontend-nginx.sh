@@ -22,8 +22,8 @@ echo "=== 4. Qué devuelve Nginx para Host sch.soporte.com.ar (HTTPS, -k ignora 
 curl -s -k -H "Host: sch.soporte.com.ar" https://127.0.0.1/ 2>/dev/null | grep -o 'main\.[a-z0-9]*\.js' || echo "(sin coincidencia o error)"
 
 echo ""
-echo "=== 5. Límite de subida Nginx (videos Base de Conocimientos; recomendado >= 500m) ==="
-grep -rn "client_max_body_size" /etc/nginx/sites-available/ /etc/nginx/nginx.conf 2>/dev/null | head -10 || echo "(no encontrado — por defecto 1m; agregar client_max_body_size 500m; en el server o location /api)"
+echo "=== 5. Límite de subida Nginx (videos Base de Conocimientos; recomendado >= 200m) ==="
+grep -rn "client_max_body_size" /etc/nginx/sites-available/ /etc/nginx/nginx.conf 2>/dev/null | head -10 || echo "(no encontrado — por defecto 1m; agregar client_max_body_size 200m; en el server o location /api)"
 
 echo ""
 echo ">>> Si en 3 o 4 sale main.4a09f6e9.js, el servidor está bien; el problema es caché del navegador o DNS."
