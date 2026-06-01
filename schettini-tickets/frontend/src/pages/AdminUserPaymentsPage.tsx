@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../config/axiosConfig';
 import { formatDateArgentina } from '../utils/dateFormatter';
 import { getImageUrl } from '../utils/imageUrl';
@@ -32,6 +32,8 @@ interface BillingInfo {
 const AdminUserPaymentsPage: React.FC = () => {
     const { userId } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const highlightPaymentId = searchParams.get('paymentId');
     const [payments, setPayments] = useState<Payment[]>([]);
     const [billing, setBilling] = useState<BillingInfo | null>(null);
     const [plan, setPlan] = useState<UserPlan>({ plan_name: 'Free', plan_expiry: '', price: 0 });
@@ -176,7 +178,12 @@ const AdminUserPaymentsPage: React.FC = () => {
                                 <tr><td colSpan={6} className="p-8 text-center text-gray-400">Este usuario no tiene pagos registrados.</td></tr>
                             ) : (
                                 payments.map(pay => (
-                                    <tr key={pay.id} className="hover:bg-gray-50 transition">
+                                    <tr
+                                        key={pay.id}
+                                        className={`hover:bg-gray-50 transition ${
+                                            highlightPaymentId === String(pay.id) ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''
+                                        }`}
+                                    >
                                         <td className="p-4 text-sm text-gray-600">{formatDateArgentina(pay.created_at)}</td>
                                         <td className="p-4 font-bold text-gray-800">${pay.amount}</td>
                                         <td className="p-4 text-sm text-gray-600 capitalize">{pay.method}</td>

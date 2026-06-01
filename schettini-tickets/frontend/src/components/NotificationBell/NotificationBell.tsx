@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Notification } from '../../types';
 import { formatDateTimeArgentina } from '../../utils/dateFormatter';
+import { hasPermission } from '../../utils/permissions';
 import { FaBell } from 'react-icons/fa';
 
 /** Formatea mensaje: si viene "titulo|||mensaje" muestra título y mensaje; si no, el texto tal cual */
@@ -57,8 +59,17 @@ const NotificationBell: React.FC = () => {
         } else if (notification.related_type === 'repair_order' && notification.related_id) {
             const basePath = user?.role === 'admin' ? '/admin' : (user?.role === 'agent' || user?.role === 'supervisor') ? '/agent' : '/client';
             navigate(`${basePath}/repair-orders/${notification.related_id}`);
-        } else if (notification.related_type === 'payment') {
-            navigate('/admin/payments');
+        } else if (notification.related_type === 'payment' && notification.related_id) {
+            const canReview =
+                user?.role === 'admin' ||
+                ((user?.role === 'agent' || user?.role === 'supervisor' || user?.role === 'viewer') &&
+                    hasPermission(user.permissions, 'payments_review'));
+            if (canReview) {
+                const staffBase = user?.role === 'admin' ? '/admin' : '/agent';
+                navigate(`${staffBase}/payments?paymentId=${notification.related_id}`);
+            } else {
+                toast.info('No tenés permiso para revisar pagos. Pedile al administrador que active "Pagos pendientes".');
+            }
         }
         setIsDropdownOpen(false);
     };

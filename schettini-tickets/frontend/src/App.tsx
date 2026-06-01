@@ -34,6 +34,7 @@ import AdminModulesPage from './pages/AdminModulesPage';
 import AdminAnnouncementsPage from './pages/AdminAnnouncementsPage';
 import AdminResourcesPage from './pages/AdminResourcesPage';
 import AdminUserPaymentsPage from './pages/AdminUserPaymentsPage';
+import AdminPaymentsInboxPage from './pages/AdminPaymentsInboxPage';
 import AdminPromotionsPage from './pages/AdminPromotionsPage';
 import AdminActivityLogsPage from './pages/AdminActivityLogsPage';
 import QuoterPage from './pages/QuoterPage';
@@ -140,6 +141,7 @@ const App: React.FC = () => {
                             {/* --- RUTAS ADMIN --- */}
                             <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminDashboard /></PrivateRoute>} />
                             <Route path="/admin/users" element={<PrivateRoute roles={['admin']}><AdminUsersPage /></PrivateRoute>} />
+                            <Route path="/admin/payments" element={<PrivateRoute roles={['admin', 'agent', 'supervisor', 'viewer']} permission="payments_review"><AdminPaymentsInboxPage /></PrivateRoute>} />
                             <Route path="/admin/users/:userId/payments" element={<PrivateRoute roles={['admin']}><AdminUserPaymentsPage /></PrivateRoute>} />
                             <Route path="/admin/companies" element={<PrivateRoute roles={['admin']}><AdminCompaniesPage /></PrivateRoute>} />
                             <Route path="/admin/companies/:companyId/departments" element={<PrivateRoute roles={['admin']}><AdminCompanyDepartmentsPage /></PrivateRoute>} />
@@ -149,6 +151,7 @@ const App: React.FC = () => {
                             <Route path="/admin/announcements" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_announcements"><AdminAnnouncementsPage /></PrivateRoute>} />
                             <Route path="/admin/promotions" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_promotions"><AdminPromotionsPage /></PrivateRoute>} />
                             {/* Aliases para rol agente (mismo componente) */}
+                            <Route path="/agent/payments" element={<PrivateRoute roles={['admin', 'agent', 'supervisor', 'viewer']} permission="payments_review"><AdminPaymentsInboxPage /></PrivateRoute>} />
                             <Route path="/agent/announcements" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_announcements"><AdminAnnouncementsPage /></PrivateRoute>} />
                             <Route path="/agent/promotions" element={<PrivateRoute roles={['admin', 'agent', 'supervisor']} permission="marketing_promotions"><AdminPromotionsPage /></PrivateRoute>} />
                             <Route path="/admin/plans" element={<PrivateRoute roles={['admin']}><AdminPlansPage /></PrivateRoute>} />

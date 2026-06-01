@@ -90,6 +90,7 @@ const Layout: React.FC = () => {
                         <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Administración</li>
                         <li><NavLink to="/admin" end className={getLinkClassName}><FaHome /> Inicio</NavLink></li>
                         <li><NavLink to="/admin/users" className={getLinkClassName}><FaUsers /> Usuarios</NavLink></li>
+                        <li><NavLink to="/admin/payments" className={getLinkClassName}><FaFileInvoiceDollar /> Pagos pendientes</NavLink></li>
                         <li><NavLink to="/tech/clients" className={getLinkClassName}><FaUserFriends /> Clientes / Empresas</NavLink></li>
                         <li><NavLink to="/admin/companies" className={getLinkClassName}><FaBuilding /> Empresas</NavLink></li>
                         <li><NavLink to="/admin/tickets" className={getLinkClassName}><FaTicketAlt /> Tickets</NavLink></li>
@@ -145,6 +146,7 @@ const Layout: React.FC = () => {
                 const hasMarketingPromotions = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_promotions);
                 const hasMarketingAnnouncements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_announcements);
                 const hasMarketingSection = hasMarketingPromotions || hasMarketingAnnouncements;
+                const hasPaymentsReview = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.payments_pending);
                 const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
@@ -168,6 +170,12 @@ const Layout: React.FC = () => {
                                 {hasMarketingAnnouncements && (
                                     <li><NavLink to="/agent/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                                 )}
+                            </>
+                        )}
+                        {hasPaymentsReview && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Cobranzas</li>
+                                <li><NavLink to="/agent/payments" className={getLinkClassName}><FaFileInvoiceDollar /> Pagos pendientes</NavLink></li>
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -206,6 +214,7 @@ const Layout: React.FC = () => {
                 const perms = user.permissions || [];
                 const hasTickets = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.tickets);
                 const hasTasks = hasAnyPermission(perms, ['tasks_view']) || hasTickets;
+                const hasPaymentsReview = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.payments_pending);
                 const hasRepairs = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.repair_orders);
                 const hasActivations = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.activations);
                 const hasReady = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.ready_equipments);
@@ -230,6 +239,12 @@ const Layout: React.FC = () => {
                                 {hasTasks && <li><NavLink to="/agent/tasks" className={getLinkClassName}><FaTasks /> Tareas</NavLink></li>}
                                 {hasReports && <li><NavLink to="/agent/reports" className={getLinkClassName}><FaChartBar /> Reportes</NavLink></li>}
                                 {hasActivityLogs && <li><NavLink to="/agent/activity-logs" className={getLinkClassName}><FaHistory /> Registro de Actividad</NavLink></li>}
+                            </>
+                        )}
+                        {hasPaymentsReview && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Cobranzas</li>
+                                <li><NavLink to="/agent/payments" className={getLinkClassName}><FaFileInvoiceDollar /> Pagos pendientes</NavLink></li>
                             </>
                         )}
                         {hasAreaTecnica && (
@@ -281,6 +296,7 @@ const Layout: React.FC = () => {
                 const hasMarketingPromotions = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_promotions);
                 const hasMarketingAnnouncements = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.marketing_announcements);
                 const hasMarketingSection = hasMarketingPromotions || hasMarketingAnnouncements;
+                const hasPaymentsReview = hasAnyPermission(perms, SIDEBAR_PERMISSION_MAP.payments_pending);
                 const hasAreaTecnica = hasRepairs || hasActivations || hasReady || hasRefurbished || hasMovements || hasWarranties || hasCotizador;
                 return (
                     <>
@@ -304,6 +320,12 @@ const Layout: React.FC = () => {
                                 {hasMarketingAnnouncements && (
                                     <li><NavLink to="/agent/announcements" className={getLinkClassName}><FaBullhorn /> Enviar Novedades</NavLink></li>
                                 )}
+                            </>
+                        )}
+                        {hasPaymentsReview && (
+                            <>
+                                <li className="text-xs uppercase text-gray-500 font-bold mt-4 mb-2 px-4">Cobranzas</li>
+                                <li><NavLink to="/agent/payments" className={getLinkClassName}><FaFileInvoiceDollar /> Pagos pendientes</NavLink></li>
                             </>
                         )}
                         {hasAreaTecnica && (

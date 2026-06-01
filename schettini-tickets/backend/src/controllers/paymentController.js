@@ -27,6 +27,22 @@ function mapPaymentRow(p) {
     return { ...p, method: p.payment_method != null ? p.payment_method : p.method };
 }
 
+function parseUserPermissions(val) {
+    if (!val) return [];
+    try {
+        const arr = typeof val === 'string' ? JSON.parse(val) : val;
+        return Array.isArray(arr) ? arr : [];
+    } catch {
+        return [];
+    }
+}
+
+/** Admin siempre; agente/supervisor/viewer solo con permiso payments_review */
+function staffCanReviewPayments(role, permissionsRaw) {
+    if (role === 'admin') return true;
+    return parseUserPermissions(permissionsRaw).includes('payments_review');
+}
+
 // ==========================================
 // LÓGICA DEL CLIENTE
 // ==========================================
@@ -138,13 +154,18 @@ const reportPayment = async (req, res) => {
             console.warn('[paymentController] reportPayment: sin destinatario para email de cobranzas.');
         }
 
-        // 2. Notificar a Admins
-        const [admins] = await pool.query("SELECT id FROM Users WHERE role IN ('admin', 'agent')");
+        // 2. Notificar a staff con permiso payments_review (admin siempre)
+        const [staffRows] = await pool.query(
+            `SELECT id, role, permissions FROM Users
+             WHERE role IN ('admin', 'agent', 'supervisor', 'viewer')
+               AND (is_active = 1 OR is_active IS NULL)`
+        );
+        const notifyTargets = staffRows.filter((row) => staffCanReviewPayments(row.role, row.permissions));
 
-        if (admins.length > 0 && req.io) {
-            const msg = `Nuevo pago de $${amount} informado por ${username}`;
-            
-            for (const admin of admins) {
+        if (notifyTargets.length > 0 && req.io) {
+            const msg = `Pago pendiente de revisión|||Nuevo pago de $${amount} informado por ${clientDisplayName}. Tocá para ver el comprobante y aprobar o rechazar.`;
+
+            for (const admin of notifyTargets) {
                 const [notifResult] = await pool.query(
                     `INSERT INTO notifications (user_id, type, message, related_id, related_type, is_read) 
                      VALUES (?, 'info', ?, ?, 'payment', 0)`,
@@ -199,6 +220,58 @@ const updateBillingDetails = async (req, res) => {
 // ==========================================
 // LÓGICA DEL ADMINISTRADOR
 // ==========================================
+
+function mapPaymentWithUserRow(row) {
+    if (!row) return row;
+    return {
+        ...mapPaymentRow(row),
+        user_id: row.user_id,
+        username: row.username,
+        full_name: row.full_name,
+        business_name: row.business_name
+    };
+}
+
+// --- Bandeja: pagos pendientes de revisión (todos los clientes) ---
+const listPendingPaymentsAdmin = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT p.*, u.username, u.full_name, u.business_name
+             FROM payments p
+             INNER JOIN Users u ON u.id = p.user_id
+             WHERE p.status = 'pending'
+             ORDER BY p.created_at DESC`
+        );
+        res.json({ success: true, data: rows.map(mapPaymentWithUserRow) });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error al listar pagos pendientes' });
+    }
+};
+
+// --- Detalle de un pago (para enlaces desde notificaciones) ---
+const getPaymentByIdForAdmin = async (req, res) => {
+    try {
+        const paymentId = parseInt(req.params.paymentId, 10);
+        if (Number.isNaN(paymentId)) {
+            return res.status(400).json({ success: false, message: 'ID de pago inválido' });
+        }
+        const [rows] = await pool.query(
+            `SELECT p.*, u.username, u.full_name, u.business_name
+             FROM payments p
+             INNER JOIN Users u ON u.id = p.user_id
+             WHERE p.id = ?`,
+            [paymentId]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Pago no encontrado' });
+        }
+        res.json({ success: true, data: mapPaymentWithUserRow(rows[0]) });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error al obtener el pago' });
+    }
+};
 
 // --- Obtener toda la info de un cliente específico ---
 const getAdminClientPayments = async (req, res) => {
@@ -303,6 +376,8 @@ module.exports = {
     getPaymentInfo, 
     reportPayment, 
     updateBillingDetails,
+    listPendingPaymentsAdmin,
+    getPaymentByIdForAdmin,
     getAdminClientPayments, 
     updatePaymentStatus,    
     updateUserPlan          

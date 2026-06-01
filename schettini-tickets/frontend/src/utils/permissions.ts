@@ -137,6 +137,17 @@ export const PERMISSION_GROUPS = [
       { key: 'marketing_announcements', label: 'Enviar Novedades (anuncios masivos)' },
     ],
   },
+  {
+    id: 'billing',
+    title: 'Cobranzas y suscripciones',
+    icon: '💳',
+    perms: [
+      {
+        key: 'payments_review',
+        label: 'Pagos pendientes (ver comprobantes informados por clientes, aprobar y rechazar)',
+      },
+    ],
+  },
 ] as const;
 
 /** Todos los permisos posibles (flat) */
@@ -159,6 +170,7 @@ export const SIDEBAR_PERMISSION_MAP = {
   clients: ['clients_view'],
   marketing_promotions: ['marketing_promotions'],
   marketing_announcements: ['marketing_announcements'],
+  payments_pending: ['payments_review'],
 } as const;
 
 /** Verifica si el usuario tiene al menos uno de los permisos indicados */
