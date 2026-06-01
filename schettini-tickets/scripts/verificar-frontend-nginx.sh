@@ -1,15 +1,19 @@
 #!/bin/bash
-# Ejecutar en el VPS: bash scripts/verificar-frontend-nginx.sh
-# Verifica que el build y Nginx estén alineados para sch.soporte.com.ar
+# Ejecutar en el VPS desde la carpeta del proyecto:
+#   cd /var/www/tickets/schettini-tickets/schettini-tickets && bash scripts/verificar-frontend-nginx.sh
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BUILD="$PROJECT_ROOT/frontend/build"
+
 echo "=== 1. server_name en Nginx (debe incluir sch.soporte.com.ar) ==="
-grep -n "server_name" /etc/nginx/sites-available/tickets | head -5
+grep -n "server_name" /etc/nginx/sites-available/tickets 2>/dev/null | head -5 || echo "(no se encontró sites-available/tickets)"
 
 echo ""
 echo "=== 2. Archivo JS del build y qué referencia index.html ==="
-BUILD="/var/www/tickets/schettini-tickets/frontend/build"
-ls -la "$BUILD/static/js/main."*.js 2>/dev/null || echo "No hay main.*.js"
+echo "Ruta build: $BUILD"
+ls -la "$BUILD/static/js/main."*.js 2>/dev/null || echo "No hay main.*.js (¿corriste bash scripts/deploy.sh?)"
 echo "Referencia en index.html:"
 grep -o 'main\.[^"]*\.js' "$BUILD/index.html" 2>/dev/null || echo "No se pudo leer index.html"
 
@@ -22,8 +26,20 @@ echo "=== 4. Qué devuelve Nginx para Host sch.soporte.com.ar (HTTPS, -k ignora 
 curl -s -k -H "Host: sch.soporte.com.ar" https://127.0.0.1/ 2>/dev/null | grep -o 'main\.[a-z0-9]*\.js' || echo "(sin coincidencia o error)"
 
 echo ""
-echo "=== 5. Límite de subida Nginx (videos Base de Conocimientos; recomendado >= 200m) ==="
-grep -rn "client_max_body_size" /etc/nginx/sites-available/ /etc/nginx/nginx.conf 2>/dev/null | head -10 || echo "(no encontrado — por defecto 1m; agregar client_max_body_size 200m; en el server o location /api)"
+echo "=== 5. Límite de subida Nginx (videos: backend 200 MB — Nginx debe ser >= 200m) ==="
+grep -rn "client_max_body_size" /etc/nginx/sites-available/tickets /etc/nginx/nginx.conf 2>/dev/null | head -10 || echo "(no encontrado — agregar client_max_body_size 200m; en server o location /api)"
+
+LIMIT_LINE="$(grep -h "client_max_body_size" /etc/nginx/sites-available/tickets /etc/nginx/nginx.conf 2>/dev/null | head -1 || true)"
+if echo "$LIMIT_LINE" | grep -qiE '100m|50m|1m|10m'; then
+  echo ""
+  echo ">>> ATENCIÓN: el límite actual parece menor a 200 MB. Los videos >100 MB fallarán aunque el backend permita 200 MB."
+  echo ">>> Ajustá con:"
+  echo ">>>   sed -i 's/client_max_body_size 100M/client_max_body_size 200M/I' /etc/nginx/sites-available/tickets /etc/nginx/nginx.conf"
+  echo ">>>   nginx -t && systemctl reload nginx"
+elif echo "$LIMIT_LINE" | grep -qiE '200m'; then
+  echo ""
+  echo ">>> OK: Nginx configurado para 200 MB o más."
+fi
 
 echo ""
-echo ">>> Si en 3 o 4 sale main.4a09f6e9.js, el servidor está bien; el problema es caché del navegador o DNS."
+echo ">>> HTTPS (sección 4) con main.*.js indica que el frontend se sirve bien. Si el hash cambió tras deploy, es normal."
