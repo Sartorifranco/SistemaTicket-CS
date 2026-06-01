@@ -1,6 +1,76 @@
 const pool = require('../config/db');
 const { logActivity } = require('../services/activityLogService');
 
+/** Solo errores de esquema (columna inexistente). No confundir con FK de folder_id. */
+const isUnknownColumnError = (e) =>
+    e && (e.code === 'ER_BAD_FIELD_ERROR' || (typeof e.message === 'string' && /unknown column/i.test(e.message)));
+
+const isInvalidEnumError = (e) =>
+    e && (e.code === 'WARN_DATA_TRUNCATED' || e.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' ||
+        (typeof e.message === 'string' && /Data truncated for column 'type'/i.test(e.message)));
+
+/** Valida carpeta destino sin modificar recursos existentes. */
+const resolveDestinationFolder = async (folder_id) => {
+    if (folder_id === undefined || folder_id === '' || folder_id === null) {
+        return { folderId: null, folderLabel: null };
+    }
+    const folderId = parseInt(folder_id, 10);
+    if (isNaN(folderId)) {
+        return { error: 'La carpeta de destino no es válida.' };
+    }
+    try {
+        const [rows] = await pool.query('SELECT id, name FROM kb_folders WHERE id = ?', [folderId]);
+        if (rows.length === 0) {
+            return { error: 'La carpeta seleccionada no existe. Recargá la página e intentá de nuevo.' };
+        }
+        return { folderId, folderLabel: rows[0].name };
+    } catch (e) {
+        if (e.message && e.message.includes('kb_folders')) {
+            return { folderId: null, folderLabel: null };
+        }
+        throw e;
+    }
+};
+
+async function insertKnowledgeBaseRow(payload) {
+    const {
+        title, type, content, category, section_id, system_id, description,
+        folder_name, image_url, folder_id
+    } = payload;
+    const attempts = [
+        {
+            sql: 'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description, folder_name, image_url, folder_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            params: [title, type, content, category, section_id, system_id, description, folder_name, image_url, folder_id]
+        },
+        {
+            sql: 'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description, folder_name, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            params: [title, type, content, category, section_id, system_id, description, folder_name, image_url]
+        },
+        {
+            sql: 'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            params: [title, type, content, category, section_id, system_id, description]
+        },
+        {
+            sql: 'INSERT INTO knowledge_base (title, type, content, category) VALUES (?, ?, ?, ?)',
+            params: [title, type, content, category]
+        }
+    ];
+    let lastErr;
+    for (const { sql, params } of attempts) {
+        try {
+            await pool.query(sql, params);
+            return;
+        } catch (e) {
+            if (isUnknownColumnError(e)) {
+                lastErr = e;
+                continue;
+            }
+            throw e;
+        }
+    }
+    throw lastErr || new Error('No se pudo guardar el recurso');
+}
+
 const getResources = async (req, res) => {
     try {
         const { section_id, system_id, folder_id } = req.query;
@@ -130,43 +200,57 @@ const createResource = async (req, res) => {
             finalContent = `/uploads/${file.filename}`;
         }
 
-        const finalFolder = (folder_name && String(folder_name).trim()) ? String(folder_name).trim() : 'General';
+        if (!title) {
+            return res.status(400).json({ success: false, message: 'El título es obligatorio' });
+        }
+
+        const folderResolved = await resolveDestinationFolder(folder_id);
+        if (folderResolved.error) {
+            return res.status(400).json({ success: false, message: folderResolved.error });
+        }
+
+        const secId = section_id ? parseInt(section_id, 10) : null;
+        const sysId = system_id ? parseInt(system_id, 10) : null;
+        const finalFolder = (folder_name && String(folder_name).trim())
+            ? String(folder_name).trim()
+            : (folderResolved.folderLabel || 'General');
         let imageUrl = null;
         if (thumbnailFile) imageUrl = `/uploads/${thumbnailFile.filename}`;
         else if (imageFile) imageUrl = `/uploads/${imageFile.filename}`;
 
-        if (!title) {
-            return res.status(400).json({ message: 'El título es obligatorio' });
-        }
-
-        const secId = section_id ? parseInt(section_id) : null;
-        const sysId = system_id ? parseInt(system_id) : null;
-        const folderId = (folder_id !== undefined && folder_id !== '' && folder_id !== null) ? parseInt(folder_id, 10) : null;
-        const effectiveFolderId = (folderId !== null && !isNaN(folderId)) ? folderId : null;
         try {
-            await pool.query(
-                'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description, folder_name, image_url, folder_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [title, type, finalContent, category || 'General', secId, sysId, description || null, finalFolder, imageUrl, effectiveFolderId]
-            );
+            await insertKnowledgeBaseRow({
+                title,
+                type,
+                content: finalContent,
+                category: category || 'General',
+                section_id: secId,
+                system_id: sysId,
+                description: description || null,
+                folder_name: finalFolder,
+                image_url: imageUrl,
+                folder_id: folderResolved.folderId
+            });
         } catch (e) {
-            if (e.message && (e.message.includes('section_id') || e.message.includes('folder_name') || e.message.includes('image_url') || e.message.includes('folder_id') || e.message.includes('Unknown column'))) {
-                try {
-                    await pool.query(
-                        'INSERT INTO knowledge_base (title, type, content, category, section_id, system_id, description, folder_name, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [title, type, finalContent, category || 'General', secId, sysId, description || null, finalFolder, imageUrl]
-                    );
-                } catch (e2) {
-                    await pool.query(
-                        'INSERT INTO knowledge_base (title, type, content, category) VALUES (?, ?, ?, ?)',
-                        [title, type, finalContent, category || 'General']
-                    );
-                }
-            } else throw e;
+            if (isInvalidEnumError(e)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `El tipo "${type}" no está permitido en la base de datos. Ejecutá en el servidor: node scripts/migrate-kb-resource-type.js`
+                });
+            }
+            if (e.code === 'ER_NO_REFERENCED_ROW_2' || e.code === 'ER_NO_REFERENCED_ROW') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La carpeta o relación seleccionada no es válida. Recargá la página e intentá de nuevo.'
+                });
+            }
+            throw e;
         }
         res.json({ success: true, message: 'Recurso creado correctamente' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Error al crear recurso' });
+        console.error('createResource error:', error);
+        const msg = error.message || 'Error al crear recurso';
+        res.status(500).json({ success: false, message: msg });
     }
 };
 
@@ -232,7 +316,7 @@ const updateResource = async (req, res) => {
                 values
             );
         } catch (e) {
-            if (e.message && (e.message.includes('section_id') || e.message.includes('folder_name') || e.message.includes('image_url') || e.message.includes('folder_id') || e.message.includes('Unknown column'))) {
+            if (isUnknownColumnError(e)) {
                 // Fallback muy conservador: solo tocar lo que haya venido en el payload
                 const fbUpdates = [];
                 const fbValues = [];
@@ -286,17 +370,27 @@ const moveResource = async (req, res) => {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id)) return res.status(400).json({ message: 'ID de recurso inválido' });
         const { folder_id } = req.body;
-        const folderId = (folder_id === undefined || folder_id === '' || folder_id === null) ? null : parseInt(folder_id, 10);
-        const effectiveFolderId = (folderId !== null && !isNaN(folderId)) ? folderId : null;
+        const parsedFolderId = (folder_id === undefined || folder_id === '' || folder_id === null)
+            ? null
+            : parseInt(folder_id, 10);
+        const folderResolved = await resolveDestinationFolder(
+            parsedFolderId !== null && !isNaN(parsedFolderId) ? parsedFolderId : null
+        );
+        if (folderResolved.error) {
+            return res.status(400).json({ success: false, message: folderResolved.error });
+        }
 
         const [rows] = await pool.query('SELECT id FROM knowledge_base WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ success: false, message: 'Recurso no encontrado' });
 
         try {
-            await pool.query('UPDATE knowledge_base SET folder_id = ? WHERE id = ?', [effectiveFolderId, id]);
+            await pool.query('UPDATE knowledge_base SET folder_id = ? WHERE id = ?', [folderResolved.folderId, id]);
         } catch (e) {
-            if (e.message && (e.message.includes('folder_id') || e.message.includes('Unknown column'))) {
-                return res.status(400).json({ message: 'El sistema de carpetas no está disponible. Ejecutá la migración migrate-kb-folders.js' });
+            if (isUnknownColumnError(e)) {
+                return res.status(400).json({ success: false, message: 'El sistema de carpetas no está disponible. Ejecutá la migración migrate-kb-folders.js' });
+            }
+            if (e.code === 'ER_NO_REFERENCED_ROW_2' || e.code === 'ER_NO_REFERENCED_ROW') {
+                return res.status(400).json({ success: false, message: 'La carpeta de destino no es válida.' });
             }
             throw e;
         }

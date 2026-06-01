@@ -190,7 +190,7 @@ const AdminResourcesPage: React.FC = () => {
         if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
 
         try {
-            await api.post('/api/resources', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post('/api/resources', formData, { timeout: 600000 });
             toast.success('Recurso agregado correctamente');
             setTitle('');
             setType('video');
@@ -201,9 +201,11 @@ const AdminResourcesPage: React.FC = () => {
             setSystemId('');
             setShowNewResourceModal(false);
             fetchExplorer(currentFolderId);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error(err);
-            toast.error('Error al agregar el recurso');
+            const ax = err as { response?: { data?: { message?: string } }; message?: string };
+            const msg = ax.response?.data?.message || ax.message;
+            toast.error(msg || 'Error al agregar el recurso');
         }
     };
 
