@@ -17,6 +17,10 @@ echo "=== 3. ¿Sigue apareciendo 100M? (debe ser 0 líneas tras nginx-upload-lim
 grep -rn "client_max_body_size.*100" /etc/nginx/ 2>/dev/null && echo ">>> PROBLEMA: aún hay límite 100M" || echo ">>> OK: no hay 100M explícito"
 
 echo ""
+echo "=== 3b. ¿nginx -t OK? (si falló, no se aplicó el límite nuevo) ==="
+nginx -t 2>&1 | tail -3
+
+echo ""
 echo "=== 4. Prueba local Nginx (HTTPS, Host sch-soporte.com.ar) — archivo ~105 MB ==="
 TMP=$(mktemp)
 dd if=/dev/zero of="$TMP" bs=1M count=105 status=none 2>/dev/null || dd if=/dev/zero of="$TMP" bs=1048576 count=105 2>/dev/null
