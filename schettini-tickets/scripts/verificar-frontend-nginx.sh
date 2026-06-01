@@ -26,8 +26,8 @@ echo "=== 4. Qué devuelve Nginx para Host sch.soporte.com.ar (HTTPS, -k ignora 
 curl -s -k -H "Host: sch.soporte.com.ar" https://127.0.0.1/ 2>/dev/null | grep -o 'main\.[a-z0-9]*\.js' || echo "(sin coincidencia o error)"
 
 echo ""
-echo "=== 5. Límite de subida Nginx (videos: backend 200 MB — todos los vhosts + conf.d) ==="
-grep -rn "client_max_body_size" /etc/nginx/sites-available/ /etc/nginx/conf.d/ /etc/nginx/nginx.conf 2>/dev/null | head -15 || echo "(no encontrado)"
+echo "=== 5. Límite de subida Nginx (videos: backend 200 MB — sites-enabled + conf.d) ==="
+grep -rn "client_max_body_size" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ /etc/nginx/nginx.conf 2>/dev/null | head -20 || echo "(no encontrado)"
 
 echo ""
 echo "=== 5b. Timeouts proxy (uploads lentos; recomendado proxy_read_timeout >= 600s) ==="
@@ -41,7 +41,7 @@ else
   echo "No hay frontend/.env — revisá REACT_APP_API_URL del build"
 fi
 
-LIMIT_LINE="$(grep -h "client_max_body_size" /etc/nginx/sites-available/tickets /etc/nginx/nginx.conf 2>/dev/null | head -1 || true)"
+LIMIT_LINE="$(grep -h "client_max_body_size" /etc/nginx/sites-enabled/tickets /etc/nginx/sites-enabled/* /etc/nginx/conf.d/kb-upload-limits.conf /etc/nginx/nginx.conf 2>/dev/null | head -1 || true)"
 if echo "$LIMIT_LINE" | grep -qiE '100m|50m|1m|10m'; then
   echo ""
   echo ">>> ATENCIÓN: el límite actual parece menor a 200 MB. Los videos >100 MB fallarán aunque el backend permita 200 MB."

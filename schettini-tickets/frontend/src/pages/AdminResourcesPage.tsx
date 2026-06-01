@@ -203,8 +203,12 @@ const AdminResourcesPage: React.FC = () => {
             fetchExplorer(currentFolderId);
         } catch (err: unknown) {
             console.error(err);
-            const ax = err as { response?: { data?: { message?: string } }; message?: string };
-            const msg = ax.response?.data?.message || ax.message;
+            const ax = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+            let msg = ax.response?.data?.message || ax.message;
+            if (ax.response?.status === 413) {
+                const sizeMb = file ? (file.size / (1024 * 1024)).toFixed(1) : '?';
+                msg = `El archivo es demasiado grande (${sizeMb} MB). El servidor permite hasta 200 MB. Si ya subiste el límite en Nginx, ejecutá en el VPS: bash scripts/nginx-upload-limit-200m.sh y recargá Nginx.`;
+            }
             toast.error(msg || 'Error al agregar el recurso');
         }
     };
