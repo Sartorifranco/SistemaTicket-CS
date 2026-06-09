@@ -43,6 +43,11 @@ interface System {
     name: string;
 }
 
+/** Normaliza para búsqueda tolerante (espacios, guiones, puntos). */
+function normalizeSearchText(value: string): string {
+    return value.toLowerCase().replace(/[\s\-_.]+/g, '');
+}
+
 const ClientResourcesPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'resources' | 'drivers'>('resources');
     const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
@@ -78,15 +83,24 @@ const ClientResourcesPage: React.FC = () => {
         load();
     }, [currentFolderId]);
 
+    /** Al cambiar de carpeta, limpiar búsqueda (evita carpeta “vacía” con filtro viejo). */
+    useEffect(() => {
+        setFilter('');
+    }, [currentFolderId]);
+
     useEffect(() => {
         api.get('/api/resource-sections').then(res => setSections(res.data.data || []));
         api.get('/api/ticket-config/options').then(res => setSystems(res.data.data?.systems || []));
     }, []);
 
     const filtered = resources.filter(r => {
-        const matchText = !filter || r.title.toLowerCase().includes(filter.toLowerCase()) ||
-            (r.category && r.category.toLowerCase().includes(filter.toLowerCase())) ||
-            (r.section_name && r.section_name.toLowerCase().includes(filter.toLowerCase()));
+        const q = normalizeSearchText(filter.trim());
+        const matchText = !q || [
+            r.title,
+            r.category,
+            r.section_name,
+            r.system_name,
+        ].some(field => field && normalizeSearchText(String(field)).includes(q));
         const matchSection = !selectedSectionId || r.section_id === selectedSectionId;
         const matchSystem = !selectedSystemId || r.system_id === selectedSystemId;
         const matchFolder = currentFolderId == null
@@ -94,6 +108,8 @@ const ClientResourcesPage: React.FC = () => {
             : r.folder_id === currentFolderId;
         return matchText && matchSection && matchSystem && matchFolder;
     });
+
+    const hasActiveFilters = Boolean(filter.trim() || selectedSectionId || selectedSystemId);
 
     const getResourceCountBySection = (sectionId: number) =>
         resources.filter(r => r.section_id === sectionId).length;
@@ -286,8 +302,24 @@ const ClientResourcesPage: React.FC = () => {
                 {!loading && folders.length === 0 && filtered.length === 0 && (
                     <div className="text-center py-16 text-gray-500">
                         <FaBook className="mx-auto text-5xl text-gray-300 mb-4" />
-                        <p className="font-medium">No hay recursos en esta carpeta</p>
-                        <p className="text-sm mt-1">Navegá con los breadcrumbs o probá otra sección</p>
+                        {resources.length > 0 && hasActiveFilters ? (
+                            <>
+                                <p className="font-medium">Ningún recurso coincide con tu búsqueda o filtros</p>
+                                <p className="text-sm mt-1">Hay {resources.length} recurso(s) en esta carpeta. Probá borrar la búsqueda.</p>
+                                <button
+                                    type="button"
+                                    onClick={() => { setFilter(''); setSelectedSectionId(null); setSelectedSystemId(null); }}
+                                    className="mt-4 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+                                >
+                                    Limpiar búsqueda y filtros
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <p className="font-medium">No hay recursos en esta carpeta</p>
+                                <p className="text-sm mt-1">Navegá con las migas de arriba o volvé a Inicio</p>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
