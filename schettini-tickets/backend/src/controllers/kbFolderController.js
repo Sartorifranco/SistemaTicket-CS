@@ -93,6 +93,20 @@ const createFolder = async (req, res) => {
 };
 
 /** PUT /api/kb-folders/:id { name?, parent_id? } */
+const isFolderDescendantOf = async (folderId, possibleAncestorId) => {
+    let current = folderId;
+    const seen = new Set();
+    while (current != null) {
+        if (current === possibleAncestorId) return true;
+        if (seen.has(current)) break;
+        seen.add(current);
+        const [rows] = await pool.query('SELECT parent_id FROM kb_folders WHERE id = ?', [current]);
+        if (rows.length === 0) break;
+        current = rows[0].parent_id;
+    }
+    return false;
+};
+
 const updateFolder = async (req, res) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -108,7 +122,20 @@ const updateFolder = async (req, res) => {
         if (parent_id !== undefined) {
             const parentId = parent_id === '' || parent_id === null ? null : parseInt(parent_id, 10);
             if (parentId !== null && isNaN(parentId)) return res.status(400).json({ message: 'parent_id inválido' });
-            if (parentId === id) return res.status(400).json({ message: 'Una carpeta no puede ser su propio padre' });
+            if (parentId === id) {
+                return res.status(400).json({ message: 'Una carpeta no puede ser su propio padre' });
+            }
+            if (parentId !== null) {
+                const [parentRows] = await pool.query('SELECT id FROM kb_folders WHERE id = ?', [parentId]);
+                if (parentRows.length === 0) {
+                    return res.status(400).json({ message: 'La carpeta de destino no existe' });
+                }
+                if (await isFolderDescendantOf(parentId, id)) {
+                    return res.status(400).json({
+                        message: 'No podés mover una carpeta dentro de una de sus subcarpetas'
+                    });
+                }
+            }
             updates.push('parent_id = ?');
             values.push(parentId);
         }

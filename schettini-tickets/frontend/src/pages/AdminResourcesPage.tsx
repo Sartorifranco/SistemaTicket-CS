@@ -6,7 +6,7 @@ import {
     FaTrash, FaVideo, FaLink, FaFileAlt, FaPlus, FaCloudUploadAlt, FaImage, FaCog, FaEdit, FaChevronDown, FaChevronUp,
     FaFolderOpen, FaChevronRight, FaFolder, FaTimes, FaPlay, FaExternalLinkAlt, FaDownload
 } from 'react-icons/fa';
-import SectionCard from '../components/Common/SectionCard';
+import { buildFolderSelectOptions, getFolderDescendantIds } from '../utils/kbFolderUtils';
 import DriversPage from './DriversPage';
 
 interface Resource {
@@ -74,6 +74,10 @@ const AdminResourcesPage: React.FC = () => {
     const [allFoldersList, setAllFoldersList] = useState<KbFolder[]>([]);
     const [moveTargetResource, setMoveTargetResource] = useState<Resource | null>(null);
     const [moveTargetFolderId, setMoveTargetFolderId] = useState<string>('');
+    const [moveTargetKbFolder, setMoveTargetKbFolder] = useState<KbFolder | null>(null);
+    const [moveKbFolderParentId, setMoveKbFolderParentId] = useState<string>('');
+    const [renameTargetFolder, setRenameTargetFolder] = useState<KbFolder | null>(null);
+    const [renameFolderName, setRenameFolderName] = useState('');
     const [thumbnailEditResource, setThumbnailEditResource] = useState<Resource | null>(null);
     const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
     const [savingThumbnail, setSavingThumbnail] = useState(false);
@@ -126,11 +130,26 @@ const AdminResourcesPage: React.FC = () => {
         [resources, currentFolderId]
     );
 
+    const refreshAllFolders = useCallback(() => {
+        api.get('/api/kb-folders/list').then(res => setAllFoldersList(res.data.data || [])).catch(() => setAllFoldersList([]));
+    }, []);
+
     useEffect(() => {
         api.get('/api/resource-sections').then(res => setSections(res.data.data || [])).catch(() => {});
         api.get('/api/ticket-config/options').then(res => setSystems(res.data.data?.systems || [])).catch(() => {});
-        api.get('/api/kb-folders/list').then(res => setAllFoldersList(res.data.data || [])).catch(() => setAllFoldersList([]));
-    }, []);
+        refreshAllFolders();
+    }, [refreshAllFolders]);
+
+    const folderSelectOptionsAll = useMemo(
+        () => buildFolderSelectOptions(allFoldersList),
+        [allFoldersList]
+    );
+
+    const folderMoveOptions = useMemo(() => {
+        if (!moveTargetKbFolder) return folderSelectOptionsAll;
+        const exclude = getFolderDescendantIds(moveTargetKbFolder.id, allFoldersList);
+        return buildFolderSelectOptions(allFoldersList, exclude);
+    }, [allFoldersList, moveTargetKbFolder, folderSelectOptionsAll]);
 
     const openNewResourceModal = () => {
         setDestinationFolderId(currentFolderId != null ? String(currentFolderId) : '');
@@ -146,6 +165,7 @@ const AdminResourcesPage: React.FC = () => {
             setNewFolderName('');
             setShowNewFolderModal(false);
             fetchExplorer(currentFolderId);
+            refreshAllFolders();
         } catch (err) {
             console.error(err);
             toast.error('Error al crear carpeta');
@@ -159,6 +179,7 @@ const AdminResourcesPage: React.FC = () => {
             toast.success('Carpeta eliminada');
             if (currentFolderId === id) setCurrentFolderId(null);
             fetchExplorer(currentFolderId === id ? null : currentFolderId);
+            refreshAllFolders();
         } catch (err) {
             console.error(err);
             toast.error('Error al eliminar');
@@ -227,6 +248,43 @@ const AdminResourcesPage: React.FC = () => {
         } catch (err) {
             console.error(err);
             toast.error('Error al eliminar');
+        }
+    };
+
+    const handleMoveKbFolder = async () => {
+        if (!moveTargetKbFolder) return;
+        const parentId = moveKbFolderParentId === '' ? null : parseInt(moveKbFolderParentId, 10);
+        const payload = {
+            parent_id: parentId !== null && !isNaN(parentId) ? parentId : null,
+        };
+        try {
+            await api.put(`/api/kb-folders/${moveTargetKbFolder.id}`, payload);
+            toast.success('Carpeta movida');
+            setMoveTargetKbFolder(null);
+            setMoveKbFolderParentId('');
+            fetchExplorer(currentFolderId);
+            refreshAllFolders();
+        } catch (err: unknown) {
+            console.error(err);
+            const ax = err as { response?: { data?: { message?: string } } };
+            toast.error(ax.response?.data?.message || 'Error al mover carpeta');
+        }
+    };
+
+    const handleRenameKbFolder = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!renameTargetFolder || !renameFolderName.trim()) return toast.error('Escribí un nombre');
+        try {
+            await api.put(`/api/kb-folders/${renameTargetFolder.id}`, { name: renameFolderName.trim() });
+            toast.success('Carpeta renombrada');
+            setRenameTargetFolder(null);
+            setRenameFolderName('');
+            fetchExplorer(currentFolderId);
+            refreshAllFolders();
+        } catch (err: unknown) {
+            console.error(err);
+            const ax = err as { response?: { data?: { message?: string } } };
+            toast.error(ax.response?.data?.message || 'Error al renombrar');
         }
     };
 
@@ -471,15 +529,41 @@ const AdminResourcesPage: React.FC = () => {
                             <div className="w-14 h-14 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2 group-hover:bg-amber-200">
                                 <FaFolder size={28} />
                             </div>
-                            <span className="font-medium text-gray-800 text-center truncate w-full block">{f.name}</span>
-                            <button
-                                type="button"
-                                onClick={e => { e.stopPropagation(); handleDeleteFolder(f.id); }}
-                                className="mt-2 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition text-sm"
-                                title="Eliminar carpeta"
-                            >
-                                <FaTrash size={14} />
-                            </button>
+                            <span className="font-medium text-gray-800 text-center truncate w-full block" title={f.name}>{f.name}</span>
+                            <div className="flex items-center gap-1 mt-2 flex-wrap justify-center">
+                                <button
+                                    type="button"
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        setMoveTargetKbFolder(f);
+                                        setMoveKbFolderParentId(f.parent_id != null ? String(f.parent_id) : '');
+                                    }}
+                                    className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded transition text-xs font-medium flex items-center gap-1"
+                                    title="Mover dentro de otra carpeta"
+                                >
+                                    <FaFolderOpen size={12} /> Mover
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        setRenameTargetFolder(f);
+                                        setRenameFolderName(f.name);
+                                    }}
+                                    className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded transition text-xs font-medium flex items-center gap-1"
+                                    title="Renombrar carpeta"
+                                >
+                                    <FaEdit size={12} /> Renombrar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={e => { e.stopPropagation(); handleDeleteFolder(f.id); }}
+                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition text-xs"
+                                    title="Eliminar carpeta"
+                                >
+                                    <FaTrash size={12} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                     {resourcesInCurrentFolder.map(res => {
@@ -649,15 +733,72 @@ const AdminResourcesPage: React.FC = () => {
                             value={moveTargetFolderId}
                             onChange={e => setMoveTargetFolderId(e.target.value)}
                         >
-                            <option value="">Inicio (raíz)</option>
-                            {allFoldersList.map(f => (
-                                <option key={f.id} value={f.id}>{f.name}</option>
+                            {folderSelectOptionsAll.map(opt => (
+                                <option key={opt.id ?? 'root'} value={opt.id ?? ''}>{opt.label}</option>
                             ))}
                         </select>
                         <div className="flex gap-2 justify-end">
                             <button type="button" onClick={() => setMoveTargetResource(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
                             <button type="button" onClick={handleMoveResource} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">Mover</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Mover carpeta */}
+            {moveTargetKbFolder && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setMoveTargetKbFolder(null)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Mover carpeta</h3>
+                            <button type="button" onClick={() => setMoveTargetKbFolder(null)} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                            “{moveTargetKbFolder.name}” → ubicación dentro de:
+                        </p>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Los videos y recursos dentro de esta carpeta no se mueven; solo cambia dónde aparece la carpeta en el árbol.
+                        </p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Carpeta contenedora</label>
+                        <select
+                            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white mb-4"
+                            value={moveKbFolderParentId}
+                            onChange={e => setMoveKbFolderParentId(e.target.value)}
+                        >
+                            {folderMoveOptions.map(opt => (
+                                <option key={opt.id ?? 'root'} value={opt.id ?? ''}>{opt.label}</option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2 justify-end">
+                            <button type="button" onClick={() => setMoveTargetKbFolder(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+                            <button type="button" onClick={() => void handleMoveKbFolder()} className="px-4 py-2 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600">Mover carpeta</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Renombrar carpeta */}
+            {renameTargetFolder && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setRenameTargetFolder(null)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Renombrar carpeta</h3>
+                            <button type="button" onClick={() => setRenameTargetFolder(null)} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+                        </div>
+                        <form onSubmit={handleRenameKbFolder}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                            <input
+                                type="text"
+                                value={renameFolderName}
+                                onChange={e => setRenameFolderName(e.target.value)}
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none mb-4"
+                                autoFocus
+                            />
+                            <div className="flex gap-2 justify-end">
+                                <button type="button" onClick={() => setRenameTargetFolder(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600">Guardar</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
@@ -727,9 +868,8 @@ const AdminResourcesPage: React.FC = () => {
                                     value={destinationFolderId}
                                     onChange={e => setDestinationFolderId(e.target.value)}
                                 >
-                                    <option value="">Inicio (raíz)</option>
-                                    {allFoldersList.map(f => (
-                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    {folderSelectOptionsAll.map(opt => (
+                                        <option key={opt.id ?? 'root'} value={opt.id ?? ''}>{opt.label}</option>
                                     ))}
                                 </select>
                                 <p className="text-xs text-gray-400 mt-1">Seleccioná dónde guardar el recurso. Por defecto: carpeta actual.</p>
