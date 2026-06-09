@@ -7,6 +7,7 @@ import {
     FaFolderOpen, FaChevronRight, FaFolder, FaTimes, FaPlay, FaExternalLinkAlt, FaDownload
 } from 'react-icons/fa';
 import { buildFolderSelectOptions, getFolderDescendantIds } from '../utils/kbFolderUtils';
+import SectionCard from '../components/Common/SectionCard';
 import DriversPage from './DriversPage';
 
 interface Resource {
