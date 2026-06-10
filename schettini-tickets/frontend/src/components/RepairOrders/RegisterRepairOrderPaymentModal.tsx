@@ -31,14 +31,18 @@ const RegisterRepairOrderPaymentModal: React.FC<RegisterRepairOrderPaymentModalP
 }) => {
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
+  const [paymentOperationNumber, setPaymentOperationNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const isEfectivo = paymentMethod.toLowerCase() === 'efectivo';
 
   useEffect(() => {
     if (!isOpen) return;
     const rounded = Math.max(0, Number(defaultAmount) || 0);
     setAmount(rounded > 0 ? String(rounded) : '');
     setPaymentMethod('Efectivo');
+    setPaymentOperationNumber('');
     setNotes('');
   }, [isOpen, defaultAmount, orderId]);
 
@@ -51,11 +55,16 @@ const RegisterRepairOrderPaymentModal: React.FC<RegisterRepairOrderPaymentModalP
       toast.error('Ingresá un monto válido mayor a cero');
       return;
     }
+    if (!isEfectivo && !paymentOperationNumber.trim()) {
+      toast.error('Si el pago no es en efectivo, indicá el Nº de operación');
+      return;
+    }
     setSubmitting(true);
     try {
       await api.post(`/api/repair-orders/${orderId}/payments`, {
         amount: amt,
         payment_method: paymentMethod,
+        payment_operation_number: paymentOperationNumber.trim() || undefined,
         notes: notes.trim() || undefined
       });
       toast.success('Pago registrado correctamente');
@@ -111,6 +120,19 @@ const RegisterRepairOrderPaymentModal: React.FC<RegisterRepairOrderPaymentModalP
               ))}
             </select>
           </div>
+          {!isEfectivo && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nº de operación o referencia</label>
+              <input
+                type="text"
+                value={paymentOperationNumber}
+                onChange={(e) => setPaymentOperationNumber(e.target.value)}
+                required={!isEfectivo}
+                placeholder="Nº de transferencia, comprobante, etc."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
             <textarea

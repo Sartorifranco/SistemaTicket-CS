@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import SectionCard from '../Common/SectionCard';
 import { formatDateTimeArgentina } from '../../utils/dateFormatter';
+import { getRepairOrderPaymentOperationNumber } from '../../utils/repairOrderPaymentDisplay';
 
 export type RepairOrderPaymentsOrderSlice = {
   total_cost?: number | null;
@@ -9,6 +10,7 @@ export type RepairOrderPaymentsOrderSlice = {
     id: number;
     amount: number | string;
     payment_method: string;
+    payment_operation_number?: string | null;
     notes?: string | null;
     is_legacy_import?: number | boolean;
     created_at?: string;
@@ -86,11 +88,14 @@ const RepairOrderPaymentsSection: React.FC<RepairOrderPaymentsSectionProps> = ({
                 <th className="px-3 py-2 font-semibold">Fecha</th>
                 <th className="px-3 py-2 font-semibold text-right">Monto</th>
                 <th className="px-3 py-2 font-semibold">Medio de pago</th>
+                <th className="px-3 py-2 font-semibold">Nº operación</th>
                 <th className="px-3 py-2 font-semibold">Notas</th>
               </tr>
             </thead>
             <tbody>
-              {paymentsList.map((p) => (
+              {paymentsList.map((p) => {
+                const opNumber = getRepairOrderPaymentOperationNumber(p);
+                return (
                 <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50/80">
                   <td className="px-3 py-2 whitespace-nowrap text-gray-800">
                     {p.created_at ? formatDateTimeArgentina(p.created_at) : '—'}
@@ -108,11 +113,14 @@ const RepairOrderPaymentsSection: React.FC<RepairOrderPaymentsSectionProps> = ({
                       )}
                     </span>
                   </td>
+                  <td className="px-3 py-2 text-gray-800 font-mono text-xs whitespace-nowrap" title={opNumber}>
+                    {opNumber || '—'}
+                  </td>
                   <td className="px-3 py-2 text-gray-600 max-w-xs truncate" title={p.notes || ''}>
                     {p.notes?.trim() ? p.notes : '—'}
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

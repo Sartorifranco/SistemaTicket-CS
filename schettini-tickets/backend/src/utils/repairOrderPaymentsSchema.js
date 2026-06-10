@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS repair_order_payments (
   repair_order_id ${repairOrderIdType} NOT NULL,
   amount DECIMAL(12,2) NOT NULL,
   payment_method VARCHAR(100) NOT NULL DEFAULT 'Efectivo',
+  payment_operation_number VARCHAR(100) NULL,
   notes TEXT NULL,
   registered_by_user_id ${userIdType} NULL,
   tech_cash_movement_id ${techCashIdType} NULL,

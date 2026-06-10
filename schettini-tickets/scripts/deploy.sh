@@ -228,6 +228,27 @@ if [[ -f "backend/scripts/add-ticket-notification-and-response-fields.js" ]]; th
     echo ""
 fi
 
+# Pagos detallados por orden (repair_order_payments)
+if [[ -f "backend/scripts/migrate-repair-order-payments.js" ]]; then
+    echo ">>> Ejecutando migración repair_order_payments..."
+    (cd backend && node scripts/migrate-repair-order-payments.js) || true
+    echo ""
+fi
+
+# Nº de operación en filas de pago + backfill desde repair_orders
+if [[ -f "backend/scripts/migrate-repair-order-payment-operation-number.js" ]]; then
+    echo ">>> Ejecutando migración payment_operation_number en pagos de orden..."
+    (cd backend && node scripts/migrate-repair-order-payment-operation-number.js) || true
+    echo ""
+fi
+
+# Corregir pagos legacy (fecha de ingreso + nota de seña en lugar de texto de migración)
+if [[ -f "backend/scripts/fix-legacy-repair-order-payments.js" ]]; then
+    echo ">>> Corrigiendo pagos históricos de migración (fecha/notas)..."
+    (cd backend && node scripts/fix-legacy-repair-order-payments.js) || true
+    echo ""
+fi
+
 # ╭──────────────────────────────────────────────────────────────────────────╮
 # │  RESTAURACIÓN Centro de Ayuda: si alguna migración desorganizó los       │
 # │  drivers/tutoriales/videos (folder_id = NULL), se reasignan a su carpeta │

@@ -4,6 +4,7 @@ const pool = require('../config/db');
 const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 const { registerDepositMovementFromRepairOrder } = require('./techCashController');
 const { appendRepairOrderPaymentInConnection, recordRepairOrderPaymentPost } = require('../services/repairOrderPaymentService');
+const { buildRepairOrderPaymentNotes } = require('../utils/repairOrderPaymentNotes');
 const { createNotification } = require('../utils/notificationManager');
 
 /** Convierte un string de fecha/hora MySQL (sin Z) o un Date a ISO con Z para que el frontend la interprete como UTC. */
@@ -464,7 +465,7 @@ const getRepairOrderById = async (req, res) => {
     let payments = [];
     try {
       const [payRows] = await pool.query(
-        `SELECT id, amount, payment_method, notes, registered_by_user_id, tech_cash_movement_id, is_legacy_import, created_at
+        `SELECT id, amount, payment_method, payment_operation_number, notes, registered_by_user_id, tech_cash_movement_id, is_legacy_import, created_at
          FROM repair_order_payments WHERE repair_order_id = ? ORDER BY id ASC`,
         [id]
       );
@@ -662,6 +663,10 @@ const createRepairOrder = async (req, res) => {
     const repairOrderId = result.insertId;
 
     if (depositPaid && parseFloat(depositPaid) > 0) {
+      const depositOp =
+        paymentOperationNumber != null && String(paymentOperationNumber).trim()
+          ? String(paymentOperationNumber).trim()
+          : null;
       const conn = await pool.getConnection();
       try {
         await conn.beginTransaction();
@@ -672,7 +677,12 @@ const createRepairOrder = async (req, res) => {
           amount: parseFloat(depositPaid),
           paymentMethod: paymentMethod || 'Efectivo',
           userId: req.user?.id,
-          notes: `Seña Orden #${orderNumber}`,
+          notes: buildRepairOrderPaymentNotes({
+            orderNumber,
+            operationNumber: depositOp,
+            prefix: 'Seña'
+          }),
+          paymentOperationNumber: depositOp,
           isLegacyImport: 0,
           depositUpdateMode: 'none'
         });
@@ -958,6 +968,12 @@ const updateRepairOrder = async (req, res) => {
     const paymentMethodOrder = req.body.payment_method !== undefined ? req.body.payment_method : existing.payment_method;
     if (depositPaid !== undefined && newDeposit > oldDeposit) {
       const delta = newDeposit - oldDeposit;
+      const paymentOpOrder =
+        paymentOperationNumber !== undefined
+          ? paymentOperationNumber != null && String(paymentOperationNumber).trim()
+            ? String(paymentOperationNumber).trim()
+            : null
+          : existing.payment_operation_number;
       const conn = await pool.getConnection();
       try {
         await conn.beginTransaction();
@@ -968,7 +984,12 @@ const updateRepairOrder = async (req, res) => {
           amount: delta,
           paymentMethod: paymentMethodOrder || 'Efectivo',
           userId: req.user?.id,
-          notes: `Agregado a Seña Orden #${existing.order_number}`,
+          notes: buildRepairOrderPaymentNotes({
+            orderNumber: existing.order_number,
+            operationNumber: paymentOpOrder,
+            prefix: 'Agregado a Seña'
+          }),
+          paymentOperationNumber: paymentOpOrder,
           isLegacyImport: 0,
           depositUpdateMode: 'none'
         });
@@ -1210,13 +1231,21 @@ const addRepairOrderPayment = async (req, res) => {
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'ID de orden inválido' });
     }
-    const { amount, payment_method: paymentMethodSnake, paymentMethod, notes } = req.body || {};
+    const {
+      amount,
+      payment_method: paymentMethodSnake,
+      paymentMethod,
+      notes,
+      payment_operation_number: paymentOpSnake,
+      paymentOperationNumber
+    } = req.body || {};
     const paymentMethodResolved = paymentMethodSnake || paymentMethod || 'Efectivo';
     await recordRepairOrderPaymentPost({
       repairOrderId: id,
       amount,
       paymentMethod: paymentMethodResolved,
       notes: notes != null ? String(notes) : null,
+      paymentOperationNumber: paymentOpSnake ?? paymentOperationNumber ?? null,
       userId: req.user?.id || null
     });
     const [rows] = await pool.query('SELECT deposit_paid FROM repair_orders WHERE id = ?', [id]);

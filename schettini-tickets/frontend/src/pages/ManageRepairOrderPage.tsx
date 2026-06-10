@@ -145,6 +145,7 @@ interface RepairOrder {
     id: number;
     amount: number | string;
     payment_method: string;
+    payment_operation_number?: string | null;
     notes?: string | null;
     is_legacy_import?: number | boolean;
     created_at?: string;

@@ -4,6 +4,7 @@
  */
 const pool = require('../config/db');
 const { insertRepairOrderLinkedCashMovement } = require('../controllers/techCashController');
+const { buildRepairOrderPaymentNotes } = require('../utils/repairOrderPaymentNotes');
 
 /**
  * @typedef {'increment' | 'none'} DepositUpdateMode
@@ -24,6 +25,7 @@ const { insertRepairOrderLinkedCashMovement } = require('../controllers/techCash
  * @param {string} p.paymentMethod
  * @param {number|null} p.userId
  * @param {string|null} p.notes
+ * @param {string|null} [p.paymentOperationNumber]
  * @param {0|1} p.isLegacyImport
  * @param {DepositUpdateMode} p.depositUpdateMode
  */
@@ -36,6 +38,7 @@ const appendRepairOrderPaymentInConnection = async (conn, p) => {
     paymentMethod,
     userId,
     notes,
+    paymentOperationNumber,
     isLegacyImport,
     depositUpdateMode
   } = p;
@@ -44,6 +47,11 @@ const appendRepairOrderPaymentInConnection = async (conn, p) => {
     throw new Error('amount inválido');
   }
   const method = paymentMethod && String(paymentMethod).trim() ? String(paymentMethod).trim() : 'Efectivo';
+  const opNum =
+    paymentOperationNumber != null && String(paymentOperationNumber).trim()
+      ? String(paymentOperationNumber).trim()
+      : null;
+  const notesResolved = notes || null;
 
   const tcmId = await insertRepairOrderLinkedCashMovement(conn, {
     type: 'ingreso',
@@ -53,15 +61,15 @@ const appendRepairOrderPaymentInConnection = async (conn, p) => {
     paymentMethod: method,
     clientId,
     userId,
-    notesConcept: notes || `Pago orden #${orderNumber || repairOrderId}`
+    notesConcept: notesResolved || `Pago orden #${orderNumber || repairOrderId}`
   });
   if (!tcmId) throw new Error('No se pudo registrar movimiento de caja');
 
   await conn.query(
     `INSERT INTO repair_order_payments (
-      repair_order_id, amount, payment_method, notes, registered_by_user_id, tech_cash_movement_id, is_legacy_import
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [repairOrderId, amt, method, notes || null, userId || null, tcmId, isLegacyImport ? 1 : 0]
+      repair_order_id, amount, payment_method, payment_operation_number, notes, registered_by_user_id, tech_cash_movement_id, is_legacy_import
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [repairOrderId, amt, method, opNum, notesResolved, userId || null, tcmId, isLegacyImport ? 1 : 0]
   );
 
   if (depositUpdateMode === 'increment') {
@@ -81,11 +89,23 @@ const recordRepairOrderPaymentPost = async ({
   amount,
   paymentMethod,
   notes,
+  paymentOperationNumber,
   userId
 }) => {
   const amt = parseFloat(amount);
   if (!amt || amt <= 0 || Number.isNaN(amt)) {
     const err = new Error('El monto debe ser un número mayor a cero');
+    err.statusCode = 400;
+    throw err;
+  }
+  const method = paymentMethod && String(paymentMethod).trim() ? String(paymentMethod).trim() : 'Efectivo';
+  const opNum =
+    paymentOperationNumber != null && String(paymentOperationNumber).trim()
+      ? String(paymentOperationNumber).trim()
+      : null;
+  const isEfectivo = method.toLowerCase() === 'efectivo';
+  if (!isEfectivo && !opNum) {
+    const err = new Error('Indicá el Nº de operación para pagos que no son en efectivo');
     err.statusCode = 400;
     throw err;
   }
@@ -114,14 +134,19 @@ const recordRepairOrderPaymentPost = async ({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    const notesResolved = buildRepairOrderPaymentNotes({
+      userNotes: notes,
+      operationNumber: opNum
+    });
     await appendRepairOrderPaymentInConnection(conn, {
       repairOrderId,
       orderNumber: order.order_number,
       clientId: order.client_id,
       amount: amt,
-      paymentMethod: paymentMethod || 'Efectivo',
+      paymentMethod: method,
       userId,
-      notes: notes || null,
+      notes: notesResolved,
+      paymentOperationNumber: opNum,
       isLegacyImport: 0,
       depositUpdateMode: 'increment'
     });

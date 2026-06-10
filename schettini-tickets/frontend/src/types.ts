@@ -367,6 +367,7 @@ export interface RepairOrderPayment {
     id: number;
     amount: number | string;
     payment_method: string;
+    payment_operation_number?: string | null;
     notes?: string | null;
     registered_by_user_id?: number | null;
     tech_cash_movement_id?: number | null;
