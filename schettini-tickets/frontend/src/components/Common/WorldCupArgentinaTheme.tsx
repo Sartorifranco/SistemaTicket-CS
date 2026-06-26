@@ -5,15 +5,92 @@ import './WorldCupArgentinaTheme.css';
 
 const CONFETTI_COLORS = ['#74ACDF', '#FFFFFF', '#F6B40E', '#5A9FD4', '#FFD54F'];
 
-const CONFETTI_LOGIN = Array.from({ length: 28 }, (_, i) => ({
+const CONFETTI_LOGIN = Array.from({ length: 52 }, (_, i) => ({
     id: i,
-    left: `${(i * 3.7 + 2) % 98}%`,
-    delay: `${(i * 0.35) % 8}s`,
-    duration: `${5 + (i % 5)}s`,
+    left: `${(i * 1.95 + 1) % 99}%`,
+    delay: `${(i * 0.22) % 6}s`,
+    duration: `${4 + (i % 4)}s`,
     color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-    width: 6 + (i % 4),
-    height: 10 + (i % 3),
+    width: 7 + (i % 5),
+    height: 11 + (i % 4),
+    variant: i % 3,
 }));
+
+const CONFETTI_LOGIN_BURST = Array.from({ length: 24 }, (_, i) => ({
+    id: i,
+    left: `${(i * 4.2 + 0.5) % 100}%`,
+    delay: `${(i * 0.18) % 4}s`,
+    duration: `${2.5 + (i % 3)}s`,
+    color: CONFETTI_COLORS[(i + 2) % CONFETTI_COLORS.length],
+    width: 5 + (i % 3),
+    height: 9 + (i % 2),
+}));
+
+const LOGIN_FLAGS = [
+    { top: '4%', left: '3%', delay: '0s', scale: 1.3 },
+    { top: '12%', left: '22%', delay: '0.4s', scale: 1 },
+    { top: '8%', right: '6%', delay: '1s', scale: 1.2 },
+    { top: '20%', right: '20%', delay: '1.6s', scale: 0.9 },
+    { top: '48%', left: '4%', delay: '0.8s', scale: 1.1 },
+    { top: '55%', left: '88%', delay: '2s', scale: 1.25 },
+    { top: '72%', left: '8%', delay: '0.2s', scale: 1.15 },
+    { top: '68%', right: '10%', delay: '1.2s', scale: 1 },
+    { top: '82%', left: '35%', delay: '0.6s', scale: 1.2 },
+    { top: '88%', right: '28%', delay: '1.8s', scale: 0.95 },
+    { top: '32%', left: '92%', delay: '0.3s', scale: 1.1 },
+    { top: '38%', left: '14%', delay: '1.4s', scale: 1.05 },
+];
+
+const LOGIN_EMOJIS = [
+    { emoji: '⚽', top: '10%', left: '68%', delay: '0s', size: 2.2 },
+    { emoji: '🏆', top: '18%', left: '8%', delay: '0.5s', size: 2.4 },
+    { emoji: '⚽', top: '52%', left: '78%', delay: '0.2s', size: 1.9 },
+    { emoji: '🏆', top: '58%', left: '18%', delay: '0.9s', size: 2.1 },
+    { emoji: '⚽', top: '75%', left: '62%', delay: '0.4s', size: 2.3 },
+    { emoji: '🏆', top: '80%', left: '82%', delay: '1.1s', size: 2 },
+    { emoji: '⚽', top: '28%', left: '42%', delay: '0.7s', size: 1.7 },
+    { emoji: '🏆', top: '42%', right: '6%', delay: '0.3s', size: 2.5 },
+    { emoji: '⚽', top: '90%', left: '52%', delay: '1.3s', size: 2 },
+    { emoji: '⚽', top: '6%', left: '48%', delay: '0.6s', size: 1.8 },
+];
+
+const LOGIN_STARS = Array.from({ length: 22 }, (_, i) => ({
+    id: i,
+    top: `${(i * 7 + 3) % 92}%`,
+    left: `${(i * 9 + 2) % 94}%`,
+    delay: `${(i * 0.25) % 2.5}s`,
+    size: 1 + (i % 4) * 0.25,
+    showYear: i < 6,
+    year: ['78', '86', '22', '78', '86', '22'][i],
+}));
+
+const LOGIN_CSS_FLAGS: { top?: string; bottom?: string; left?: string; right?: string; size: FlagSize; delay: string }[] = [
+    { top: '5%', left: '2%', size: 'md', delay: '0s' },
+    { top: '6%', right: '3%', size: 'lg', delay: '0.8s' },
+    { bottom: '8%', left: '3%', size: 'lg', delay: '0.4s' },
+    { bottom: '6%', right: '2%', size: 'md', delay: '1.2s' },
+    { top: '45%', left: '1%', size: 'sm', delay: '0.6s' },
+    { top: '40%', right: '1%', size: 'sm', delay: '1s' },
+];
+
+const LOGIN_CHEERS = [
+    { text: '¡DALE!', top: '14%', left: '16%', rotate: -14, delay: '0s' },
+    { text: '¡VAMOS!', top: '24%', right: '12%', rotate: 10, delay: '0.5s' },
+    { text: '⭐ ⭐ ⭐', top: '62%', left: '10%', rotate: -6, delay: '1s' },
+    { text: '¡ARGENTINA!', bottom: '18%', right: '14%', rotate: 8, delay: '0.3s' },
+    { text: 'MUNDIAL 2026', top: '50%', left: '6%', rotate: -10, delay: '0.8s' },
+    { text: '¡DALE QUE VAMOS!', bottom: '12%', left: '20%', rotate: 5, delay: '1.2s' },
+];
+
+const LOGIN_SPARKLES = Array.from({ length: 36 }, (_, i) => ({
+    id: i,
+    top: `${(i * 11 + 5) % 95}%`,
+    left: `${(i * 7 + 3) % 97}%`,
+    delay: `${(i * 0.15) % 2}s`,
+    size: 3 + (i % 4),
+}));
+
+type FlagSize = 'sm' | 'md' | 'lg';
 
 const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
     id: i,
@@ -48,29 +125,6 @@ const CONFETTI_BANNER = Array.from({ length: 12 }, (_, i) => ({
     delay: `${(i * 0.4) % 6}s`,
     duration: `${8 + (i % 4)}s`,
     color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-}));
-
-const LOGIN_FLAGS = [
-    { top: '8%', left: '5%', delay: '0s' },
-    { top: '25%', right: '8%', delay: '1s' },
-    { top: '55%', left: '12%', delay: '2s' },
-    { top: '70%', right: '15%', delay: '0.5s' },
-    { top: '40%', left: '85%', delay: '1.5s' },
-    { top: '85%', left: '45%', delay: '2.5s' },
-];
-
-const LOGIN_EMOJIS = [
-    { emoji: '⚽', top: '15%', left: '75%', delay: '0s' },
-    { emoji: '🏆', top: '60%', left: '8%', delay: '0.8s' },
-    { emoji: '⚽', top: '78%', left: '70%', delay: '1.2s' },
-    { emoji: '🏆', top: '35%', left: '55%', delay: '0.4s' },
-];
-
-const LOGIN_STARS = Array.from({ length: 8 }, (_, i) => ({
-    id: i,
-    top: `${10 + (i * 11) % 80}%`,
-    left: `${5 + (i * 13) % 90}%`,
-    delay: `${(i * 0.3) % 2}s`,
 }));
 
 /* ─── Helpers de clases condicionales ─── */
@@ -109,71 +163,7 @@ export function getWorldCupInputClass(defaultClass: string): string {
     return `${defaultClass} wc-input-argentina`;
 }
 
-/* ─── Login: overlay festivo del panel ─── */
-
-export const WorldCupLoginPanelFestive: React.FC = () => {
-    if (!isWorldCupThemeActive()) return null;
-
-    return (
-        <div className="wc-login-festive wc-argentina-root" aria-hidden="true">
-            <div className="wc-login-festive__shimmer" />
-            <div className="wc-login-festive__stripes" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--1" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--2" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--3" />
-            {CONFETTI_LOGIN.map((c) => (
-                <span
-                    key={c.id}
-                    className="wc-confetti-piece"
-                    style={{
-                        left: c.left,
-                        animationDelay: c.delay,
-                        animationDuration: c.duration,
-                        backgroundColor: c.color,
-                        width: c.width,
-                        height: c.height,
-                    }}
-                />
-            ))}
-            {LOGIN_FLAGS.map((f, i) => (
-                <span
-                    key={`flag-${i}`}
-                    className="wc-login-flag"
-                    style={{
-                        top: f.top,
-                        left: f.left,
-                        right: f.right,
-                        animationDelay: f.delay,
-                    }}
-                >
-                    🇦🇷
-                </span>
-            ))}
-            {LOGIN_EMOJIS.map((e, i) => (
-                <span
-                    key={`emoji-${i}`}
-                    className="wc-login-emoji"
-                    style={{ top: e.top, left: e.left, animationDelay: e.delay }}
-                >
-                    {e.emoji}
-                </span>
-            ))}
-            {LOGIN_STARS.map((s) => (
-                <span
-                    key={s.id}
-                    className="wc-login-star"
-                    style={{ top: s.top, left: s.left, animationDelay: s.delay }}
-                >
-                    ★
-                </span>
-            ))}
-        </div>
-    );
-};
-
 /* ─── Bandera argentina CSS (reutilizable) ─── */
-
-type FlagSize = 'sm' | 'md' | 'lg';
 
 export const WorldCupFlagArgentina: React.FC<{ size?: FlagSize; className?: string }> = ({
     size = 'md',
@@ -189,6 +179,146 @@ export const WorldCupFlagArgentina: React.FC<{ size?: FlagSize; className?: stri
         </div>
     </div>
 );
+
+/* ─── Login: overlay festivo pantalla completa ─── */
+
+export const WorldCupLoginPanelFestive: React.FC = () => {
+    if (!isWorldCupThemeActive()) return null;
+
+    return (
+        <div className="wc-login-festive wc-argentina-root" aria-hidden="true">
+            <div className="wc-login-festive__aurora" />
+            <div className="wc-login-festive__shimmer" />
+            <div className="wc-login-festive__stripes" />
+            <div className="wc-login-festive__stripes wc-login-festive__stripes--gold" />
+            <div className="wc-login-festive__pulse wc-login-festive__pulse--1" />
+            <div className="wc-login-festive__pulse wc-login-festive__pulse--2" />
+            <div className="wc-login-festive__pulse wc-login-festive__pulse--3" />
+            <div className="wc-login-festive__glow wc-login-festive__glow--1" />
+            <div className="wc-login-festive__glow wc-login-festive__glow--2" />
+            <div className="wc-login-festive__glow wc-login-festive__glow--3" />
+            <div className="wc-login-festive__glow wc-login-festive__glow--4" />
+            <div className="wc-login-festive__glow wc-login-festive__glow--5" />
+
+            {CONFETTI_LOGIN.map((c) => (
+                <span
+                    key={c.id}
+                    className={`wc-confetti-piece${c.variant === 1 ? ' wc-confetti-piece--swirl' : c.variant === 2 ? ' wc-confetti-piece--wide' : ''}`}
+                    style={{
+                        left: c.left,
+                        animationDelay: c.delay,
+                        animationDuration: c.duration,
+                        backgroundColor: c.color,
+                        width: c.width,
+                        height: c.height,
+                    }}
+                />
+            ))}
+            {CONFETTI_LOGIN_BURST.map((c) => (
+                <span
+                    key={`burst-${c.id}`}
+                    className="wc-confetti-piece wc-confetti-piece--burst"
+                    style={{
+                        left: c.left,
+                        animationDelay: c.delay,
+                        animationDuration: c.duration,
+                        backgroundColor: c.color,
+                        width: c.width,
+                        height: c.height,
+                    }}
+                />
+            ))}
+            {LOGIN_SPARKLES.map((s) => (
+                <span
+                    key={`spark-${s.id}`}
+                    className="wc-login-sparkle"
+                    style={{
+                        top: s.top,
+                        left: s.left,
+                        animationDelay: s.delay,
+                        width: s.size,
+                        height: s.size,
+                    }}
+                />
+            ))}
+            {LOGIN_CHEERS.map((c, i) => (
+                <span
+                    key={`cheer-${i}`}
+                    className="wc-login-cheer"
+                    style={{
+                        top: c.top,
+                        left: c.left,
+                        right: c.right,
+                        bottom: c.bottom,
+                        animationDelay: c.delay,
+                        transform: `rotate(${c.rotate}deg)`,
+                    }}
+                >
+                    {c.text}
+                </span>
+            ))}
+            {LOGIN_CSS_FLAGS.map((f, i) => (
+                <div
+                    key={`css-flag-${i}`}
+                    className="wc-login-css-flag"
+                    style={{
+                        top: f.top,
+                        bottom: f.bottom,
+                        left: f.left,
+                        right: f.right,
+                        animationDelay: f.delay,
+                    }}
+                >
+                    <WorldCupFlagArgentina size={f.size} />
+                </div>
+            ))}
+            {LOGIN_FLAGS.map((f, i) => (
+                <span
+                    key={`flag-${i}`}
+                    className="wc-login-flag"
+                    style={{
+                        top: f.top,
+                        left: f.left,
+                        right: f.right,
+                        animationDelay: f.delay,
+                        fontSize: `${(f.scale ?? 1) * 1.75}rem`,
+                    }}
+                >
+                    🇦🇷
+                </span>
+            ))}
+            {LOGIN_EMOJIS.map((e, i) => (
+                <span
+                    key={`emoji-${i}`}
+                    className="wc-login-emoji"
+                    style={{
+                        top: e.top,
+                        left: e.left,
+                        right: e.right,
+                        animationDelay: e.delay,
+                        fontSize: `${e.size}rem`,
+                    }}
+                >
+                    {e.emoji}
+                </span>
+            ))}
+            {LOGIN_STARS.map((s) => (
+                <span
+                    key={s.id}
+                    className="wc-login-star"
+                    style={{
+                        top: s.top,
+                        left: s.left,
+                        animationDelay: s.delay,
+                        fontSize: `${s.size}rem`,
+                    }}
+                >
+                    ★{s.showYear && <span className="wc-login-star__year">{s.year}</span>}
+                </span>
+            ))}
+        </div>
+    );
+};
 
 /* ─── Login: hero con bandera CSS ─── */
 
