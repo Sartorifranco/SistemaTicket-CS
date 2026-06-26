@@ -5,92 +5,9 @@ import './WorldCupArgentinaTheme.css';
 
 const CONFETTI_COLORS = ['#74ACDF', '#FFFFFF', '#F6B40E', '#5A9FD4', '#FFD54F'];
 
-const CONFETTI_LOGIN = Array.from({ length: 52 }, (_, i) => ({
-    id: i,
-    left: `${(i * 1.95 + 1) % 99}%`,
-    delay: `${(i * 0.22) % 6}s`,
-    duration: `${4 + (i % 4)}s`,
-    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-    width: 7 + (i % 5),
-    height: 11 + (i % 4),
-    variant: i % 3,
-}));
-
-const CONFETTI_LOGIN_BURST = Array.from({ length: 24 }, (_, i) => ({
-    id: i,
-    left: `${(i * 4.2 + 0.5) % 100}%`,
-    delay: `${(i * 0.18) % 4}s`,
-    duration: `${2.5 + (i % 3)}s`,
-    color: CONFETTI_COLORS[(i + 2) % CONFETTI_COLORS.length],
-    width: 5 + (i % 3),
-    height: 9 + (i % 2),
-}));
-
-const LOGIN_FLAGS = [
-    { top: '4%', left: '3%', delay: '0s', scale: 1.3 },
-    { top: '12%', left: '22%', delay: '0.4s', scale: 1 },
-    { top: '8%', right: '6%', delay: '1s', scale: 1.2 },
-    { top: '20%', right: '20%', delay: '1.6s', scale: 0.9 },
-    { top: '48%', left: '4%', delay: '0.8s', scale: 1.1 },
-    { top: '55%', left: '88%', delay: '2s', scale: 1.25 },
-    { top: '72%', left: '8%', delay: '0.2s', scale: 1.15 },
-    { top: '68%', right: '10%', delay: '1.2s', scale: 1 },
-    { top: '82%', left: '35%', delay: '0.6s', scale: 1.2 },
-    { top: '88%', right: '28%', delay: '1.8s', scale: 0.95 },
-    { top: '32%', left: '92%', delay: '0.3s', scale: 1.1 },
-    { top: '38%', left: '14%', delay: '1.4s', scale: 1.05 },
-];
-
-const LOGIN_EMOJIS = [
-    { emoji: '⚽', top: '10%', left: '68%', delay: '0s', size: 2.2 },
-    { emoji: '🏆', top: '18%', left: '8%', delay: '0.5s', size: 2.4 },
-    { emoji: '⚽', top: '52%', left: '78%', delay: '0.2s', size: 1.9 },
-    { emoji: '🏆', top: '58%', left: '18%', delay: '0.9s', size: 2.1 },
-    { emoji: '⚽', top: '75%', left: '62%', delay: '0.4s', size: 2.3 },
-    { emoji: '🏆', top: '80%', left: '82%', delay: '1.1s', size: 2 },
-    { emoji: '⚽', top: '28%', left: '42%', delay: '0.7s', size: 1.7 },
-    { emoji: '🏆', top: '42%', right: '6%', delay: '0.3s', size: 2.5 },
-    { emoji: '⚽', top: '90%', left: '52%', delay: '1.3s', size: 2 },
-    { emoji: '⚽', top: '6%', left: '48%', delay: '0.6s', size: 1.8 },
-];
-
-const LOGIN_STARS = Array.from({ length: 22 }, (_, i) => ({
-    id: i,
-    top: `${(i * 7 + 3) % 92}%`,
-    left: `${(i * 9 + 2) % 94}%`,
-    delay: `${(i * 0.25) % 2.5}s`,
-    size: 1 + (i % 4) * 0.25,
-    showYear: i < 6,
-    year: ['78', '86', '22', '78', '86', '22'][i],
-}));
-
-const LOGIN_CSS_FLAGS: { top?: string; bottom?: string; left?: string; right?: string; size: FlagSize; delay: string }[] = [
-    { top: '5%', left: '2%', size: 'md', delay: '0s' },
-    { top: '6%', right: '3%', size: 'lg', delay: '0.8s' },
-    { bottom: '8%', left: '3%', size: 'lg', delay: '0.4s' },
-    { bottom: '6%', right: '2%', size: 'md', delay: '1.2s' },
-    { top: '45%', left: '1%', size: 'sm', delay: '0.6s' },
-    { top: '40%', right: '1%', size: 'sm', delay: '1s' },
-];
-
-const LOGIN_CHEERS = [
-    { text: '¡DALE!', top: '14%', left: '16%', rotate: -14, delay: '0s' },
-    { text: '¡VAMOS!', top: '24%', right: '12%', rotate: 10, delay: '0.5s' },
-    { text: '⭐ ⭐ ⭐', top: '62%', left: '10%', rotate: -6, delay: '1s' },
-    { text: '¡ARGENTINA!', bottom: '18%', right: '14%', rotate: 8, delay: '0.3s' },
-    { text: 'MUNDIAL 2026', top: '50%', left: '6%', rotate: -10, delay: '0.8s' },
-    { text: '¡DALE QUE VAMOS!', bottom: '12%', left: '20%', rotate: 5, delay: '1.2s' },
-];
-
-const LOGIN_SPARKLES = Array.from({ length: 36 }, (_, i) => ({
-    id: i,
-    top: `${(i * 11 + 5) % 95}%`,
-    left: `${(i * 7 + 3) % 97}%`,
-    delay: `${(i * 0.15) % 2}s`,
-    size: 3 + (i % 4),
-}));
-
 type FlagSize = 'sm' | 'md' | 'lg';
+
+const OLA_BARS = Array.from({ length: 13 }, (_, i) => i);
 
 const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
     id: i,
@@ -180,142 +97,117 @@ export const WorldCupFlagArgentina: React.FC<{ size?: FlagSize; className?: stri
     </div>
 );
 
-/* ─── Login: overlay festivo pantalla completa ─── */
+/* ─── Login: La Albiceleste Viva (pantalla completa) ─── */
 
 export const WorldCupLoginPanelFestive: React.FC = () => {
     if (!isWorldCupThemeActive()) return null;
 
     return (
-        <div className="wc-login-festive wc-argentina-root" aria-hidden="true">
-            <div className="wc-login-festive__aurora" />
-            <div className="wc-login-festive__shimmer" />
-            <div className="wc-login-festive__stripes" />
-            <div className="wc-login-festive__stripes wc-login-festive__stripes--gold" />
-            <div className="wc-login-festive__pulse wc-login-festive__pulse--1" />
-            <div className="wc-login-festive__pulse wc-login-festive__pulse--2" />
-            <div className="wc-login-festive__pulse wc-login-festive__pulse--3" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--1" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--2" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--3" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--4" />
-            <div className="wc-login-festive__glow wc-login-festive__glow--5" />
+        <div className="wc-seleccion-atmosphere wc-argentina-root" aria-hidden="true">
+            {/* Reflectores tipo estadio */}
+            <div className="wc-seleccion-spot wc-seleccion-spot--tl" />
+            <div className="wc-seleccion-spot wc-seleccion-spot--tr" />
+            <div className="wc-seleccion-spot wc-seleccion-spot--bl" />
+            <div className="wc-seleccion-spot wc-seleccion-spot--br" />
 
-            {CONFETTI_LOGIN.map((c) => (
-                <span
-                    key={c.id}
-                    className={`wc-confetti-piece${c.variant === 1 ? ' wc-confetti-piece--swirl' : c.variant === 2 ? ' wc-confetti-piece--wide' : ''}`}
-                    style={{
-                        left: c.left,
-                        animationDelay: c.delay,
-                        animationDuration: c.duration,
-                        backgroundColor: c.color,
-                        width: c.width,
-                        height: c.height,
-                    }}
-                />
-            ))}
-            {CONFETTI_LOGIN_BURST.map((c) => (
-                <span
-                    key={`burst-${c.id}`}
-                    className="wc-confetti-piece wc-confetti-piece--burst"
-                    style={{
-                        left: c.left,
-                        animationDelay: c.delay,
-                        animationDuration: c.duration,
-                        backgroundColor: c.color,
-                        width: c.width,
-                        height: c.height,
-                    }}
-                />
-            ))}
-            {LOGIN_SPARKLES.map((s) => (
-                <span
-                    key={`spark-${s.id}`}
-                    className="wc-login-sparkle"
-                    style={{
-                        top: s.top,
-                        left: s.left,
-                        animationDelay: s.delay,
-                        width: s.size,
-                        height: s.size,
-                    }}
-                />
-            ))}
-            {LOGIN_CHEERS.map((c, i) => (
-                <span
-                    key={`cheer-${i}`}
-                    className="wc-login-cheer"
-                    style={{
-                        top: c.top,
-                        left: c.left,
-                        right: c.right,
-                        bottom: c.bottom,
-                        animationDelay: c.delay,
-                        transform: `rotate(${c.rotate}deg)`,
-                    }}
-                >
-                    {c.text}
-                </span>
-            ))}
-            {LOGIN_CSS_FLAGS.map((f, i) => (
-                <div
-                    key={`css-flag-${i}`}
-                    className="wc-login-css-flag"
-                    style={{
-                        top: f.top,
-                        bottom: f.bottom,
-                        left: f.left,
-                        right: f.right,
-                        animationDelay: f.delay,
-                    }}
-                >
-                    <WorldCupFlagArgentina size={f.size} />
+            {/* Bandera gigante con tela ondulante */}
+            <div className="wc-seleccion-cloth">
+                <div className="wc-seleccion-cloth__ripple wc-seleccion-cloth__ripple--1" />
+                <div className="wc-seleccion-cloth__ripple wc-seleccion-cloth__ripple--2" />
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-top" />
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--blanco">
+                    <div className="wc-seleccion-sol-gigante">
+                        <div className="wc-seleccion-sol-gigante__core" />
+                        <div className="wc-seleccion-sol-gigante__rays" />
+                    </div>
                 </div>
-            ))}
-            {LOGIN_FLAGS.map((f, i) => (
-                <span
-                    key={`flag-${i}`}
-                    className="wc-login-flag"
-                    style={{
-                        top: f.top,
-                        left: f.left,
-                        right: f.right,
-                        animationDelay: f.delay,
-                        fontSize: `${(f.scale ?? 1) * 1.75}rem`,
-                    }}
-                >
-                    🇦🇷
-                </span>
-            ))}
-            {LOGIN_EMOJIS.map((e, i) => (
-                <span
-                    key={`emoji-${i}`}
-                    className="wc-login-emoji"
-                    style={{
-                        top: e.top,
-                        left: e.left,
-                        right: e.right,
-                        animationDelay: e.delay,
-                        fontSize: `${e.size}rem`,
-                    }}
-                >
-                    {e.emoji}
-                </span>
-            ))}
-            {LOGIN_STARS.map((s) => (
-                <span
-                    key={s.id}
-                    className="wc-login-star"
-                    style={{
-                        top: s.top,
-                        left: s.left,
-                        animationDelay: s.delay,
-                        fontSize: `${s.size}rem`,
-                    }}
-                >
-                    ★{s.showYear && <span className="wc-login-star__year">{s.year}</span>}
-                </span>
-            ))}
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-bottom" />
+            </div>
+
+            {/* Triada campeona: 78 · 86 · 22 + estrella 2026 */}
+            <svg className="wc-seleccion-triada" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <linearGradient id="wc-triada-gold" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#F6B40E" stopOpacity="0.2" />
+                        <stop offset="50%" stopColor="#FFD54F" stopOpacity="1" />
+                        <stop offset="100%" stopColor="#F6B40E" stopOpacity="0.2" />
+                    </linearGradient>
+                </defs>
+                <path
+                    className="wc-seleccion-triada__triangle"
+                    d="M 70 175 L 200 35 L 330 175 Z"
+                    fill="none"
+                    stroke="url(#wc-triada-gold)"
+                    strokeWidth="2.5"
+                />
+                <path
+                    className="wc-seleccion-triada__energy"
+                    d="M 70 175 L 200 35 L 330 175 L 70 175"
+                    fill="none"
+                    stroke="#FFD54F"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                />
+                <g className="wc-seleccion-triada__node wc-seleccion-triada__node--78">
+                    <circle cx="70" cy="175" r="14" />
+                    <text x="70" y="180" textAnchor="middle">78</text>
+                </g>
+                <g className="wc-seleccion-triada__node wc-seleccion-triada__node--86">
+                    <circle cx="200" cy="35" r="16" />
+                    <text x="200" y="41" textAnchor="middle">86</text>
+                </g>
+                <g className="wc-seleccion-triada__node wc-seleccion-triada__node--22">
+                    <circle cx="330" cy="175" r="14" />
+                    <text x="330" y="180" textAnchor="middle">22</text>
+                </g>
+                <g className="wc-seleccion-triada__node wc-seleccion-triada__node--26">
+                    <circle cx="200" cy="118" r="10" strokeDasharray="4 3" />
+                    <text x="200" y="123" textAnchor="middle">26</text>
+                </g>
+            </svg>
+
+            {/* Arco del potrero: una pelota, un sueño */}
+            <svg className="wc-seleccion-arco" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+                <path
+                    className="wc-seleccion-arco__path"
+                    d="M 20 360 Q 200 20 380 360"
+                    fill="none"
+                />
+                <path
+                    className="wc-seleccion-arco__glow"
+                    d="M 20 360 Q 200 20 380 360"
+                    fill="none"
+                />
+                <text className="wc-seleccion-arco__ball" fontSize="28">
+                    ⚽
+                    <animateMotion
+                        dur="7s"
+                        repeatCount="indefinite"
+                        path="M 20 360 Q 200 20 380 360"
+                        keyPoints="0;1;0"
+                        keyTimes="0;0.5;1"
+                        calcMode="spline"
+                        keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                    />
+                </text>
+            </svg>
+
+            {/* La ola de la hinchada (synchronized bars) */}
+            <div className="wc-seleccion-ola">
+                {OLA_BARS.map((i) => (
+                    <span
+                        key={i}
+                        className="wc-seleccion-ola__bar"
+                        style={{ animationDelay: `${i * 0.09}s` }}
+                    />
+                ))}
+            </div>
+
+            {/* Pulso del cántico — anillos desde abajo */}
+            <div className="wc-seleccion-canto">
+                <span className="wc-seleccion-canto__ring" />
+                <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--2" />
+            </div>
         </div>
     );
 };
