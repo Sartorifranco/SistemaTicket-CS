@@ -17,6 +17,17 @@ const VIENTO_STREAMS = Array.from({ length: 6 }, (_, i) => ({
     scale: 0.7 + (i % 3) * 0.15,
 }));
 
+/** Confetti sutil en login (pocas piezas, no invasivo) */
+const CONFETTI_LOGIN = Array.from({ length: 22 }, (_, i) => ({
+    id: i,
+    left: `${(i * 4.6 + 1) % 98}%`,
+    delay: `${(i * 0.4) % 7}s`,
+    duration: `${7 + (i % 5)}s`,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    width: 6 + (i % 3),
+    height: 10 + (i % 2),
+}));
+
 const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
     id: i,
     left: `${(i * 2.9 + 1) % 99}%`,
@@ -171,8 +182,8 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 />
             </svg>
 
-            {/* Triada campeona: 78 · 86 · 22 + estrella 2026 */}
-            <svg className="wc-seleccion-triada" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet">
+            {/* Triada campeona: 78 · 86 · 22 + estrella 2026 (banda superior, fuera del login) */}
+            <svg className="wc-seleccion-triada" viewBox="0 0 400 110" preserveAspectRatio="xMidYMin meet">
                 <defs>
                     <linearGradient id="wc-triada-gold" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#F6B40E" stopOpacity="0.2" />
@@ -182,14 +193,14 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 </defs>
                 <path
                     className="wc-seleccion-triada__triangle"
-                    d="M 70 175 L 200 35 L 330 175 Z"
+                    d="M 28 88 L 200 10 L 372 88 Z"
                     fill="none"
                     stroke="url(#wc-triada-gold)"
                     strokeWidth="2.5"
                 />
                 <path
                     className="wc-seleccion-triada__energy wc-seleccion-triada__energy--seq"
-                    d="M 70 175 L 200 35"
+                    d="M 28 88 L 200 10"
                     fill="none"
                     stroke="#FFD54F"
                     strokeWidth="2"
@@ -197,7 +208,7 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 />
                 <path
                     className="wc-seleccion-triada__energy wc-seleccion-triada__energy--seq"
-                    d="M 200 35 L 330 175"
+                    d="M 200 10 L 372 88"
                     fill="none"
                     stroke="#FFD54F"
                     strokeWidth="2"
@@ -205,7 +216,7 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 />
                 <path
                     className="wc-seleccion-triada__energy wc-seleccion-triada__energy--seq"
-                    d="M 330 175 L 70 175"
+                    d="M 372 88 L 28 88"
                     fill="none"
                     stroke="#FFD54F"
                     strokeWidth="2"
@@ -213,31 +224,31 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 />
                 <path
                     className="wc-seleccion-triada__dream"
-                    d="M 200 118 L 200 51"
+                    d="M 200 52 L 200 26"
                     fill="none"
                     stroke="#74ACDF"
                     strokeWidth="1.5"
                     strokeDasharray="5 4"
                 />
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--78">
-                    <circle cx="70" cy="175" r="14" />
-                    <circle className="wc-seleccion-triada__halo" cx="70" cy="175" r="22" />
-                    <text x="70" y="180" textAnchor="middle">78</text>
+                    <circle cx="28" cy="88" r="13" />
+                    <circle className="wc-seleccion-triada__halo" cx="28" cy="88" r="20" />
+                    <text x="28" y="93" textAnchor="middle">78</text>
                 </g>
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--86">
-                    <circle cx="200" cy="35" r="16" />
-                    <circle className="wc-seleccion-triada__halo" cx="200" cy="35" r="26" />
-                    <text x="200" y="41" textAnchor="middle">86</text>
+                    <circle cx="200" cy="10" r="15" />
+                    <circle className="wc-seleccion-triada__halo" cx="200" cy="10" r="24" />
+                    <text x="200" y="16" textAnchor="middle">86</text>
                 </g>
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--22">
-                    <circle cx="330" cy="175" r="14" />
-                    <circle className="wc-seleccion-triada__halo" cx="330" cy="175" r="22" />
-                    <text x="330" y="180" textAnchor="middle">22</text>
+                    <circle cx="372" cy="88" r="13" />
+                    <circle className="wc-seleccion-triada__halo" cx="372" cy="88" r="20" />
+                    <text x="372" y="93" textAnchor="middle">22</text>
                 </g>
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--26">
-                    <circle cx="200" cy="118" r="10" strokeDasharray="4 3" />
-                    <circle className="wc-seleccion-triada__halo wc-seleccion-triada__halo--26" cx="200" cy="118" r="18" />
-                    <text x="200" y="123" textAnchor="middle">26</text>
+                    <circle cx="200" cy="52" r="9" strokeDasharray="4 3" />
+                    <circle className="wc-seleccion-triada__halo wc-seleccion-triada__halo--26" cx="200" cy="52" r="16" />
+                    <text x="200" y="56" textAnchor="middle">26</text>
                 </g>
             </svg>
 
@@ -308,6 +319,24 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 <span className="wc-seleccion-canto__ring" />
                 <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--2" />
                 <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--3" />
+            </div>
+
+            {/* Confetti sutil */}
+            <div className="wc-seleccion-confetti">
+                {CONFETTI_LOGIN.map((c) => (
+                    <span
+                        key={c.id}
+                        className="wc-seleccion-confetti__piece"
+                        style={{
+                            left: c.left,
+                            animationDelay: c.delay,
+                            animationDuration: c.duration,
+                            backgroundColor: c.color,
+                            width: c.width,
+                            height: c.height,
+                        }}
+                    />
+                ))}
             </div>
 
             {/* Enfoque central: la tarjeta respira, el fondo arde alrededor */}

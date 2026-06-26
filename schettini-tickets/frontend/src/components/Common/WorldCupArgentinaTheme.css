@@ -16,6 +16,8 @@
     position: relative;
     overflow: hidden;
     background: #0a1f3d;
+    padding-top: clamp(96px, 14vh, 140px);
+    box-sizing: border-box;
 }
 
 .wc-login-page .wc-seleccion-atmosphere {
@@ -256,16 +258,34 @@
     animation: wc-sol-rays 12s linear infinite reverse;
 }
 
-/* Triada campeona SVG */
+/* Triada campeona SVG — banda superior, no tapada por el login */
 .wc-seleccion-triada {
     position: absolute;
-    top: 4%;
+    top: 0.25rem;
     left: 50%;
     transform: translateX(-50%);
-    width: min(90vw, 520px);
-    height: auto;
-    opacity: 0.85;
-    z-index: 4;
+    width: min(98vw, 780px);
+    height: clamp(88px, 12vh, 120px);
+    opacity: 0.92;
+    z-index: 7;
+    pointer-events: none;
+}
+
+/* Confetti sutil en login */
+.wc-seleccion-confetti {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.wc-seleccion-confetti__piece {
+    position: absolute;
+    top: -12px;
+    border-radius: 2px;
+    opacity: 0.42;
+    animation: wc-confetti-fall-slow linear infinite;
 }
 
 .wc-seleccion-triada__triangle {
@@ -284,8 +304,8 @@
 .wc-seleccion-triada__energy--seq:nth-of-type(4) { animation-delay: 0.9s; }
 
 .wc-seleccion-triada__dream {
-    stroke-dasharray: 80;
-    stroke-dashoffset: 80;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
     animation: wc-dream-climb 3s ease-in-out infinite;
     opacity: 0.7;
 }
@@ -482,8 +502,8 @@
     inset: 0;
     z-index: 6;
     background:
-        radial-gradient(ellipse 42% 50% at 50% 46%, rgba(10, 31, 61, 0.5) 0%, transparent 72%),
-        radial-gradient(ellipse 90% 80% at 50% 50%, transparent 35%, rgba(10, 31, 61, 0.15) 100%);
+        radial-gradient(ellipse 42% 48% at 50% 52%, rgba(10, 31, 61, 0.48) 0%, transparent 72%),
+        radial-gradient(ellipse 90% 80% at 50% 55%, transparent 30%, rgba(10, 31, 61, 0.12) 100%);
     pointer-events: none;
 }
 
@@ -1319,9 +1339,9 @@
 }
 
 @keyframes wc-dream-climb {
-    0% { stroke-dashoffset: 80; opacity: 0.3; }
+    0% { stroke-dashoffset: 40; opacity: 0.3; }
     50% { stroke-dashoffset: 0; opacity: 0.9; }
-    100% { stroke-dashoffset: -80; opacity: 0.3; }
+    100% { stroke-dashoffset: -40; opacity: 0.3; }
 }
 
 @keyframes wc-node-halo {
@@ -1366,10 +1386,14 @@
 }
 
 @media (max-width: 640px) {
+    .wc-login-page {
+        padding-top: clamp(88px, 16vh, 120px);
+    }
+
     .wc-seleccion-triada {
-        width: 95vw;
-        top: 2%;
-        opacity: 0.65;
+        width: 100vw;
+        height: clamp(78px, 11vh, 100px);
+        top: 0;
     }
 
     .wc-seleccion-sol-gigante {
@@ -1396,6 +1420,7 @@
     .wc-seleccion-arco__apex,
     .wc-seleccion-horizon,
     .wc-login-card,
+    .wc-seleccion-confetti__piece,
     .wc-seleccion-sol-gigante__corona,
     .wc-seleccion-triada__node--86,
     .wc-seleccion-triada__node--26,
