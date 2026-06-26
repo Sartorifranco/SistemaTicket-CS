@@ -54,43 +54,20 @@ const LoginPage: React.FC = () => {
     };
 
     const panelClass = getWorldCupLoginPanelClass();
-    const formPanelClasses = [
-        'relative z-10 w-full lg:w-[30%] min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8',
-        worldCup ? 'bg-white' : 'bg-gray-900 lg:bg-white',
+    const cardClasses = [
+        'max-w-md w-full space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-2xl',
         panelClass,
         worldCup ? 'wc-argentina-root' : '',
     ]
         .filter(Boolean)
         .join(' ');
 
-    const innerCardClasses = worldCup
-        ? 'relative z-10 max-w-md w-full space-y-8 p-6 sm:p-10 rounded-2xl'
-        : 'relative z-10 max-w-md w-full space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-2xl';
-
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row">
-            {/* Panel izquierdo (~70%): imagen/video sin decoración mundialista */}
-            <div
-                className="hidden lg:flex lg:w-[70%] relative items-center justify-center bg-gray-900 overflow-hidden"
-                aria-hidden="true"
-            >
-                <div
-                    className="absolute inset-0 bg-cover bg-center opacity-40"
-                    style={{ backgroundImage: "url('/images/Lila.png')" }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
-                <img
-                    className="relative z-10 h-40 w-auto object-contain drop-shadow-2xl"
-                    src="/images/Lila.png"
-                    alt=""
-                />
-            </div>
-
-            {/* Panel derecho (~30%): formulario con tema festivo opcional */}
-            <div className={formPanelClasses}>
+        <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+            <div className={cardClasses}>
                 {worldCup && <WorldCupLoginPanelFestive />}
 
-                <div className={innerCardClasses}>
+                <div className="relative z-10">
                     {worldCup && <WorldCupLoginHero />}
 
                     <div>
