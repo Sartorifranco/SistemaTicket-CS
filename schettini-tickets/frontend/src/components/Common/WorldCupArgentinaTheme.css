@@ -94,6 +94,89 @@
     opacity: 0.6;
 }
 
+.wc-seleccion-cloth__ripple--3 {
+    animation-duration: 9s;
+    opacity: 0.35;
+    background: linear-gradient(
+        -75deg,
+        transparent 35%,
+        rgba(246, 180, 14, 0.08) 50%,
+        transparent 65%
+    );
+}
+
+.wc-seleccion-cloth__edge {
+    position: absolute;
+    left: -5%;
+    right: -5%;
+    height: 28px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.wc-seleccion-cloth__edge--bottom {
+    bottom: -14px;
+    background: inherit;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    animation: wc-cloth-edge-wave 3.5s ease-in-out infinite;
+}
+
+.wc-seleccion-cloth__edge--top {
+    top: -14px;
+    background: inherit;
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    animation: wc-cloth-edge-wave 3.5s ease-in-out infinite reverse;
+}
+
+.wc-seleccion-sol-gigante__corona {
+    position: absolute;
+    inset: -25%;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 213, 79, 0.2);
+    animation: wc-sol-corona 4s ease-in-out infinite;
+}
+
+/* Viento albiceleste */
+.wc-seleccion-viento {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.wc-seleccion-viento__stream {
+    position: absolute;
+    left: -30%;
+    width: 45%;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    animation: wc-viento-drift linear infinite;
+    opacity: 0.5;
+}
+
+.wc-seleccion-viento__stream:nth-child(even) {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(116, 172, 223, 0.45), transparent);
+}
+
+/* Rayo celeste */
+.wc-seleccion-rayo {
+    position: absolute;
+    top: 0;
+    right: 8%;
+    width: min(35vw, 220px);
+    height: auto;
+    z-index: 3;
+    opacity: 0;
+    animation: wc-rayo-flash 9s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(116, 172, 223, 0.6));
+}
+
+.wc-seleccion-rayo__bolt {
+    opacity: 0.85;
+}
+
 .wc-seleccion-cloth__stripe {
     flex: 1;
     position: relative;
@@ -190,10 +273,37 @@
 }
 
 .wc-seleccion-triada__energy {
-    stroke-dasharray: 520;
-    stroke-dashoffset: 520;
-    animation: wc-triada-flow 4s ease-in-out infinite;
-    opacity: 0.9;
+    stroke-dasharray: 180;
+    stroke-dashoffset: 180;
+    animation: wc-triada-flow 2.5s ease-in-out infinite;
+    opacity: 0.95;
+}
+
+.wc-seleccion-triada__energy--seq:nth-of-type(2) { animation-delay: 0s; }
+.wc-seleccion-triada__energy--seq:nth-of-type(3) { animation-delay: 0.45s; }
+.wc-seleccion-triada__energy--seq:nth-of-type(4) { animation-delay: 0.9s; }
+
+.wc-seleccion-triada__dream {
+    stroke-dasharray: 80;
+    stroke-dashoffset: 80;
+    animation: wc-dream-climb 3s ease-in-out infinite;
+    opacity: 0.7;
+}
+
+.wc-seleccion-triada__halo {
+    fill: none;
+    stroke: rgba(255, 213, 79, 0.4);
+    stroke-width: 1.5;
+    animation: wc-node-halo 2.8s ease-in-out infinite;
+}
+
+.wc-seleccion-triada__node--78 .wc-seleccion-triada__halo { animation-delay: 0s; }
+.wc-seleccion-triada__node--86 .wc-seleccion-triada__halo { animation-delay: 0.35s; }
+.wc-seleccion-triada__node--22 .wc-seleccion-triada__halo { animation-delay: 0.7s; }
+
+.wc-seleccion-triada__halo--26 {
+    stroke: rgba(116, 172, 223, 0.55);
+    animation: wc-star-2026 3s ease-in-out infinite;
 }
 
 .wc-seleccion-triada__node circle {
@@ -249,8 +359,55 @@
     animation: wc-arco-glow 7s linear infinite;
 }
 
+.wc-seleccion-triada__node--78 circle:first-of-type {
+    animation: wc-node-flash 4s ease-in-out infinite;
+    animation-delay: 0s;
+}
+
+.wc-seleccion-triada__node--22 circle:first-of-type {
+    animation: wc-node-flash 4s ease-in-out infinite;
+    animation-delay: 2s;
+}
+
+.wc-seleccion-arco__apex {
+    fill: rgba(246, 180, 14, 0.2);
+    animation: wc-apex-pulse 7s ease-in-out infinite;
+}
+
 .wc-seleccion-arco__ball {
     filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
+}
+
+.wc-seleccion-arco__ball--ghost {
+    filter: blur(1px);
+    opacity: 0.45;
+}
+
+/* Potrero al fondo */
+.wc-seleccion-potrero {
+    position: absolute;
+    bottom: 72px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 90px;
+    z-index: 2;
+    opacity: 0.45;
+}
+
+.wc-seleccion-potrero__linea {
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 1.5;
+}
+
+.wc-seleccion-potrero__arco {
+    stroke: rgba(255, 255, 255, 0.18);
+    stroke-width: 2.5;
+}
+
+.wc-seleccion-potrero__travesano {
+    stroke: rgba(255, 255, 255, 0.14);
+    stroke-width: 2;
 }
 
 /* La ola de la hinchada */
@@ -277,8 +434,20 @@
     transform-origin: bottom center;
 }
 
+.wc-seleccion-ola__bar--0 {
+    background: linear-gradient(to top, var(--wc-celeste) 0%, rgba(116, 172, 223, 0.35) 60%, transparent 100%);
+}
+
+.wc-seleccion-ola__bar--1 {
+    background: linear-gradient(to top, #ffffff 0%, rgba(255, 255, 255, 0.25) 60%, transparent 100%);
+}
+
+.wc-seleccion-ola__bar--2 {
+    background: linear-gradient(to top, var(--wc-dorado) 0%, rgba(246, 180, 14, 0.3) 60%, transparent 100%);
+}
+
 .wc-seleccion-ola__bar:nth-child(odd) {
-    background: linear-gradient(to top, var(--wc-dorado) 0%, rgba(246, 180, 14, 0.25) 60%, transparent 100%);
+    background: none;
 }
 
 /* Pulso del cántico */
@@ -304,6 +473,31 @@
     animation-delay: 1.5s;
 }
 
+.wc-seleccion-canto__ring--3 {
+    animation-delay: 2.25s;
+}
+
+.wc-seleccion-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    background:
+        radial-gradient(ellipse 42% 50% at 50% 46%, rgba(10, 31, 61, 0.5) 0%, transparent 72%),
+        radial-gradient(ellipse 90% 80% at 50% 50%, transparent 35%, rgba(10, 31, 61, 0.15) 100%);
+    pointer-events: none;
+}
+
+.wc-seleccion-horizon {
+    position: absolute;
+    bottom: 72px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    z-index: 2;
+    animation: wc-horizon-shimmer 5s ease-in-out infinite;
+}
+
 .wc-login-card {
     background: rgba(255, 255, 255, 0.97);
     border: 2px solid var(--wc-dorado);
@@ -312,6 +506,7 @@
         0 0 0 1px rgba(116, 172, 223, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(8px);
+    animation: wc-card-breathe 3s ease-in-out infinite;
 }
 
 /* ─── Login panel festivo (overlay) ─── */
@@ -1075,9 +1270,9 @@
 }
 
 @keyframes wc-triada-flow {
-    0% { stroke-dashoffset: 520; opacity: 0.3; }
+    0% { stroke-dashoffset: 180; opacity: 0.35; }
     50% { stroke-dashoffset: 0; opacity: 1; }
-    100% { stroke-dashoffset: -520; opacity: 0.3; }
+    100% { stroke-dashoffset: -180; opacity: 0.35; }
 }
 
 @keyframes wc-star-heartbeat {
@@ -1106,6 +1301,70 @@
     100% { transform: scale(2.5); opacity: 0; }
 }
 
+@keyframes wc-cloth-edge-wave {
+    0%, 100% { transform: scaleX(1) translateX(0); }
+    50% { transform: scaleX(1.04) translateX(2%); }
+}
+
+@keyframes wc-viento-drift {
+    0% { transform: translateX(0); opacity: 0; }
+    15% { opacity: 0.6; }
+    85% { opacity: 0.4; }
+    100% { transform: translateX(280%); opacity: 0; }
+}
+
+@keyframes wc-rayo-flash {
+    0%, 88%, 100% { opacity: 0; transform: scale(0.95); }
+    90%, 94% { opacity: 0.75; transform: scale(1); }
+}
+
+@keyframes wc-dream-climb {
+    0% { stroke-dashoffset: 80; opacity: 0.3; }
+    50% { stroke-dashoffset: 0; opacity: 0.9; }
+    100% { stroke-dashoffset: -80; opacity: 0.3; }
+}
+
+@keyframes wc-node-halo {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.08); }
+}
+
+@keyframes wc-node-flash {
+    0%, 80%, 100% { filter: brightness(1); }
+    85% { filter: brightness(1.4); }
+}
+
+@keyframes wc-apex-pulse {
+    0%, 45%, 55%, 100% { opacity: 0.15; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(1.3); }
+}
+
+@keyframes wc-horizon-shimmer {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.85; }
+}
+
+@keyframes wc-card-breathe {
+    0%, 100% {
+        box-shadow:
+            0 25px 60px rgba(10, 31, 61, 0.45),
+            0 0 0 1px rgba(116, 172, 223, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    50% {
+        box-shadow:
+            0 28px 65px rgba(10, 31, 61, 0.5),
+            0 0 24px rgba(246, 180, 14, 0.2),
+            0 0 0 1px rgba(116, 172, 223, 0.45),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+}
+
+@keyframes wc-sol-corona {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.08); opacity: 0.75; }
+}
+
 @media (max-width: 640px) {
     .wc-seleccion-triada {
         width: 95vw;
@@ -1129,8 +1388,15 @@
     .wc-seleccion-cloth__ripple,
     .wc-seleccion-cloth__stripe,
     .wc-seleccion-sol-gigante,
-    .wc-seleccion-sol-gigante__rays,
-    .wc-seleccion-triada__energy,
+    .wc-seleccion-cloth__edge,
+    .wc-seleccion-viento__stream,
+    .wc-seleccion-rayo,
+    .wc-seleccion-triada__dream,
+    .wc-seleccion-triada__halo,
+    .wc-seleccion-arco__apex,
+    .wc-seleccion-horizon,
+    .wc-login-card,
+    .wc-seleccion-sol-gigante__corona,
     .wc-seleccion-triada__node--86,
     .wc-seleccion-triada__node--26,
     .wc-seleccion-arco__glow,

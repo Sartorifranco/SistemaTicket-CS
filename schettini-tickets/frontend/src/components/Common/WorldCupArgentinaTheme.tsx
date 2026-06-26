@@ -9,6 +9,14 @@ type FlagSize = 'sm' | 'md' | 'lg';
 
 const OLA_BARS = Array.from({ length: 13 }, (_, i) => i);
 
+const VIENTO_STREAMS = Array.from({ length: 6 }, (_, i) => ({
+    id: i,
+    top: `${12 + i * 14}%`,
+    delay: `${i * 0.7}s`,
+    duration: `${8 + i * 1.5}s`,
+    scale: 0.7 + (i % 3) * 0.15,
+}));
+
 const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
     id: i,
     left: `${(i * 2.9 + 1) % 99}%`,
@@ -114,15 +122,54 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
             <div className="wc-seleccion-cloth">
                 <div className="wc-seleccion-cloth__ripple wc-seleccion-cloth__ripple--1" />
                 <div className="wc-seleccion-cloth__ripple wc-seleccion-cloth__ripple--2" />
-                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-top" />
+                <div className="wc-seleccion-cloth__ripple wc-seleccion-cloth__ripple--3" />
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-top">
+                    <span className="wc-seleccion-cloth__edge wc-seleccion-cloth__edge--bottom" />
+                </div>
                 <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--blanco">
+                    <span className="wc-seleccion-cloth__edge wc-seleccion-cloth__edge--top" />
+                    <span className="wc-seleccion-cloth__edge wc-seleccion-cloth__edge--bottom" />
                     <div className="wc-seleccion-sol-gigante">
                         <div className="wc-seleccion-sol-gigante__core" />
                         <div className="wc-seleccion-sol-gigante__rays" />
+                        <div className="wc-seleccion-sol-gigante__corona" />
                     </div>
                 </div>
-                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-bottom" />
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-bottom">
+                    <span className="wc-seleccion-cloth__edge wc-seleccion-cloth__edge--top" />
+                </div>
             </div>
+
+            {/* Viento albiceleste — estelas de tela */}
+            <div className="wc-seleccion-viento">
+                {VIENTO_STREAMS.map((v) => (
+                    <span
+                        key={v.id}
+                        className="wc-seleccion-viento__stream"
+                        style={{
+                            top: v.top,
+                            animationDelay: v.delay,
+                            animationDuration: v.duration,
+                            transform: `scaleX(${v.scale})`,
+                        }}
+                    />
+                ))}
+            </div>
+
+            {/* Rayo celeste (destello esporádico) */}
+            <svg className="wc-seleccion-rayo" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <linearGradient id="wc-rayo-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                        <stop offset="100%" stopColor="#74ACDF" stopOpacity="0.3" />
+                    </linearGradient>
+                </defs>
+                <path
+                    className="wc-seleccion-rayo__bolt"
+                    d="M 220 0 L 195 95 L 235 95 L 175 210 L 205 120 L 168 120 Z"
+                    fill="url(#wc-rayo-grad)"
+                />
+            </svg>
 
             {/* Triada campeona: 78 · 86 · 22 + estrella 2026 */}
             <svg className="wc-seleccion-triada" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet">
@@ -141,33 +188,62 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                     strokeWidth="2.5"
                 />
                 <path
-                    className="wc-seleccion-triada__energy"
-                    d="M 70 175 L 200 35 L 330 175 L 70 175"
+                    className="wc-seleccion-triada__energy wc-seleccion-triada__energy--seq"
+                    d="M 70 175 L 200 35"
                     fill="none"
                     stroke="#FFD54F"
-                    strokeWidth="3"
+                    strokeWidth="2"
                     strokeLinecap="round"
+                />
+                <path
+                    className="wc-seleccion-triada__energy wc-seleccion-triada__energy--seq"
+                    d="M 200 35 L 330 175"
+                    fill="none"
+                    stroke="#FFD54F"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                />
+                <path
+                    className="wc-seleccion-triada__energy wc-seleccion-triada__energy--seq"
+                    d="M 330 175 L 70 175"
+                    fill="none"
+                    stroke="#FFD54F"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                />
+                <path
+                    className="wc-seleccion-triada__dream"
+                    d="M 200 118 L 200 51"
+                    fill="none"
+                    stroke="#74ACDF"
+                    strokeWidth="1.5"
+                    strokeDasharray="5 4"
                 />
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--78">
                     <circle cx="70" cy="175" r="14" />
+                    <circle className="wc-seleccion-triada__halo" cx="70" cy="175" r="22" />
                     <text x="70" y="180" textAnchor="middle">78</text>
                 </g>
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--86">
                     <circle cx="200" cy="35" r="16" />
+                    <circle className="wc-seleccion-triada__halo" cx="200" cy="35" r="26" />
                     <text x="200" y="41" textAnchor="middle">86</text>
                 </g>
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--22">
                     <circle cx="330" cy="175" r="14" />
+                    <circle className="wc-seleccion-triada__halo" cx="330" cy="175" r="22" />
                     <text x="330" y="180" textAnchor="middle">22</text>
                 </g>
                 <g className="wc-seleccion-triada__node wc-seleccion-triada__node--26">
                     <circle cx="200" cy="118" r="10" strokeDasharray="4 3" />
+                    <circle className="wc-seleccion-triada__halo wc-seleccion-triada__halo--26" cx="200" cy="118" r="18" />
                     <text x="200" y="123" textAnchor="middle">26</text>
                 </g>
             </svg>
 
             {/* Arco del potrero: una pelota, un sueño */}
             <svg className="wc-seleccion-arco" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+                <ellipse className="wc-seleccion-arco__apex" cx="200" cy="28" rx="18" ry="10" />
                 <path
                     className="wc-seleccion-arco__path"
                     d="M 20 360 Q 200 20 380 360"
@@ -178,6 +254,19 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                     d="M 20 360 Q 200 20 380 360"
                     fill="none"
                 />
+                <text className="wc-seleccion-arco__ball wc-seleccion-arco__ball--ghost" fontSize="18" opacity="0.45">
+                    ⚽
+                    <animateMotion
+                        dur="7s"
+                        repeatCount="indefinite"
+                        path="M 20 360 Q 200 20 380 360"
+                        keyPoints="0;1;0"
+                        keyTimes="0;0.5;1"
+                        calcMode="spline"
+                        keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                        begin="0.35s"
+                    />
+                </text>
                 <text className="wc-seleccion-arco__ball" fontSize="28">
                     ⚽
                     <animateMotion
@@ -192,12 +281,23 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                 </text>
             </svg>
 
+            {/* Arco de potrero al fondo */}
+            <svg className="wc-seleccion-potrero" viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet">
+                <line className="wc-seleccion-potrero__linea" x1="0" y1="68" x2="400" y2="68" />
+                <path
+                    className="wc-seleccion-potrero__arco"
+                    d="M 145 68 L 145 28 L 255 28 L 255 68"
+                    fill="none"
+                />
+                <line className="wc-seleccion-potrero__travesano" x1="125" y1="28" x2="275" y2="28" />
+            </svg>
+
             {/* La ola de la hinchada (synchronized bars) */}
             <div className="wc-seleccion-ola">
                 {OLA_BARS.map((i) => (
                     <span
                         key={i}
-                        className="wc-seleccion-ola__bar"
+                        className={`wc-seleccion-ola__bar wc-seleccion-ola__bar--${i % 3}`}
                         style={{ animationDelay: `${i * 0.09}s` }}
                     />
                 ))}
@@ -207,7 +307,12 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
             <div className="wc-seleccion-canto">
                 <span className="wc-seleccion-canto__ring" />
                 <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--2" />
+                <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--3" />
             </div>
+
+            {/* Enfoque central: la tarjeta respira, el fondo arde alrededor */}
+            <div className="wc-seleccion-vignette" />
+            <div className="wc-seleccion-horizon" />
         </div>
     );
 };
