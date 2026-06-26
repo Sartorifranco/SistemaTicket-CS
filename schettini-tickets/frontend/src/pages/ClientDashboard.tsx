@@ -8,6 +8,7 @@ import { TicketData } from '../types';
 import { ticketStatusTranslations } from '../utils/traslations';
 import WarrantyTermsModal from '../components/Client/WarrantyTermsModal';
 import { FaShieldAlt } from 'react-icons/fa';
+import { WorldCupDashboardBanner } from '../components/Common/WorldCupArgentinaTheme';
 // 🗑️ InfoWidget ELIMINADO
 
 interface ClientMetrics {
@@ -111,6 +112,11 @@ const ClientDashboard: React.FC = () => {
             <div className="container mx-auto p-4 sm:p-6 lg:p-8">
                 
                 {/* ❌ InfoWidget ELIMINADO DE AQUÍ */}
+
+                <WorldCupDashboardBanner
+                    pageTitle="Tu panel"
+                    userName={user?.full_name || user?.username}
+                />
 
                 <div className="mb-8 border-b pb-4 mt-2">
                     <h1 className="text-3xl font-bold text-gray-800 mb-1">Tu panel</h1>

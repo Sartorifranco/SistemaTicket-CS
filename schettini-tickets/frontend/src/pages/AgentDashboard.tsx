@@ -6,6 +6,7 @@ import { TicketData, ActivityLog, AgentMetrics, AgentNote } from '../types';
 import { toast } from 'react-toastify';
 import { formatLocalDate } from '../utils/dateFormatter';
 import { ticketPriorityTranslations } from '../utils/traslations';
+import { WorldCupDashboardBanner } from '../components/Common/WorldCupArgentinaTheme';
 
 // --- Componentes Internos ---
 const MetricCard: React.FC<{ title: string; value: number | string; color: string }> = ({ title, value, color }) => (
@@ -85,6 +86,10 @@ const AgentDashboard: React.FC = () => {
 
     return (
         <div className="container mx-auto p-6 space-y-8 bg-gray-50 min-h-screen">
+            <WorldCupDashboardBanner
+                pageTitle="Panel de Agente"
+                userName={user?.full_name || user?.username}
+            />
             <div className="flex justify-between items-center border-b pb-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Panel de Agente</h1>

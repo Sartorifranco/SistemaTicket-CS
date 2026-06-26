@@ -1,0 +1,532 @@
+/* Argentina · Mundial 2026 — tema festivo temporal */
+
+.wc-argentina-root {
+    --wc-celeste: #74ACDF;
+    --wc-celeste-mid: #5A9FD4;
+    --wc-celeste-dark: #2B6CB0;
+    --wc-celeste-deep: #1A4F8A;
+    --wc-dorado: #F6B40E;
+    --wc-dorado-light: #FFD54F;
+    --wc-blanco: #FFFFFF;
+}
+
+/* ─── Login panel festivo ─── */
+
+.wc-login-panel {
+    background: linear-gradient(165deg, rgba(116, 172, 223, 0.12) 0%, var(--wc-blanco) 45%, rgba(246, 180, 14, 0.08) 100%);
+    border-left: 4px solid var(--wc-dorado);
+    box-shadow: -8px 0 32px rgba(26, 79, 138, 0.15), 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.wc-login-festive {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.wc-login-festive__shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        120deg,
+        transparent 0%,
+        rgba(116, 172, 223, 0.15) 25%,
+        rgba(255, 255, 255, 0.4) 50%,
+        rgba(246, 180, 14, 0.12) 75%,
+        transparent 100%
+    );
+    background-size: 200% 200%;
+    animation: wc-shimmer 6s ease-in-out infinite;
+}
+
+.wc-login-festive__stripes {
+    position: absolute;
+    inset: -50%;
+    background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 20px,
+        rgba(116, 172, 223, 0.06) 20px,
+        rgba(116, 172, 223, 0.06) 40px
+    );
+    animation: wc-stripes-drift 20s linear infinite;
+}
+
+.wc-login-festive__glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.35;
+}
+
+.wc-login-festive__glow--1 {
+    width: 180px;
+    height: 180px;
+    background: var(--wc-celeste);
+    top: 10%;
+    left: -10%;
+    animation: wc-glow-pulse 4s ease-in-out infinite;
+}
+
+.wc-login-festive__glow--2 {
+    width: 140px;
+    height: 140px;
+    background: var(--wc-dorado);
+    bottom: 20%;
+    right: -5%;
+    animation: wc-glow-pulse 5s ease-in-out infinite 1s;
+}
+
+.wc-login-festive__glow--3 {
+    width: 100px;
+    height: 100px;
+    background: var(--wc-blanco);
+    top: 50%;
+    left: 40%;
+    animation: wc-glow-pulse 6s ease-in-out infinite 2s;
+}
+
+.wc-confetti-piece {
+    position: absolute;
+    top: -10px;
+    width: 8px;
+    height: 12px;
+    border-radius: 2px;
+    animation: wc-confetti-fall linear infinite;
+}
+
+.wc-login-flag {
+    position: absolute;
+    font-size: 1.4rem;
+    animation: wc-flag-float 5s ease-in-out infinite;
+    opacity: 0.85;
+}
+
+.wc-login-emoji {
+    position: absolute;
+    font-size: 1.25rem;
+    animation: wc-bounce 2.5s ease-in-out infinite;
+}
+
+.wc-login-star {
+    position: absolute;
+    color: var(--wc-dorado);
+    font-size: 0.9rem;
+    animation: wc-star-twinkle 2s ease-in-out infinite;
+}
+
+/* ─── Login hero / bandera CSS ─── */
+
+.wc-login-hero {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.wc-flag-3d-wrap {
+    perspective: 400px;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+}
+
+.wc-flag-argentina {
+    width: 72px;
+    height: 48px;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: wc-flag-wave 3s ease-in-out infinite;
+    box-shadow: 0 4px 12px rgba(26, 79, 138, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.wc-flag-argentina__stripe {
+    height: 33.33%;
+    width: 100%;
+}
+
+.wc-flag-argentina__stripe--top,
+.wc-flag-argentina__stripe--bottom {
+    background: var(--wc-celeste);
+}
+
+.wc-flag-argentina__stripe--mid {
+    background: var(--wc-blanco);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wc-sol-de-mayo {
+    width: 18px;
+    height: 18px;
+    background: radial-gradient(circle at 40% 40%, var(--wc-dorado-light), var(--wc-dorado));
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(246, 180, 14, 0.6);
+    position: relative;
+}
+
+.wc-sol-de-mayo::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 1px solid rgba(246, 180, 14, 0.4);
+    border-radius: 50%;
+}
+
+.wc-login-hero__title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--wc-celeste-deep);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.wc-login-hero__subtitle {
+    font-size: 0.75rem;
+    color: var(--wc-celeste-dark);
+    margin-top: 0.25rem;
+    font-weight: 600;
+}
+
+.wc-login-hero__subtext {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+/* ─── Form controls ─── */
+
+.wc-input-argentina:focus {
+    outline: none;
+    border-color: var(--wc-celeste) !important;
+    box-shadow: 0 0 0 2px rgba(116, 172, 223, 0.35) !important;
+    --tw-ring-color: var(--wc-celeste);
+}
+
+.wc-btn-argentina {
+    background: linear-gradient(180deg, var(--wc-celeste-mid) 0%, var(--wc-celeste-dark) 100%) !important;
+    border: 2px solid var(--wc-dorado) !important;
+    box-shadow: 0 4px 14px rgba(43, 108, 176, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.wc-btn-argentina:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--wc-celeste) 0%, var(--wc-celeste-deep) 100%) !important;
+    box-shadow: 0 6px 20px rgba(246, 180, 14, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.wc-link-argentina {
+    color: var(--wc-celeste-dark) !important;
+}
+
+.wc-link-argentina:hover {
+    color: var(--wc-celeste-deep) !important;
+}
+
+/* ─── Layout autenticado ─── */
+
+.wc-layout-festive header {
+    background: linear-gradient(90deg, rgba(116, 172, 223, 0.08) 0%, var(--wc-blanco) 50%, rgba(246, 180, 14, 0.06) 100%);
+}
+
+.wc-layout-festive main {
+    background: linear-gradient(180deg, rgba(116, 172, 223, 0.06) 0%, #f9fafb 120px);
+}
+
+.wc-sidebar-festive {
+    position: relative;
+    overflow: hidden;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(90deg, var(--wc-celeste-deep), var(--wc-celeste-dark));
+    text-align: center;
+    pointer-events: none;
+}
+
+.wc-sidebar-festive__stripe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--wc-celeste), var(--wc-dorado), var(--wc-celeste));
+    background-size: 200% 100%;
+    animation: wc-ribbon-slide 3s linear infinite;
+}
+
+.wc-sidebar-festive__text {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--wc-blanco);
+    letter-spacing: 0.04em;
+}
+
+.wc-sidebar-festive__flag {
+    font-size: 1rem;
+    margin-right: 0.25rem;
+}
+
+.wc-header-ribbon {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--wc-celeste-deep);
+}
+
+@media (min-width: 768px) {
+    .wc-header-ribbon {
+        display: flex;
+    }
+}
+
+.wc-header-ribbon__flags {
+    font-size: 1.1rem;
+    animation: wc-flag-float 4s ease-in-out infinite;
+}
+
+.wc-app-confetti {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.wc-app-confetti__piece {
+    position: absolute;
+    top: -8px;
+    width: 6px;
+    height: 10px;
+    border-radius: 1px;
+    opacity: 0.25;
+    animation: wc-confetti-fall-slow linear infinite;
+}
+
+.wc-corner-decor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+    font-size: 1.5rem;
+    opacity: 0.5;
+}
+
+.wc-corner-decor--tl { top: 0.5rem; left: 0.5rem; animation: wc-flag-float 5s ease-in-out infinite; }
+.wc-corner-decor--tr { top: 0.5rem; right: 0.5rem; animation: wc-flag-float 5s ease-in-out infinite 1s; }
+.wc-corner-decor--bl { bottom: 0.5rem; left: 0.5rem; animation: wc-bounce 3s ease-in-out infinite; }
+.wc-corner-decor--br { bottom: 0.5rem; right: 0.5rem; animation: wc-bounce 3s ease-in-out infinite 0.5s; }
+
+/* ─── Champion stars ─── */
+
+.wc-champion-stars {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+}
+
+.wc-champion-stars--sm { font-size: 0.75rem; }
+.wc-champion-stars--md { font-size: 0.95rem; }
+.wc-champion-stars--lg { font-size: 1.15rem; }
+
+.wc-champion-star {
+    color: var(--wc-dorado);
+    animation: wc-star-pulse 2s ease-in-out infinite;
+    font-weight: 700;
+}
+
+.wc-champion-star:nth-child(2) { animation-delay: 0.3s; }
+.wc-champion-star:nth-child(3) { animation-delay: 0.6s; }
+
+.wc-champion-star__year {
+    font-size: 0.65em;
+    color: var(--wc-celeste-deep);
+    font-weight: 600;
+    margin-left: 1px;
+}
+
+.wc-champion-stars--plain .wc-champion-star__year {
+    display: none;
+}
+
+/* ─── Dashboard banner ─── */
+
+.wc-dashboard-banner {
+    position: relative;
+    overflow: hidden;
+    border: 2px solid var(--wc-celeste);
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(116, 172, 223, 0.15) 0%, var(--wc-blanco) 50%, rgba(246, 180, 14, 0.1) 100%);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(43, 108, 176, 0.12);
+}
+
+.wc-dashboard-banner__top-stripe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--wc-celeste), var(--wc-blanco), var(--wc-dorado), var(--wc-blanco), var(--wc-celeste));
+    background-size: 300% 100%;
+    animation: wc-ribbon-slide 4s linear infinite;
+}
+
+.wc-dashboard-banner__confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.wc-dashboard-banner__confetti-piece {
+    position: absolute;
+    width: 6px;
+    height: 8px;
+    border-radius: 1px;
+    animation: wc-confetti-fall-slow linear infinite;
+    opacity: 0.4;
+}
+
+.wc-dashboard-banner__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.wc-dashboard-banner__left {
+    flex: 1;
+    min-width: 200px;
+}
+
+.wc-dashboard-banner__greeting {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--wc-celeste-deep);
+}
+
+.wc-dashboard-banner__cheer {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--wc-celeste-dark);
+    margin-top: 0.15rem;
+}
+
+.wc-dashboard-banner__subtitle {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+.wc-dashboard-banner__flags {
+    font-size: 1.5rem;
+    animation: wc-flag-float 4s ease-in-out infinite;
+    margin-right: 0.5rem;
+}
+
+.wc-dashboard-banner__emojis {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 1.75rem;
+}
+
+.wc-dashboard-banner__emojis span {
+    animation: wc-bounce 2.5s ease-in-out infinite;
+}
+
+.wc-dashboard-banner__emojis span:nth-child(2) {
+    animation-delay: 0.4s;
+}
+
+/* ─── Animations ─── */
+
+@keyframes wc-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes wc-stripes-drift {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(40px, 40px); }
+}
+
+@keyframes wc-glow-pulse {
+    0%, 100% { opacity: 0.25; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(1.08); }
+}
+
+@keyframes wc-confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0.3; }
+}
+
+@keyframes wc-confetti-fall-slow {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(100vh) rotate(360deg); }
+}
+
+@keyframes wc-flag-float {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-8px) rotate(3deg); }
+}
+
+@keyframes wc-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes wc-star-twinkle {
+    0%, 100% { opacity: 0.4; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes wc-star-pulse {
+    0%, 100% { opacity: 0.7; transform: scale(1); filter: drop-shadow(0 0 2px var(--wc-dorado)); }
+    50% { opacity: 1; transform: scale(1.15); filter: drop-shadow(0 0 6px var(--wc-dorado)); }
+}
+
+@keyframes wc-flag-wave {
+    0%, 100% { transform: rotateY(-8deg) skewY(1deg); }
+    50% { transform: rotateY(8deg) skewY(-1deg); }
+}
+
+@keyframes wc-ribbon-slide {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wc-login-festive__shimmer,
+    .wc-login-festive__stripes,
+    .wc-login-festive__glow,
+    .wc-confetti-piece,
+    .wc-login-flag,
+    .wc-login-emoji,
+    .wc-login-star,
+    .wc-flag-argentina,
+    .wc-sidebar-festive__stripe,
+    .wc-header-ribbon__flags,
+    .wc-app-confetti__piece,
+    .wc-corner-decor,
+    .wc-champion-star,
+    .wc-dashboard-banner__top-stripe,
+    .wc-dashboard-banner__confetti-piece,
+    .wc-dashboard-banner__flags,
+    .wc-dashboard-banner__emojis span {
+        animation: none !important;
+    }
+}

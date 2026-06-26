@@ -10,6 +10,13 @@ import { getPlanLabel } from '../../utils/traslations';
 import PromoPopup from '../Common/PromoPopup';
 import { FaHome, FaUsers, FaTicketAlt, FaChartBar, FaBuilding, FaBullhorn, FaCogs, FaBox, FaList, FaBook, FaTags, FaCrown, FaClock, FaHistory, FaTasks, FaCalculator, FaWrench, FaTools, FaRecycle, FaFileAlt, FaBoxOpen, FaTv, FaExclamationTriangle, FaTimes, FaShieldAlt, FaCashRegister, FaFileInvoiceDollar, FaUserFriends, FaCubes } from 'react-icons/fa';
 import { hasAnyPermission, SIDEBAR_PERMISSION_MAP } from '../../utils/permissions';
+import {
+    isWorldCupThemeActive,
+    WorldCupSidebarFestive,
+    WorldCupHeaderRibbon,
+    WorldCupAppConfetti,
+    WorldCupAppCornerFlags,
+} from '../Common/WorldCupArgentinaTheme';
 
 const Layout: React.FC = () => {
     const { user, logout } = useAuth();
@@ -379,14 +386,20 @@ const Layout: React.FC = () => {
     };
 
     const isPremium = String(realTimePlan).toLowerCase().includes('enterprise') || String(realTimePlan).toLowerCase().includes('premium');
+    const worldCup = isWorldCupThemeActive();
 
     if (isMonitor) {
         return <Outlet />;
     }
 
     return (
-        <div className="flex h-screen bg-gray-100 font-sans print:hidden">
+        <div className={`flex h-screen bg-gray-100 font-sans print:hidden${worldCup ? ' wc-layout-festive wc-argentina-root' : ''}`}>
             <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 text-white flex flex-col shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+                {worldCup && (
+                    <div className="px-3 pt-3">
+                        <WorldCupSidebarFestive />
+                    </div>
+                )}
                 <div className="h-20 flex items-center justify-center border-b border-gray-800 bg-gray-950 px-4">
                     {/* ✅ LOGO NUEVO: Lila.png */}
                     <img src="/images/Lila.png" alt="Casa Schettini" className="h-12 w-auto object-contain" />
@@ -432,6 +445,8 @@ const Layout: React.FC = () => {
                     <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-gray-500 focus:outline-none">
                         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6H20M4 12H20M4 18H20" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </button>
+
+                    <WorldCupHeaderRibbon userName={user?.full_name || user?.username} />
                     
                     <div className="flex flex-1 items-center justify-end space-x-6">
                         <div className="hidden md:flex flex-col items-end text-right mr-4 border-r pr-6 border-gray-200">
@@ -465,7 +480,13 @@ const Layout: React.FC = () => {
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 relative"><Outlet /></main>
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 relative">
+                    {worldCup && <WorldCupAppConfetti />}
+                    {worldCup && <WorldCupAppCornerFlags />}
+                    <div className="relative z-10">
+                        <Outlet />
+                    </div>
+                </main>
             </div>
             
             <PromoModal /> 

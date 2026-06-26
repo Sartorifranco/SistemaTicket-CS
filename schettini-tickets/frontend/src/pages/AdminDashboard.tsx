@@ -7,6 +7,7 @@ import { ActivityLog, ApiResponseError, TicketData } from '../types';
 import { isAxiosErrorTypeGuard } from '../utils/typeGuards';
 import { formatLocalDate } from '../utils/dateFormatter';
 import { toast } from 'react-toastify';
+import { WorldCupDashboardBanner } from '../components/Common/WorldCupArgentinaTheme';
 // 🗑️ InfoWidget ELIMINADO
 
 const activityTypeTranslations: { [key: string]: string } = {
@@ -140,6 +141,11 @@ const AdminDashboard: React.FC = () => {
             <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                 
                 {/* ❌ InfoWidget ELIMINADO DE AQUÍ PARA QUE NO SALGA EL BANNER REPETIDO */}
+
+                <WorldCupDashboardBanner
+                    pageTitle="Panel de Administrador"
+                    userName={user?.full_name || user?.username}
+                />
 
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Panel de Administrador</h1>
 
