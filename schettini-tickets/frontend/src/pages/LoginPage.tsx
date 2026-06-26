@@ -8,6 +8,7 @@ import {
     isWorldCupThemeActive,
     WorldCupLoginPanelFestive,
     WorldCupLoginHero,
+    getWorldCupLoginPageClass,
     getWorldCupLoginPanelClass,
     getWorldCupSubmitButtonClass,
     getWorldCupSubmitButtonLabel,
@@ -53,20 +54,20 @@ const LoginPage: React.FC = () => {
         }
     };
 
-    const panelClass = getWorldCupLoginPanelClass();
+    const pageClass = getWorldCupLoginPageClass();
+    const cardClass = getWorldCupLoginPanelClass();
     const cardClasses = [
-        'max-w-md w-full space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-2xl',
-        panelClass,
-        worldCup ? 'wc-argentina-root' : '',
+        'relative z-10 max-w-md w-full space-y-8 p-6 sm:p-10 rounded-2xl shadow-2xl',
+        worldCup ? cardClass : 'bg-white',
     ]
         .filter(Boolean)
         .join(' ');
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-            <div className={cardClasses}>
-                {worldCup && <WorldCupLoginPanelFestive />}
+        <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${pageClass}`}>
+            {worldCup && <WorldCupLoginPanelFestive />}
 
+            <div className={cardClasses}>
                 <div className="relative z-10">
                     {worldCup && <WorldCupLoginHero />}
 

@@ -76,7 +76,11 @@ const LOGIN_STARS = Array.from({ length: 8 }, (_, i) => ({
 /* ─── Helpers de clases condicionales ─── */
 
 export function getWorldCupLoginPanelClass(): string {
-    return isWorldCupThemeActive() ? 'wc-login-panel relative overflow-hidden' : '';
+    return isWorldCupThemeActive() ? 'wc-login-card' : '';
+}
+
+export function getWorldCupLoginPageClass(): string {
+    return isWorldCupThemeActive() ? 'wc-login-page wc-argentina-root' : 'bg-gray-900';
 }
 
 export function getWorldCupSubmitButtonClass(): string {
