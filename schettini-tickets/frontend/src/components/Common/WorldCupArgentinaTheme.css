@@ -72,7 +72,7 @@
 }
 
 .wc-seleccion-atmosphere--lite .wc-seleccion-confetti__piece {
-    opacity: 0.38;
+    opacity: 0.45;
     animation: wc-confetti-fall-slow linear infinite;
     will-change: transform;
 }

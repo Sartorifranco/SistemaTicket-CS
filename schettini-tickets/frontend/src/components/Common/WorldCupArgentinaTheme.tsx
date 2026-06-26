@@ -7,15 +7,15 @@ const CONFETTI_COLORS = ['#74ACDF', '#FFFFFF', '#F6B40E', '#5A9FD4', '#FFD54F'];
 
 type FlagSize = 'sm' | 'md' | 'lg';
 
-/** Confetti muy sutil en login (única animación del fondo) */
-const CONFETTI_LOGIN = Array.from({ length: 10 }, (_, i) => ({
+/** Confetti en login (única animación del fondo) */
+const CONFETTI_LOGIN = Array.from({ length: 24 }, (_, i) => ({
     id: i,
-    left: `${(i * 9.5 + 2) % 96}%`,
-    delay: `${(i * 0.55) % 6}s`,
-    duration: `${8 + (i % 4)}s`,
+    left: `${(i * 4.2 + 1) % 98}%`,
+    delay: `${(i * 0.35) % 7}s`,
+    duration: `${7 + (i % 5)}s`,
     color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-    width: 5 + (i % 2),
-    height: 8 + (i % 2),
+    width: 5 + (i % 3),
+    height: 8 + (i % 3),
 }));
 
 const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
