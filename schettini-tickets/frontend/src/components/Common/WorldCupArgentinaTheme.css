@@ -27,7 +27,96 @@
     overflow: hidden;
     pointer-events: none;
     contain: layout style paint;
-    transform: translateZ(0);
+}
+
+/* Login lite: bandera y triada estáticas, sin animaciones */
+.wc-seleccion-atmosphere--lite * {
+    animation: none !important;
+}
+
+.wc-seleccion-cloth--static {
+    position: absolute;
+    inset: -5% -8%;
+    display: flex;
+    flex-direction: column;
+    transform: perspective(900px) rotateX(8deg);
+}
+
+.wc-seleccion-cloth--static .wc-seleccion-cloth__stripe {
+    flex: 1;
+    position: relative;
+}
+
+.wc-seleccion-cloth--static .wc-seleccion-cloth__stripe--celeste-top,
+.wc-seleccion-cloth--static .wc-seleccion-cloth__stripe--celeste-bottom {
+    background: linear-gradient(90deg, #143a6e 0%, #2B6CB0 25%, #74ACDF 50%, #2B6CB0 75%, #143a6e 100%);
+}
+
+.wc-seleccion-cloth--static .wc-seleccion-cloth__stripe--blanco {
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 50%, #f0f6fc 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 20px 40px rgba(116, 172, 223, 0.06), inset 0 -20px 40px rgba(116, 172, 223, 0.06);
+}
+
+.wc-seleccion-sol-gigante--static {
+    position: relative;
+    width: min(28vw, 200px);
+    height: min(28vw, 200px);
+}
+
+.wc-seleccion-sol-gigante--static .wc-seleccion-sol-gigante__core {
+    position: absolute;
+    inset: 22%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 38%, #FFE082, #F6B40E 55%, #e6a008);
+    box-shadow: 0 0 30px rgba(246, 180, 14, 0.4);
+}
+
+.wc-seleccion-triada--static .wc-seleccion-triada__node circle {
+    fill: rgba(246, 180, 14, 0.3);
+    stroke: #FFD54F;
+    stroke-width: 2;
+}
+
+.wc-seleccion-triada--static .wc-seleccion-triada__node text {
+    fill: #1A4F8A;
+    font-size: 11px;
+    font-weight: 900;
+    font-family: system-ui, sans-serif;
+}
+
+.wc-seleccion-triada--static .wc-seleccion-triada__node--26 circle {
+    fill: transparent;
+    stroke: rgba(116, 172, 223, 0.8);
+}
+
+.wc-seleccion-triada--static .wc-seleccion-triada__node--26 text {
+    fill: rgba(43, 108, 176, 0.7);
+    font-size: 9px;
+}
+
+.wc-seleccion-footer-band {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    z-index: 5;
+    background: linear-gradient(
+        90deg,
+        var(--wc-celeste) 0%,
+        var(--wc-blanco) 25%,
+        var(--wc-dorado) 50%,
+        var(--wc-blanco) 75%,
+        var(--wc-celeste) 100%
+    );
+    opacity: 0.85;
+}
+
+.wc-login-page .wc-flag-argentina {
+    animation: none;
 }
 
 /* Reflectores de estadio */
