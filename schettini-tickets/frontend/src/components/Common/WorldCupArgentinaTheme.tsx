@@ -15,13 +15,32 @@ const CONFETTI_LOGIN = Array.from({ length: 28 }, (_, i) => ({
     height: 10 + (i % 3),
 }));
 
-const CONFETTI_APP = Array.from({ length: 20 }, (_, i) => ({
+const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
     id: i,
-    left: `${(i * 5.3 + 1) % 99}%`,
-    delay: `${(i * 0.5) % 10}s`,
-    duration: `${12 + (i % 6)}s`,
+    left: `${(i * 2.9 + 1) % 99}%`,
+    delay: `${(i * 0.35) % 12}s`,
+    duration: `${10 + (i % 8)}s`,
     color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    width: 5 + (i % 5),
+    height: 8 + (i % 4),
 }));
+
+const APP_BG_STARS = Array.from({ length: 10 }, (_, i) => ({
+    id: i,
+    top: `${8 + (i * 9) % 85}%`,
+    left: `${3 + (i * 11) % 92}%`,
+    delay: `${(i * 0.4) % 3}s`,
+    size: 0.7 + (i % 3) * 0.15,
+}));
+
+const APP_BG_EMOJIS = [
+    { emoji: '⚽', top: '18%', left: '4%', delay: '0s' },
+    { emoji: '🏆', top: '72%', left: '6%', delay: '0.6s' },
+    { emoji: '⚽', top: '45%', right: '18%', delay: '1s' },
+    { emoji: '🏆', top: '82%', right: '22%', delay: '0.3s' },
+    { emoji: '★', top: '12%', right: '8%', delay: '0.8s', isStar: true },
+    { emoji: '★', top: '58%', left: '88%', delay: '1.2s', isStar: true },
+];
 
 const CONFETTI_BANNER = Array.from({ length: 12 }, (_, i) => ({
     id: i,
@@ -148,6 +167,25 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
     );
 };
 
+/* ─── Bandera argentina CSS (reutilizable) ─── */
+
+type FlagSize = 'sm' | 'md' | 'lg';
+
+export const WorldCupFlagArgentina: React.FC<{ size?: FlagSize; className?: string }> = ({
+    size = 'md',
+    className = '',
+}) => (
+    <div className={`wc-flag-3d-wrap wc-flag-3d-wrap--${size} ${className}`.trim()} aria-hidden="true">
+        <div className={`wc-flag-argentina wc-flag-argentina--${size}`}>
+            <div className="wc-flag-argentina__stripe wc-flag-argentina__stripe--top" />
+            <div className="wc-flag-argentina__stripe wc-flag-argentina__stripe--mid">
+                <div className={`wc-sol-de-mayo wc-sol-de-mayo--${size}`} />
+            </div>
+            <div className="wc-flag-argentina__stripe wc-flag-argentina__stripe--bottom" />
+        </div>
+    </div>
+);
+
 /* ─── Login: hero con bandera CSS ─── */
 
 export const WorldCupLoginHero: React.FC = () => {
@@ -155,15 +193,7 @@ export const WorldCupLoginHero: React.FC = () => {
 
     return (
         <div className="wc-login-hero wc-argentina-root">
-            <div className="wc-flag-3d-wrap">
-                <div className="wc-flag-argentina" aria-hidden="true">
-                    <div className="wc-flag-argentina__stripe wc-flag-argentina__stripe--top" />
-                    <div className="wc-flag-argentina__stripe wc-flag-argentina__stripe--mid">
-                        <div className="wc-sol-de-mayo" />
-                    </div>
-                    <div className="wc-flag-argentina__stripe wc-flag-argentina__stripe--bottom" />
-                </div>
-            </div>
+            <WorldCupFlagArgentina size="md" />
             <p className="wc-login-hero__title">¡VAMOS ARGENTINA!</p>
             <p className="wc-login-hero__subtitle">🇦🇷 Mundial 2026 · DALE QUE VAMOS 🇦🇷</p>
             <p className="wc-login-hero__subtext">
@@ -243,13 +273,19 @@ export const WorldCupHeaderRibbon: React.FC<WorldCupHeaderRibbonProps> = ({ user
     );
 };
 
-/* ─── Confetti app ─── */
+/* ─── Fondo festivo del área main (dashboard y páginas autenticadas) ─── */
 
-export const WorldCupAppConfetti: React.FC = () => {
+export const WorldCupAppBackground: React.FC = () => {
     if (!isWorldCupThemeActive()) return null;
 
     return (
-        <div className="wc-app-confetti wc-argentina-root" aria-hidden="true">
+        <div className="wc-app-bg wc-argentina-root" aria-hidden="true">
+            <div className="wc-app-bg__shimmer" />
+            <div className="wc-app-bg__stripes" />
+            <div className="wc-app-bg__glow wc-app-bg__glow--1" />
+            <div className="wc-app-bg__glow wc-app-bg__glow--2" />
+            <div className="wc-app-bg__glow wc-app-bg__glow--3" />
+
             {CONFETTI_APP.map((c) => (
                 <span
                     key={c.id}
@@ -259,25 +295,49 @@ export const WorldCupAppConfetti: React.FC = () => {
                         animationDelay: c.delay,
                         animationDuration: c.duration,
                         backgroundColor: c.color,
+                        width: c.width,
+                        height: c.height,
                     }}
                 />
             ))}
+
+            {APP_BG_STARS.map((s) => (
+                <span
+                    key={s.id}
+                    className="wc-app-bg__star"
+                    style={{
+                        top: s.top,
+                        left: s.left,
+                        animationDelay: s.delay,
+                        fontSize: `${s.size}rem`,
+                    }}
+                >
+                    ★
+                </span>
+            ))}
+
+            {APP_BG_EMOJIS.map((e, i) => (
+                <span
+                    key={`app-emoji-${i}`}
+                    className={e.isStar ? 'wc-app-bg__star' : 'wc-app-bg__emoji'}
+                    style={{
+                        top: e.top,
+                        left: e.left,
+                        right: e.right,
+                        animationDelay: e.delay,
+                    }}
+                >
+                    {e.emoji}
+                </span>
+            ))}
+
+            <div className="wc-app-bg__flag wc-app-bg__flag--hero">
+                <WorldCupFlagArgentina size="lg" />
+            </div>
+            <div className="wc-app-bg__flag wc-app-bg__flag--corner">
+                <WorldCupFlagArgentina size="sm" />
+            </div>
         </div>
-    );
-};
-
-/* ─── Banderas en esquinas ─── */
-
-export const WorldCupAppCornerFlags: React.FC = () => {
-    if (!isWorldCupThemeActive()) return null;
-
-    return (
-        <>
-            <span className="wc-corner-decor wc-corner-decor--tl wc-argentina-root" aria-hidden="true">🇦🇷</span>
-            <span className="wc-corner-decor wc-corner-decor--tr wc-argentina-root" aria-hidden="true">🇦🇷</span>
-            <span className="wc-corner-decor wc-corner-decor--bl wc-argentina-root" aria-hidden="true">⚽</span>
-            <span className="wc-corner-decor wc-corner-decor--br wc-argentina-root" aria-hidden="true">🏆</span>
-        </>
     );
 };
 

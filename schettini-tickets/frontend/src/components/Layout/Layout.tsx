@@ -14,8 +14,7 @@ import {
     isWorldCupThemeActive,
     WorldCupSidebarFestive,
     WorldCupHeaderRibbon,
-    WorldCupAppConfetti,
-    WorldCupAppCornerFlags,
+    WorldCupAppBackground,
 } from '../Common/WorldCupArgentinaTheme';
 
 const Layout: React.FC = () => {
@@ -481,8 +480,7 @@ const Layout: React.FC = () => {
                     </div>
                 </header>
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 relative">
-                    {worldCup && <WorldCupAppConfetti />}
-                    {worldCup && <WorldCupAppCornerFlags />}
+                    {worldCup && <WorldCupAppBackground />}
                     <div className="relative z-10">
                         <Outlet />
                     </div>
