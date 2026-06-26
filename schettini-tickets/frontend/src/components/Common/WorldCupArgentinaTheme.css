@@ -29,9 +29,52 @@
     contain: layout style paint;
 }
 
-/* Login lite: bandera y triada estáticas, sin animaciones */
-.wc-seleccion-atmosphere--lite * {
+/* Login lite: fondo estático; solo confetti animado */
+.wc-seleccion-atmosphere--lite .wc-seleccion-cloth--static,
+.wc-seleccion-atmosphere--lite .wc-seleccion-cloth--static *,
+.wc-seleccion-atmosphere--lite .wc-seleccion-campeones .wc-champion-star {
     animation: none !important;
+}
+
+.wc-seleccion-campeones {
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 7;
+    pointer-events: none;
+    width: min(96vw, 420px);
+    display: flex;
+    justify-content: center;
+}
+
+.wc-seleccion-campeones .wc-champion-stars {
+    gap: clamp(1.25rem, 5vw, 2.5rem);
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+}
+
+.wc-seleccion-campeones .wc-champion-star {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    text-shadow: 0 2px 8px rgba(246, 180, 14, 0.45);
+}
+
+.wc-seleccion-campeones .wc-champion-star__year {
+    display: block;
+    font-size: 0.42em;
+    margin-left: 0;
+    margin-top: 0.2em;
+    color: var(--wc-blanco);
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(10, 31, 61, 0.6);
+}
+
+.wc-seleccion-atmosphere--lite .wc-seleccion-confetti__piece {
+    opacity: 0.38;
+    animation: wc-confetti-fall-slow linear infinite;
+    will-change: transform;
 }
 
 .wc-seleccion-cloth--static {
@@ -72,29 +115,6 @@
     border-radius: 50%;
     background: radial-gradient(circle at 38% 38%, #FFE082, #F6B40E 55%, #e6a008);
     box-shadow: 0 0 30px rgba(246, 180, 14, 0.4);
-}
-
-.wc-seleccion-triada--static .wc-seleccion-triada__node circle {
-    fill: rgba(246, 180, 14, 0.3);
-    stroke: #FFD54F;
-    stroke-width: 2;
-}
-
-.wc-seleccion-triada--static .wc-seleccion-triada__node text {
-    fill: #1A4F8A;
-    font-size: 11px;
-    font-weight: 900;
-    font-family: system-ui, sans-serif;
-}
-
-.wc-seleccion-triada--static .wc-seleccion-triada__node--26 circle {
-    fill: transparent;
-    stroke: rgba(116, 172, 223, 0.8);
-}
-
-.wc-seleccion-triada--static .wc-seleccion-triada__node--26 text {
-    fill: rgba(43, 108, 176, 0.7);
-    font-size: 9px;
 }
 
 .wc-seleccion-footer-band {
@@ -1457,13 +1477,17 @@
         padding-top: clamp(88px, 16vh, 120px);
     }
 
-    .wc-seleccion-triada {
+    .wc-seleccion-campeones {
+        top: 0.5rem;
         width: 100vw;
-        height: clamp(78px, 11vh, 100px);
-        top: 0;
     }
 
-    .wc-seleccion-sol-gigante {
+    .wc-seleccion-campeones .wc-champion-stars {
+        gap: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .wc-seleccion-sol-gigante--static {
         width: min(40vw, 140px);
         height: min(40vw, 140px);
     }

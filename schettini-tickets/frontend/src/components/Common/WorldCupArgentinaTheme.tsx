@@ -7,6 +7,17 @@ const CONFETTI_COLORS = ['#74ACDF', '#FFFFFF', '#F6B40E', '#5A9FD4', '#FFD54F'];
 
 type FlagSize = 'sm' | 'md' | 'lg';
 
+/** Confetti muy sutil en login (única animación del fondo) */
+const CONFETTI_LOGIN = Array.from({ length: 10 }, (_, i) => ({
+    id: i,
+    left: `${(i * 9.5 + 2) % 96}%`,
+    delay: `${(i * 0.55) % 6}s`,
+    duration: `${8 + (i % 4)}s`,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    width: 5 + (i % 2),
+    height: 8 + (i % 2),
+}));
+
 const CONFETTI_APP = Array.from({ length: 36 }, (_, i) => ({
     id: i,
     left: `${(i * 2.9 + 1) % 99}%`,
@@ -95,79 +106,6 @@ export const WorldCupFlagArgentina: React.FC<{ size?: FlagSize; className?: stri
     </div>
 );
 
-/* ─── Login: fondo festivo ligero (sin animaciones pesadas) ─── */
-
-export const WorldCupLoginPanelFestive: React.FC = () => {
-    if (!isWorldCupThemeActive()) return null;
-
-    return (
-        <div className="wc-seleccion-atmosphere wc-seleccion-atmosphere--lite wc-argentina-root" aria-hidden="true">
-            <div className="wc-seleccion-cloth wc-seleccion-cloth--static">
-                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-top" />
-                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--blanco">
-                    <div className="wc-seleccion-sol-gigante wc-seleccion-sol-gigante--static">
-                        <div className="wc-seleccion-sol-gigante__core" />
-                    </div>
-                </div>
-                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-bottom" />
-            </div>
-
-            <svg className="wc-seleccion-triada wc-seleccion-triada--static" viewBox="0 0 400 110" preserveAspectRatio="xMidYMin meet">
-                <defs>
-                    <linearGradient id="wc-triada-gold" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#F6B40E" stopOpacity="0.2" />
-                        <stop offset="50%" stopColor="#FFD54F" stopOpacity="1" />
-                        <stop offset="100%" stopColor="#F6B40E" stopOpacity="0.2" />
-                    </linearGradient>
-                </defs>
-                <path
-                    d="M 28 88 L 200 10 L 372 88 Z"
-                    fill="none"
-                    stroke="url(#wc-triada-gold)"
-                    strokeWidth="2.5"
-                    opacity="0.75"
-                />
-                <g className="wc-seleccion-triada__node">
-                    <circle cx="28" cy="88" r="13" />
-                    <text x="28" y="93" textAnchor="middle">78</text>
-                </g>
-                <g className="wc-seleccion-triada__node">
-                    <circle cx="200" cy="10" r="15" />
-                    <text x="200" y="16" textAnchor="middle">86</text>
-                </g>
-                <g className="wc-seleccion-triada__node">
-                    <circle cx="372" cy="88" r="13" />
-                    <text x="372" y="93" textAnchor="middle">22</text>
-                </g>
-                <g className="wc-seleccion-triada__node wc-seleccion-triada__node--26">
-                    <circle cx="200" cy="52" r="9" strokeDasharray="4 3" />
-                    <text x="200" y="56" textAnchor="middle">26</text>
-                </g>
-            </svg>
-
-            <div className="wc-seleccion-vignette" />
-            <div className="wc-seleccion-footer-band" />
-        </div>
-    );
-};
-
-/* ─── Login: hero con bandera CSS ─── */
-
-export const WorldCupLoginHero: React.FC = () => {
-    if (!isWorldCupThemeActive()) return null;
-
-    return (
-        <div className="wc-login-hero wc-argentina-root">
-            <WorldCupFlagArgentina size="md" />
-            <p className="wc-login-hero__title">¡VAMOS ARGENTINA!</p>
-            <p className="wc-login-hero__subtitle">🇦🇷 Mundial 2026 · DALE QUE VAMOS 🇦🇷</p>
-            <p className="wc-login-hero__subtext">
-                Con la misma pasión, entrá a {COMPANY_CONFIG.shortName}
-            </p>
-        </div>
-    );
-};
-
 /* ─── Estrellas campeón ─── */
 
 type ChampionSize = 'sm' | 'md' | 'lg';
@@ -193,6 +131,67 @@ export const WorldCupChampionStars: React.FC<WorldCupChampionStarsProps> = ({
                 </span>
             ))}
         </span>
+    );
+};
+
+/* ─── Login: fondo festivo ligero (sin animaciones pesadas) ─── */
+
+export const WorldCupLoginPanelFestive: React.FC = () => {
+    if (!isWorldCupThemeActive()) return null;
+
+    return (
+        <div className="wc-seleccion-atmosphere wc-seleccion-atmosphere--lite wc-argentina-root" aria-hidden="true">
+            <div className="wc-seleccion-cloth wc-seleccion-cloth--static">
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-top" />
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--blanco">
+                    <div className="wc-seleccion-sol-gigante wc-seleccion-sol-gigante--static">
+                        <div className="wc-seleccion-sol-gigante__core" />
+                    </div>
+                </div>
+                <div className="wc-seleccion-cloth__stripe wc-seleccion-cloth__stripe--celeste-bottom" />
+            </div>
+
+            <div className="wc-seleccion-campeones">
+                <WorldCupChampionStars size="lg" showYears />
+            </div>
+
+            <div className="wc-seleccion-confetti">
+                {CONFETTI_LOGIN.map((c) => (
+                    <span
+                        key={c.id}
+                        className="wc-seleccion-confetti__piece"
+                        style={{
+                            left: c.left,
+                            animationDelay: c.delay,
+                            animationDuration: c.duration,
+                            backgroundColor: c.color,
+                            width: c.width,
+                            height: c.height,
+                        }}
+                    />
+                ))}
+            </div>
+
+            <div className="wc-seleccion-vignette" />
+            <div className="wc-seleccion-footer-band" />
+        </div>
+    );
+};
+
+/* ─── Login: hero con bandera CSS ─── */
+
+export const WorldCupLoginHero: React.FC = () => {
+    if (!isWorldCupThemeActive()) return null;
+
+    return (
+        <div className="wc-login-hero wc-argentina-root">
+            <WorldCupFlagArgentina size="md" />
+            <p className="wc-login-hero__title">¡VAMOS ARGENTINA!</p>
+            <p className="wc-login-hero__subtitle">🇦🇷 Mundial 2026 · DALE QUE VAMOS 🇦🇷</p>
+            <p className="wc-login-hero__subtext">
+                Con la misma pasión, entrá a {COMPANY_CONFIG.shortName}
+            </p>
+        </div>
     );
 };
 
