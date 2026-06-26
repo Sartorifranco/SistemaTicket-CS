@@ -7,9 +7,9 @@ const CONFETTI_COLORS = ['#74ACDF', '#FFFFFF', '#F6B40E', '#5A9FD4', '#FFD54F'];
 
 type FlagSize = 'sm' | 'md' | 'lg';
 
-const OLA_BARS = Array.from({ length: 13 }, (_, i) => i);
+const OLA_BARS = Array.from({ length: 9 }, (_, i) => i);
 
-const VIENTO_STREAMS = Array.from({ length: 6 }, (_, i) => ({
+const VIENTO_STREAMS = Array.from({ length: 4 }, (_, i) => ({
     id: i,
     top: `${12 + i * 14}%`,
     delay: `${i * 0.7}s`,
@@ -18,7 +18,7 @@ const VIENTO_STREAMS = Array.from({ length: 6 }, (_, i) => ({
 }));
 
 /** Confetti sutil en login (pocas piezas, no invasivo) */
-const CONFETTI_LOGIN = Array.from({ length: 22 }, (_, i) => ({
+const CONFETTI_LOGIN = Array.from({ length: 14 }, (_, i) => ({
     id: i,
     left: `${(i * 4.6 + 1) % 98}%`,
     delay: `${(i * 0.4) % 7}s`,
@@ -265,19 +265,6 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
                     d="M 20 360 Q 200 20 380 360"
                     fill="none"
                 />
-                <text className="wc-seleccion-arco__ball wc-seleccion-arco__ball--ghost" fontSize="18" opacity="0.45">
-                    ⚽
-                    <animateMotion
-                        dur="7s"
-                        repeatCount="indefinite"
-                        path="M 20 360 Q 200 20 380 360"
-                        keyPoints="0;1;0"
-                        keyTimes="0;0.5;1"
-                        calcMode="spline"
-                        keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
-                        begin="0.35s"
-                    />
-                </text>
                 <text className="wc-seleccion-arco__ball" fontSize="28">
                     ⚽
                     <animateMotion
@@ -318,7 +305,6 @@ export const WorldCupLoginPanelFestive: React.FC = () => {
             <div className="wc-seleccion-canto">
                 <span className="wc-seleccion-canto__ring" />
                 <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--2" />
-                <span className="wc-seleccion-canto__ring wc-seleccion-canto__ring--3" />
             </div>
 
             {/* Confetti sutil */}
