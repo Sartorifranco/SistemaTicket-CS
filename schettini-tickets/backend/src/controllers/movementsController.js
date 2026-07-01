@@ -1,10 +1,56 @@
 const pool = require('../config/db');
+const { normalizeArticleNameForGrouping } = require('../utils/sparePartsDetailUtils');
+
+function groupMovementsRows(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    const articleKey = normalizeArticleNameForGrouping(row.article_name);
+    const key = `${row.order_id}:${articleKey}`;
+    const existing = groups.get(key);
+    const qty = Number(row.quantity) || 1;
+    const userLabel = row.user_display_name || row.user_username || null;
+    if (!existing) {
+      groups.set(key, {
+        id: row.id,
+        article_name: row.article_name,
+        order_id: row.order_id,
+        order_number: row.order_number,
+        quantity: qty,
+        entry_count: 1,
+        first_used_at: row.created_at,
+        last_used_at: row.created_at,
+        users: userLabel ? [userLabel] : []
+      });
+    } else {
+      existing.quantity += qty;
+      existing.entry_count += 1;
+      if (row.created_at && (!existing.first_used_at || row.created_at < existing.first_used_at)) {
+        existing.first_used_at = row.created_at;
+      }
+      if (row.created_at && (!existing.last_used_at || row.created_at > existing.last_used_at)) {
+        existing.last_used_at = row.created_at;
+        existing.article_name = row.article_name;
+      }
+      if (userLabel && !existing.users.includes(userLabel)) {
+        existing.users.push(userLabel);
+      }
+    }
+  }
+  return Array.from(groups.values())
+    .map((g) => ({
+      ...g,
+      user_display_name: g.users.join(', ') || null
+    }))
+    .sort((a, b) => {
+      const ta = a.last_used_at || '';
+      const tb = b.last_used_at || '';
+      return tb.localeCompare(ta);
+    });
+}
 
 /**
  * GET /api/movements
- * Lista movimientos de artículos (repuestos usados en órdenes).
- * Query: search (opcional) - filtra por nombre o código de artículo.
- * Agent solo puede acceder si company_settings.agents_can_view_movements es true.
+ * Query: search, view=consolidated|detail (default consolidated)
  */
 const getMovements = async (req, res) => {
   try {
@@ -19,6 +65,7 @@ const getMovements = async (req, res) => {
     }
 
     const search = (req.query.search || '').trim();
+    const view = String(req.query.view || 'consolidated').toLowerCase();
     let sql = `
       SELECT am.id, am.article_name, am.order_id, am.quantity, am.user_id, am.created_at,
         ro.order_number,
@@ -37,10 +84,13 @@ const getMovements = async (req, res) => {
     sql += ` ORDER BY am.created_at DESC, am.id DESC`;
 
     const [rows] = await pool.query(sql, params);
-    res.json({ success: true, data: rows });
+    if (view === 'detail') {
+      return res.json({ success: true, data: rows, view: 'detail' });
+    }
+    res.json({ success: true, data: groupMovementsRows(rows), view: 'consolidated' });
   } catch (err) {
     if (err.message?.includes("doesn't exist")) {
-      return res.json({ success: true, data: [] });
+      return res.json({ success: true, data: [], view: 'consolidated' });
     }
     console.error('getMovements:', err);
     res.status(500).json({ message: 'Error al listar movimientos' });
@@ -68,4 +118,4 @@ const deleteMovement = async (req, res) => {
   }
 };
 
-module.exports = { getMovements, deleteMovement };
+module.exports = { getMovements, deleteMovement, groupMovementsRows };

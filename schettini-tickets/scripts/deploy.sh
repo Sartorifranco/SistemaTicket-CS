@@ -186,6 +186,13 @@ if [[ -f "backend/scripts/add-article-movements-and-setting.js" ]]; then
     echo ""
 fi
 
+# Consolidar movimientos duplicados (mismo repuesto en la misma orden)
+if [[ -f "backend/scripts/consolidate-article-movements.js" ]]; then
+    echo ">>> Consolidando movimientos de artículos duplicados..."
+    (cd backend && node scripts/consolidate-article-movements.js) || true
+    echo ""
+fi
+
 # Órdenes externas en reciclaje (is_external_recycled, external_order_number, external_equipment_status)
 if [[ -f "backend/scripts/add-external-recycled-fields.js" ]]; then
     echo ">>> Ejecutando migración add-external-recycled-fields..."

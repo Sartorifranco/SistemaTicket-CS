@@ -5,6 +5,10 @@ const { createDraftFromRepairOrder } = require('./factoryShipmentController');
 const { registerDepositMovementFromRepairOrder } = require('./techCashController');
 const { appendRepairOrderPaymentInConnection, recordRepairOrderPaymentPost } = require('../services/repairOrderPaymentService');
 const { buildRepairOrderPaymentNotes } = require('../utils/repairOrderPaymentNotes');
+const {
+  computeSparePartsMovementIncrements,
+  sparePartsDetailToMovementRows
+} = require('../utils/sparePartsDetailUtils');
 const { createNotification } = require('../utils/notificationManager');
 
 /** Convierte un string de fecha/hora MySQL (sin Z) o un Date a ISO con Z para que el frontend la interprete como UTC. */
@@ -115,51 +119,6 @@ const logStatusHistory = async (repairOrderId, fieldChanged, oldValue, newValue,
   );
 };
 
-/**
- * Parsea spare_parts_detail a un Map key -> { nombre, qty }.
- * Key = codigo en minúsculas si existe; si no, nombre en minúsculas (evita duplicados por mismo repuesto en varias líneas).
- */
-const aggregateSparePartsDetailQuantities = (sparePartsDetail) => {
-  const map = new Map();
-  if (!sparePartsDetail || !String(sparePartsDetail).trim()) return map;
-  let items = [];
-  const raw = String(sparePartsDetail).trim();
-  if (raw.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(raw);
-      items = Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      items = [{ nombre: raw, cantidad: 1 }];
-    }
-  } else {
-    items = [{ nombre: raw, cantidad: 1 }];
-  }
-  for (const it of items) {
-    const name = it.nombre || it.name || (typeof it === 'string' ? it : null);
-    if (!name || !String(name).trim()) continue;
-    const qty = Math.max(1, parseInt(it.cantidad || it.quantity || 1, 10) || 1);
-    const code = String(it.codigo || '').trim().toLowerCase();
-    const key = code ? `c:${code}` : `n:${String(name).trim().toLowerCase()}`;
-    const nombre = String(name).trim();
-    const prev = map.get(key);
-    map.set(key, { nombre, qty: (prev ? prev.qty : 0) + qty });
-  }
-  return map;
-};
-
-/** Solo incrementos respecto al detalle anterior (evita duplicar movimientos al re-guardar la misma orden). */
-const computeSparePartsMovementIncrements = (oldDetail, newDetail) => {
-  const oldMap = aggregateSparePartsDetailQuantities(oldDetail);
-  const newMap = aggregateSparePartsDetailQuantities(newDetail);
-  const out = [];
-  for (const [key, nv] of newMap) {
-    const oldQty = oldMap.get(key)?.qty || 0;
-    const diff = nv.qty - oldQty;
-    if (diff > 0) out.push({ nombre: nv.nombre, quantity: diff });
-  }
-  return out;
-};
-
 const insertArticleMovementRows = async (repairOrderId, rows, userId) => {
   for (const row of rows) {
     if (!row.nombre || !row.quantity) continue;
@@ -174,34 +133,11 @@ const insertArticleMovementRows = async (repairOrderId, rows, userId) => {
   }
 };
 
-/** Inserta movimientos de artículos (repuestos) en article_movements a partir de spare_parts_detail (JSON array o texto). */
+/** Inserta movimientos agregados (un repuesto = una fila con cantidad total). */
 const insertArticleMovementsFromSpareParts = async (repairOrderId, sparePartsDetail, userId) => {
   if (!repairOrderId || !sparePartsDetail) return;
-  let items = [];
-  const raw = sparePartsDetail.trim();
-  if (raw.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(raw);
-      items = Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      items = [{ nombre: raw, quantity: 1 }];
-    }
-  } else {
-    items = [{ nombre: raw, quantity: 1 }];
-  }
-  for (const it of items) {
-    const name = it.nombre || it.name || (typeof it === 'string' ? it : null);
-    if (!name || !String(name).trim()) continue;
-    const qty = Math.max(1, parseInt(it.cantidad || it.quantity || 1, 10) || 1);
-    try {
-      await pool.query(
-        'INSERT INTO article_movements (article_name, order_id, quantity, user_id) VALUES (?, ?, ?, ?)',
-        [String(name).trim(), repairOrderId, qty, userId || null]
-      );
-    } catch (e) {
-      console.error('insertArticleMovementsFromSpareParts:', e.message);
-    }
-  }
+  const rows = sparePartsDetailToMovementRows(sparePartsDetail);
+  await insertArticleMovementRows(repairOrderId, rows, userId);
 };
 
 // Genera order_number: REP-0001, REP-0002, etc.
