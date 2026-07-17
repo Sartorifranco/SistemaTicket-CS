@@ -1,5 +1,9 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
+const {
+  validateClientFiscalDocument,
+  normalizeIvaCondition
+} = require('../utils/clientFiscalDocument');
 const { NEW_PERMISSIONS } = require('../constants/permissions');
 
 const migrateOldPermissions = (arr) => {
@@ -43,7 +47,7 @@ const getUsers = async (req, res) => {
         try {
             [users] = await pool.query(`
                 SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
-                    u.plan, u.phone, u.cuit, u.company_id, u.department_id,
+                    u.plan, u.phone, u.cuit, u.iva_condition, u.company_id, u.department_id,
                     u.permissions, u.can_manage_tech_finances,
                     u.business_name as business_name_text,
                     u.billing_type, u.contracted_services,
@@ -54,7 +58,21 @@ const getUsers = async (req, res) => {
                 ORDER BY u.id DESC
             `);
         } catch (colErr) {
-            if (colErr.message?.includes('billing_type') || colErr.message?.includes('contracted_services')) {
+            if (colErr.message?.includes('iva_condition')) {
+                [users] = await pool.query(`
+                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
+                        u.plan, u.phone, u.cuit, u.company_id, u.department_id,
+                        u.permissions, u.can_manage_tech_finances,
+                        u.business_name as business_name_text,
+                        u.billing_type, u.contracted_services,
+                        c.name as company_name_linked, d.name as department_name
+                    FROM Users u
+                    LEFT JOIN Companies c ON u.company_id = c.id
+                    LEFT JOIN Departments d ON u.department_id = d.id
+                    ORDER BY u.id DESC
+                `);
+                users.forEach(u => { u.iva_condition = null; });
+            } else if (colErr.message?.includes('billing_type') || colErr.message?.includes('contracted_services')) {
                 [users] = await pool.query(`
                     SELECT u.id, u.username, u.full_name, u.email, u.role, u.status, u.is_active,
                         u.plan, u.phone, u.cuit, u.company_id, u.department_id,
@@ -140,6 +158,12 @@ const createUser = async (req, res) => {
         const [existing] = await pool.query('SELECT * FROM Users WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ message: 'El usuario ya existe' });
 
+        const userRole = role || 'client';
+        if (userRole === 'client') {
+            const fiscal = validateClientFiscalDocument({ iva_condition, cuit, role: 'client' });
+            if (!fiscal.ok) return res.status(400).json({ message: fiscal.message });
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -164,7 +188,7 @@ const createUser = async (req, res) => {
                 username, 
                 email, 
                 hashedPassword, 
-                role || 'client', 
+                userRole, 
                 finalDepartmentId, 
                 finalCompanyId, 
                 plan || 'Free',
@@ -172,7 +196,7 @@ const createUser = async (req, res) => {
                 cuit || '',
                 business_name || '',
                 fantasy_name || '',
-                (iva_condition || '').trim() || null,
+                userRole === 'client' ? (normalizeIvaCondition(iva_condition) || null) : ((iva_condition || '').trim() || null),
                 (address || '').trim() || null,
                 (city || '').trim() || null,
                 (province || '').trim() || null,
@@ -205,16 +229,19 @@ const updateUser = async (req, res) => {
             if (target.role !== 'client') {
                 return res.status(403).json({ message: 'No tenés permiso para editar este usuario.' });
             }
+            const fiscal = validateClientFiscalDocument({ iva_condition, cuit, role: 'client' });
+            if (!fiscal.ok) return res.status(400).json({ message: fiscal.message });
             // Solo actualiza campos básicos + facturación/servicios — preserva role y status existentes
             const agentBilling = (billing_type || '').trim() || null;
             const agentServices = Array.isArray(contracted_services) ? JSON.stringify(contracted_services) : (typeof contracted_services === 'string' ? contracted_services : null);
-            const agentUpdates = ['username = ?', 'full_name = ?', 'email = ?', 'phone = ?', 'cuit = ?', 'company_id = ?', 'department_id = ?', 'billing_type = ?', 'contracted_services = ?'];
+            const agentUpdates = ['username = ?', 'full_name = ?', 'email = ?', 'phone = ?', 'cuit = ?', 'iva_condition = ?', 'company_id = ?', 'department_id = ?', 'billing_type = ?', 'contracted_services = ?'];
             const agentValues = [
                 username,
                 (full_name || '').trim() || null,
                 email,
                 phone || '',
                 cuit || '',
+                normalizeIvaCondition(iva_condition) || null,
                 (company_id && company_id !== '' && company_id !== '0') ? company_id : null,
                 (department_id && department_id !== '' && department_id !== '0') ? department_id : null,
                 agentBilling,
@@ -236,6 +263,14 @@ const updateUser = async (req, res) => {
         // Lógica corregida: Si 'status' no viene, asumimos 'active'
         const newStatus = status || 'active';
         const isActive = newStatus === 'active' ? 1 : 0;
+
+        const [existingRoleRows] = await pool.query('SELECT role FROM Users WHERE id = ?', [userId]);
+        if (existingRoleRows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        const effectiveRole = role || existingRoleRows[0].role;
+        if (effectiveRole === 'client') {
+            const fiscal = validateClientFiscalDocument({ iva_condition, cuit, role: 'client' });
+            if (!fiscal.ok) return res.status(400).json({ message: fiscal.message });
+        }
         
         // Aseguramos que si viene vacío sea NULL en la base de datos
         const finalCompanyId = (company_id && company_id !== '' && company_id !== '0') ? company_id : null;
@@ -262,7 +297,8 @@ const updateUser = async (req, res) => {
             username, finalFullName, email, role, newStatus, isActive,
             finalDepartmentId, finalCompanyId, plan || 'Free',
             phone || '', cuit || '', business_name || '', fantasy_name || '',
-            (iva_condition || '').trim() || null, (address || '').trim() || null, (city || '').trim() || null, (province || '').trim() || null, (zip_code || '').trim() || null,
+            effectiveRole === 'client' ? (normalizeIvaCondition(iva_condition) || null) : ((iva_condition || '').trim() || null),
+            (address || '').trim() || null, (city || '').trim() || null, (province || '').trim() || null, (zip_code || '').trim() || null,
             ((role === 'agent' || role === 'viewer') && can_manage_tech_finances === true) ? 1 : 0,
             (billing_type || '').trim() || null,
             contractedServicesStr

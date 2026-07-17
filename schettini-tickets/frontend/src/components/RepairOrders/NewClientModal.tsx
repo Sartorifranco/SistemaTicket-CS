@@ -3,8 +3,12 @@ import api from '../../config/axiosConfig';
 import { User } from '../../types';
 import { toast } from 'react-toastify';
 import HelpTooltip from '../Common/HelpTooltip';
-
-const IVA_OPTIONS = ['Inscripto', 'Monotributista', 'Exento'];
+import {
+  IVA_OPTIONS,
+  documentFieldLabel,
+  documentKindForIva,
+  validateClientFiscalDocument
+} from '../../utils/clientFiscalDocument';
 
 interface NewClientModalProps {
   isOpen: boolean;
@@ -27,6 +31,9 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
     province: '',
     zip_code: ''
   });
+
+  const docKind = documentKindForIva(form.iva_condition);
+  const docLabel = documentFieldLabel(form.iva_condition);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -54,6 +61,14 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
       toast.error('Contraseña es obligatoria');
       return;
     }
+    const fiscal = validateClientFiscalDocument({
+      iva_condition: form.iva_condition,
+      cuit: form.cuit
+    });
+    if (!fiscal.ok) {
+      toast.error(fiscal.message);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.post<{ success: boolean; userId: number }>('/api/users', {
@@ -64,7 +79,7 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
         phone: form.phone?.trim() || '',
         cuit: form.cuit?.trim() || '',
         business_name: form.business_name?.trim() || '',
-        iva_condition: form.iva_condition || null,
+        iva_condition: fiscal.iva,
         address: form.address?.trim() || '',
         city: form.city?.trim() || '',
         province: form.province?.trim() || '',
@@ -103,7 +118,7 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b px-6 py-4">
           <h2 className="text-xl font-bold text-gray-800">Nuevo Cliente</h2>
-          <p className="text-sm text-gray-500">Se creará su cuenta para ingresar al sistema</p>
+          <p className="text-sm text-gray-500">CUIT o DNI obligatorio según condición IVA (para comprobantes)</p>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -151,20 +166,41 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
               <input name="phone" value={form.phone} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                CUIT
-                <HelpTooltip text="Ingresá el CUIT de 11 dígitos (con o sin guiones)." />
-              </label>
-              <input name="cuit" value={form.cuit} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="20-12345678-9" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Condición IVA</label>
-              <select name="iva_condition" value={form.iva_condition} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Condición IVA *</label>
+              <select
+                name="iva_condition"
+                value={form.iva_condition}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              >
                 <option value="">Seleccionar...</option>
                 {IVA_OPTIONS.map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                {docLabel} *
+                <HelpTooltip
+                  text={
+                    docKind === 'dni'
+                      ? 'Consumidor Final / Exento: ingresá el DNI (7 u 8 dígitos).'
+                      : docKind === 'cuit'
+                        ? 'Inscripto / Monotributista: CUIT de 11 dígitos (con o sin guiones).'
+                        : 'Elegí primero la condición IVA: CUIT para Inscripto/Monotributista, DNI para Consumidor Final/Exento.'
+                  }
+                />
+              </label>
+              <input
+                name="cuit"
+                value={form.cuit}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                placeholder={docKind === 'dni' ? '12345678' : '20-12345678-9'}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social (fiscal)</label>

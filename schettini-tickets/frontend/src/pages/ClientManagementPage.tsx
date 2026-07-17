@@ -9,6 +9,14 @@ import {
     FaCloud, FaFilePdf, FaUpload, FaDownload
 } from 'react-icons/fa';
 import HelpTooltip from '../components/Common/HelpTooltip';
+import {
+    IVA_OPTIONS,
+    clientMissingFiscalDocument,
+    documentFieldLabel,
+    documentKindForIva,
+    normalizeIvaCondition,
+    validateClientFiscalDocument
+} from '../utils/clientFiscalDocument';
 
 interface Client {
     id: number;
@@ -24,6 +32,7 @@ interface Client {
     plan?: string;
     phone?: string | null;
     cuit?: string | null;
+    iva_condition?: string | null;
     business_name?: string;
     fantasy_name?: string;
     billing_type?: string | null;
@@ -169,6 +178,7 @@ const ClientManagementPage: React.FC = () => {
         email: '',
         password: '',
         cuit: '',
+        iva_condition: '',
         phone: '',
         business_name: '',
         fantasy_name: '',
@@ -180,6 +190,7 @@ const ClientManagementPage: React.FC = () => {
     });
 
     const [filterCloudNube, setFilterCloudNube] = useState(false);
+    const [filterMissingDoc, setFilterMissingDoc] = useState(false);
     const [clientDocuments, setClientDocuments] = useState<UserDocument[]>([]);
     const [documentsLoading, setDocumentsLoading] = useState(false);
     const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -210,7 +221,7 @@ const ClientManagementPage: React.FC = () => {
     const handleOpenCreate = () => {
         setFormData({
             username: '', full_name: '', email: '', password: '',
-            cuit: '', phone: '', business_name: '', fantasy_name: '',
+            cuit: '', iva_condition: '', phone: '', business_name: '', fantasy_name: '',
             company_id: '', department_id: '', status: 'active',
             billing_type: '', contracted_services: [],
         });
@@ -227,6 +238,7 @@ const ClientManagementPage: React.FC = () => {
             email: client.email,
             password: '',
             cuit: client.cuit ?? '',
+            iva_condition: normalizeIvaCondition(client.iva_condition) || '',
             phone: client.phone ?? '',
             business_name: client.business_name ?? '',
             fantasy_name: client.fantasy_name ?? '',
@@ -289,11 +301,22 @@ const ClientManagementPage: React.FC = () => {
         e.preventDefault();
         if (!formData.username || !formData.email) return toast.warn('Completá los campos obligatorios');
 
+        const fiscal = validateClientFiscalDocument({
+            iva_condition: formData.iva_condition,
+            cuit: formData.cuit
+        });
+        if (!fiscal.ok) {
+            toast.error(fiscal.message);
+            return;
+        }
+
         try {
             const payload: Record<string, unknown> = {
                 ...formData,
                 role: 'client',
                 full_name: (formData.full_name || '').trim() || null,
+                iva_condition: fiscal.iva,
+                cuit: formData.cuit.trim(),
                 company_id: formData.company_id ? parseInt(formData.company_id) : null,
                 department_id: formData.department_id ? parseInt(formData.department_id) : null,
                 billing_type: formData.billing_type || null,
@@ -315,6 +338,8 @@ const ClientManagementPage: React.FC = () => {
         }
     };
 
+    const missingDocCount = clients.filter((c) => clientMissingFiscalDocument(c)).length;
+
     const bySearch = clients.filter(c =>
         (c.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -322,12 +347,16 @@ const ClientManagementPage: React.FC = () => {
         (c.company_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.cuit || '').includes(searchTerm)
     );
-    const filtered = filterCloudNube
-        ? bySearch.filter(c => {
+    let filtered = bySearch;
+    if (filterCloudNube) {
+        filtered = filtered.filter(c => {
             const svc = parseContractedServices(c.contracted_services);
             return svc.some(s => s.toLowerCase().includes('cloud nube'));
-        })
-        : bySearch;
+        });
+    }
+    if (filterMissingDoc) {
+        filtered = filtered.filter(c => clientMissingFiscalDocument(c));
+    }
 
     if (loading) return <div className="p-8 text-center text-gray-500">Cargando clientes...</div>;
 
@@ -365,6 +394,16 @@ const ClientManagementPage: React.FC = () => {
                         <FaCloud /> Ver Clientes Cloud Nube
                     </button>
                     <button
+                        type="button"
+                        onClick={() => setFilterMissingDoc(!filterMissingDoc)}
+                        className={`px-4 py-2.5 rounded-lg border-2 font-semibold flex items-center gap-2 transition ${
+                            filterMissingDoc ? 'bg-amber-100 border-amber-500 text-amber-900' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                        title="Clientes sin CUIT/DNI o sin condición IVA"
+                    >
+                        <FaFileInvoice /> Sin CUIT/DNI{missingDocCount > 0 ? ` (${missingDocCount})` : ''}
+                    </button>
+                    <button
                         onClick={handleOpenCreate}
                         className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition font-bold shadow-md flex items-center justify-center gap-2"
                     >
@@ -383,7 +422,7 @@ const ClientManagementPage: React.FC = () => {
                                 <th className="p-4 font-bold">Nombre / Razón Social</th>
                                 <th className="p-4 font-bold">Estado</th>
                                 <th className="p-4 font-bold">Empresa Vinculada</th>
-                                <th className="p-4 font-bold">CUIT / Teléfono</th>
+                                <th className="p-4 font-bold">CUIT / DNI / Teléfono</th>
                                 <th className="p-4 font-bold text-center">Acciones</th>
                             </tr>
                         </thead>
@@ -427,9 +466,21 @@ const ClientManagementPage: React.FC = () => {
                                         </td>
                                         <td className="p-4">
                                             <div className="text-xs text-gray-600 space-y-0.5">
-                                                {client.cuit && <div className="flex items-center gap-1"><FaFileInvoice className="text-gray-400" />{client.cuit}</div>}
+                                                {client.cuit && (
+                                                    <div className="flex items-center gap-1">
+                                                        <FaFileInvoice className="text-gray-400" />
+                                                        <span>{documentFieldLabel(client.iva_condition)}: {client.cuit}</span>
+                                                    </div>
+                                                )}
                                                 {client.phone && <div className="flex items-center gap-1"><FaPhone className="text-gray-400" />{client.phone}</div>}
-                                                {!client.cuit && !client.phone && <span className="text-gray-400 italic">—</span>}
+                                                {clientMissingFiscalDocument(client) && (
+                                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 border border-amber-200">
+                                                        Falta CUIT/DNI
+                                                    </span>
+                                                )}
+                                                {!client.cuit && !client.phone && !clientMissingFiscalDocument(client) && (
+                                                    <span className="text-gray-400 italic">—</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="p-4">
@@ -545,8 +596,21 @@ const ClientManagementPage: React.FC = () => {
                                 </div>
                                 {viewClient.cuit && (
                                     <div>
-                                        <p className="text-xs text-gray-400 uppercase font-bold">CUIT</p>
+                                        <p className="text-xs text-gray-400 uppercase font-bold">
+                                            {documentFieldLabel(viewClient.iva_condition)}
+                                        </p>
                                         <p className="text-sm font-semibold text-gray-700 mt-1">{viewClient.cuit}</p>
+                                    </div>
+                                )}
+                                {viewClient.iva_condition && (
+                                    <div>
+                                        <p className="text-xs text-gray-400 uppercase font-bold">Condición IVA</p>
+                                        <p className="text-sm font-semibold text-gray-700 mt-1">{viewClient.iva_condition}</p>
+                                    </div>
+                                )}
+                                {clientMissingFiscalDocument(viewClient) && (
+                                    <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                                        Falta completar CUIT/DNI y condición IVA para emitir comprobantes. Editá el cliente para cargarlos.
                                     </div>
                                 )}
                                 {viewClient.phone && (
@@ -703,16 +767,46 @@ const ClientManagementPage: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
-                                        CUIT
+                                        Condición IVA <span className="text-red-500">*</span>
+                                        <HelpTooltip text="Define si pedimos CUIT (Inscripto/Monotributista) o DNI (Consumidor Final/Exento)." />
+                                    </label>
+                                    <select
+                                        required
+                                        className="w-full border border-gray-300 p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={formData.iva_condition}
+                                        onChange={e => setFormData({ ...formData, iva_condition: e.target.value })}
+                                    >
+                                        <option value="">Seleccionar...</option>
+                                        {IVA_OPTIONS.map((o) => (
+                                            <option key={o} value={o}>{o}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                                        {documentFieldLabel(formData.iva_condition)} <span className="text-red-500">*</span>
+                                        <HelpTooltip
+                                          text={
+                                            documentKindForIva(formData.iva_condition) === 'dni'
+                                              ? 'DNI de 7 u 8 dígitos.'
+                                              : documentKindForIva(formData.iva_condition) === 'cuit'
+                                                ? 'CUIT de 11 dígitos (con o sin guiones).'
+                                                : 'Elegí primero la condición IVA.'
+                                          }
+                                        />
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="20-12345678-9"
+                                        required
+                                        placeholder={documentKindForIva(formData.iva_condition) === 'dni' ? '12345678' : '20-12345678-9'}
                                         className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={formData.cuit}
                                         onChange={e => setFormData({ ...formData, cuit: e.target.value })}
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
                                         {isEditMode ? 'Nueva Contraseña (Opcional)' : 'Contraseña'}{!isEditMode && <span className="text-red-500">*</span>}

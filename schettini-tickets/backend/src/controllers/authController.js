@@ -27,6 +27,10 @@ const parsePermissions = (val) => {
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendPasswordResetEmail } = require('../services/emailService');
+const {
+  validateClientFiscalDocument,
+  normalizeIvaCondition
+} = require('../utils/clientFiscalDocument');
 
 // 6 Meses en milisegundos
 const INACTIVITY_LIMIT = 180 * 24 * 60 * 60 * 1000; 
@@ -42,7 +46,8 @@ const registerUser = async (req, res) => {
             accepted_confidentiality_agreement,
             permissions, can_manage_tech_finances,
             billing_type, contracted_services,
-            is_company // DOC1.8: 0 = persona, 1 = empresa
+            is_company, // DOC1.8: 0 = persona, 1 = empresa
+            iva_condition
         } = req.body;
 
         // 0. Acuerdo de confidencialidad (solo registro público; admin/supervisor eximidos)
@@ -54,6 +59,13 @@ const registerUser = async (req, res) => {
         // 1. Validaciones
         if (!username || !email || !password) {
             return res.status(400).json({ message: 'Faltan datos obligatorios (Usuario, Email, Contraseña).' });
+        }
+
+        const userRoleEarly = role || 'client';
+        // Staff creando cliente: CUIT/DNI obligatorio según condición IVA
+        if (isAdminOrSupervisorCreating && userRoleEarly === 'client') {
+            const fiscal = validateClientFiscalDocument({ iva_condition, cuit, role: 'client' });
+            if (!fiscal.ok) return res.status(400).json({ message: fiscal.message });
         }
 
         // 2. Verificar usuario duplicado (username y email deben ser únicos)
@@ -130,6 +142,11 @@ const registerUser = async (req, res) => {
         const finalBillingType = (billing_type || '').trim() || null;
         const hasBilling = finalBillingType !== null;
         const hasContractedServices = contractedServicesStr !== null && contractedServicesStr !== '';
+        const finalIvaCondition =
+          isAdminOrSupervisorCreating && userRole === 'client'
+            ? normalizeIvaCondition(iva_condition) || null
+            : (iva_condition ? normalizeIvaCondition(iva_condition) || null : null);
+        const hasIvaCondition = finalIvaCondition !== null;
         // DOC1.8: is_company se infiere también si vienen datos de empresa, por retro-compat
         const finalIsCompany = (is_company === 1 || is_company === true || is_company === '1')
             ? 1
@@ -143,12 +160,14 @@ const registerUser = async (req, res) => {
                 ${hasTechFinances ? ', can_manage_tech_finances' : ''}
                 ${hasBilling ? ', billing_type' : ''}
                 ${hasContractedServices ? ', contracted_services' : ''}
+                ${hasIvaCondition ? ', iva_condition' : ''}
             ) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
                 ${hasPermissions ? ', ?' : ''}
                 ${hasTechFinances ? ', ?' : ''}
                 ${hasBilling ? ', ?' : ''}
                 ${hasContractedServices ? ', ?' : ''}
+                ${hasIvaCondition ? ', ?' : ''}
             )
         `;
         const insertValues = [
@@ -159,6 +178,7 @@ const registerUser = async (req, res) => {
         if (hasTechFinances) insertValues.push(1);
         if (hasBilling) insertValues.push(finalBillingType);
         if (hasContractedServices) insertValues.push(contractedServicesStr);
+        if (hasIvaCondition) insertValues.push(finalIvaCondition);
         
         try {
             await pool.query(sql, insertValues);
