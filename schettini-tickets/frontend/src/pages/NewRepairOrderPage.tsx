@@ -181,6 +181,10 @@ const NewRepairOrderPage: React.FC = () => {
       next[idx] = { ...next[idx], [field]: value };
       return next;
     });
+    // Mantener alineado el Nº de factura de la orden con el del equipo
+    if (field === 'warranty_invoice' && typeof value === 'string' && value.trim()) {
+      setPurchaseInvoiceNumber((prev) => (prev.trim() ? prev : value.trim()));
+    }
   };
 
   const addItem = () => setItems((prev) => [...prev, { ...DEFAULT_ITEM }]);
@@ -276,9 +280,25 @@ const NewRepairOrderPage: React.FC = () => {
       formData.append('originalSupplier', originalSupplier.trim());
       formData.append('requiresFactoryShipping', requiresFactoryShipping ? 'true' : 'false');
       if (warrantyStatus) formData.append('warrantyStatus', warrantyStatus);
+    } else {
+      // Si solo marcaron «Es Garantía» en el equipo, igual enviamos el Nº de factura al nivel orden
+      const itemInvoice = validItems.map((it) => (it.warranty_invoice || '').trim()).find((v) => v);
+      if (itemInvoice) {
+        formData.append('purchaseInvoiceNumber', itemInvoice);
+      }
     }
 
-    formData.append('items', JSON.stringify(validItems));
+    // Si hay factura a nivel orden y algún equipo en garantía sin comprobante, la copiamos al ítem
+    const orderInvoiceForItems = (isWarranty ? purchaseInvoiceNumber.trim() : '') ||
+      validItems.map((it) => (it.warranty_invoice || '').trim()).find((v) => v) ||
+      '';
+    const itemsPayload = validItems.map((it) => ({
+      ...it,
+      warranty_invoice:
+        (it.warranty_invoice || '').trim() ||
+        (it.is_warranty && orderInvoiceForItems ? orderInvoiceForItems : it.warranty_invoice)
+    }));
+    formData.append('items', JSON.stringify(itemsPayload));
     photos.forEach((p) => formData.append('photos', p.file));
     formData.append('perspectiveLabels', JSON.stringify(photos.map((p) => p.label)));
 

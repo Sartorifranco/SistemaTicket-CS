@@ -193,6 +193,13 @@ if [[ -f "backend/scripts/consolidate-article-movements.js" ]]; then
     echo ""
 fi
 
+# Copiar Nº factura de garantía del equipo a la orden cuando falte
+if [[ -f "backend/scripts/backfill-warranty-invoice-to-order.js" ]]; then
+    echo ">>> Backfill Nº factura garantía (equipo → orden)..."
+    (cd backend && node scripts/backfill-warranty-invoice-to-order.js) || true
+    echo ""
+fi
+
 # Órdenes externas en reciclaje (is_external_recycled, external_order_number, external_equipment_status)
 if [[ -f "backend/scripts/add-external-recycled-fields.js" ]]; then
     echo ">>> Ejecutando migración add-external-recycled-fields..."

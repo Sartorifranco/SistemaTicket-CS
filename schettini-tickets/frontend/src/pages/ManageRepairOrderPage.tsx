@@ -77,6 +77,8 @@ interface RepairOrderItem {
   serial_number?: string | null;
   reported_fault?: string | null;
   included_accessories?: string | null;
+  is_warranty?: number | boolean | null;
+  warranty_invoice?: string | null;
 }
 
 const WARRANTY_TYPE_OPTIONS: { value: string; label: string }[] = [
@@ -351,7 +353,10 @@ const ManageRepairOrderPage: React.FC = () => {
           internalNotes: o.internal_notes || '',
           isWarranty: !!o.is_warranty,
           warrantyType: o.warranty_type || '',
-          purchaseInvoiceNumber: o.purchase_invoice_number || '',
+          purchaseInvoiceNumber:
+            o.purchase_invoice_number ||
+            (o.items || []).map((it) => (it.warranty_invoice || '').trim()).find((v) => v) ||
+            '',
           purchaseDate: formatDateForInput(o.purchase_date) || '',
           originalSupplier: o.original_supplier || '',
           requiresFactoryShipping: !!o.requires_factory_shipping,
