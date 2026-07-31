@@ -661,9 +661,29 @@ const QuoterPage: React.FC = () => {
                   )}
                   {fileName && <span className="text-sm text-gray-500">Cargado: {fileName}</span>}
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  💡 Sube un nuevo Excel para actualizar los precios existentes. Si querés limpiar la base por completo y empezar de cero, usá el botón &quot;Vaciar Catálogo&quot;.
-                </p>
+                <div className="text-sm text-gray-500 mt-2 space-y-2">
+                  <p>
+                    💡 Subí un nuevo Excel para actualizar los precios existentes. Si querés limpiar la base por completo y empezar de cero, usá el botón &quot;Vaciar Catálogo&quot;.
+                  </p>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-gray-700">
+                    <p className="font-semibold text-amber-900 mb-1">Formato del Excel (primera hoja)</p>
+                    <p className="mb-1">
+                      La fila de encabezados debe incluir al menos <strong>CODIGO PRODUCTO</strong>. Columnas que toma el sistema:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 text-xs sm:text-sm">
+                      <li><strong>CODIGO PRODUCTO</strong> (obligatorio)</li>
+                      <li><strong>DESCRIPCION</strong></li>
+                      <li><strong>APTO MODELO</strong> (opcional)</li>
+                      <li><strong>COSTO S/IVA</strong> / <strong>COSTO + IVA</strong> (opcionales)</li>
+                      <li><strong>PRECIO VENTA FINAL PESOS</strong></li>
+                      <li><strong>PRECIO VENTA FINAL USD</strong></li>
+                      <li><strong>PRECIO DE LISTA HASTA 3</strong> / <strong>PRECIO DE LISTA -30%</strong> (opcionales)</li>
+                    </ul>
+                    <p className="mt-2 text-xs text-gray-600">
+                      Ejemplo de encabezado: <span className="font-mono bg-white/80 px-1 rounded border border-amber-100">CODIGO PRODUCTO | DESCRIPCION | PRECIO VENTA FINAL PESOS | PRECIO VENTA FINAL USD</span>
+                    </p>
+                  </div>
+                </div>
               </>
             )}
 
