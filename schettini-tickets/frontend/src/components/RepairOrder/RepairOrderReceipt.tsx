@@ -4,6 +4,7 @@ import Barcode from 'react-barcode';
 import { getImageUrl } from '../../utils/imageUrl';
 import { formatRepairOrderClientDisplay } from '../../utils/repairOrderLabels';
 import { formatDateTimeArgentina } from '../../utils/dateFormatter';
+import { COMPANY_CONFIG } from '../../config/branding';
 import './RepairOrderReceipt.css';
 
 const DEFAULT_LEGAL_TEXT = `1- Para el requerimiento de cualquier servicio respecto del equipo y/o el retiro del mismo, se solicitará, sin excepción, la exhibición del presente comprobante o el DNI.
@@ -15,6 +16,13 @@ const DEFAULT_LEGAL_TEXT = `1- Para el requerimiento de cualquier servicio respe
 8- Es responsabilidad del cliente revisar las condiciones: https://casaschettini-shop.com/terminos-y-condiciones-politicas-garantia/
 10- El cliente recibe copia de este documento.
 11- Las cotizaciones qué NO superen el monto de $40.000 + iva, se consideran ACEPTADAS sin necesidad de previa confirmación del cliente.`;
+
+function displayOrDash(value: string | null | undefined, fallback?: string): string {
+  const v = value != null ? String(value).trim() : '';
+  if (v) return v;
+  const fb = fallback != null ? String(fallback).trim() : '';
+  return fb || '—';
+}
 
 export interface CompanySettingsReceipt {
   company_name: string;
@@ -106,11 +114,15 @@ function ReceiptHalf({
               className="h-12 object-contain mb-0.5 max-w-[120px]"
             />
           ) : null}
-          <p className="text-[11px] font-bold text-black leading-tight">{cs.company_name || '—'}</p>
+          <p className="text-[11px] font-bold text-black leading-tight">
+            {displayOrDash(cs.company_name, COMPANY_CONFIG.name)}
+          </p>
           <p className="text-[9px] text-gray-700 leading-tight">Soluciones para comercios y empresas</p>
-          <p className="text-[9px] text-gray-600 leading-tight">{cs.address || '—'}</p>
-          <p className="text-[9px] text-gray-600 leading-tight">Tel: {cs.phone || '—'}</p>
-          <p className="text-[9px] text-gray-600 leading-tight">{cs.email || '—'}</p>
+          <p className="text-[9px] text-gray-600 leading-tight">{displayOrDash(cs.address)}</p>
+          <p className="text-[9px] text-gray-600 leading-tight">Tel: {displayOrDash(cs.phone)}</p>
+          <p className="text-[9px] text-gray-600 leading-tight">
+            {displayOrDash(cs.email, COMPANY_CONFIG.contactEmail)}
+          </p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-[9px] mb-0.5">Entrada: {formatDateTimeArgentina(order.entry_date || order.created_at)}</p>
